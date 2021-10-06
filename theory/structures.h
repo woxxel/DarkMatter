@@ -128,9 +128,9 @@ struct simulation
 
     double y_val();
 
-    void initiate_y_axis(model mod);
-    void store_results(simulation sim, model *modP, results *resP);
-    void store_results_approx(simulation sim, model *modP, results *resP);
+    void initiate_y_axis(model *modP);
+    void store_results(simulation *simP, model *modP, results *resP);
+    void store_results_approx(simulation *simP, model *modP, results *resP);
 };
 
 struct computation

@@ -1,6 +1,6 @@
 using namespace std;
 
-void initiate_results(model mod, simulation *simP, results *resP);
+void initiate_results(model *modP, simulation *simP, results *resP);
 
 int selfconsistency_f (const gsl_vector * q, void * paras, gsl_vector * f);   // dummy function for integration
 double I_squared_nu(double alpha, double sigma_V, double rateWnt, double rate_max);

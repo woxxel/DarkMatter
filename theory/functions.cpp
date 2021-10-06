@@ -12,7 +12,7 @@
 
 // define classes
 
-void initiate_results(model mod, simulation *simP, results *resP)
+void initiate_results(model *modP, simulation *simP, results *resP)
 {
     // first of: steps!
     unsigned axes_ct = 2;
@@ -78,51 +78,51 @@ void initiate_results(model mod, simulation *simP, results *resP)
 
     if (axes_ct == 2)
     {
-        simP->initiate_y_axis(mod);
+        simP->initiate_y_axis(modP);
         resP->steps = 1000;
     }
     else
         resP->steps = simP->steps;
 
 //         cout << "mode_stats = " << simP->mode_stats << endl;
-//         cout << "Npop = " << mod.paras.Npop << endl;
+//         cout << "Npop = " << modP->paras.Npop << endl;
 
 
     if (axes_ct == 0)
     {
-        simP->trans_DM_found.resize(mod.paras.Npop,false);
-        simP->trans_np_found.resize(mod.paras.Npop,false);
+        simP->trans_DM_found.resize(modP->paras.Npop,false);
+        simP->trans_np_found.resize(modP->paras.Npop,false);
         simP->trans_imp_found = false;
         simP->trans_inc_found = false;
 
         // now: size of border vectors
-        resP->trans_DM.resize(mod.paras.Npop,vector<double>(resP->steps));
-        resP->trans_np.resize(mod.paras.Npop,vector<double>(resP->steps));
-        resP->trans_inc.resize(mod.paras.Npop,vector<double>(resP->steps));
-        resP->trans_imp.resize(mod.paras.Npop,vector<double>(resP->steps));
+        resP->trans_DM.resize(modP->paras.Npop,vector<double>(resP->steps));
+        resP->trans_np.resize(modP->paras.Npop,vector<double>(resP->steps));
+        resP->trans_inc.resize(modP->paras.Npop,vector<double>(resP->steps));
+        resP->trans_imp.resize(modP->paras.Npop,vector<double>(resP->steps));
 
-        resP->rate.resize(mod.paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
+        resP->rate.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
 
         if (simP->mode_stats != 2)
         {
-            resP->gamma.resize(mod.paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-            resP->chi.resize(mod.paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
+            resP->gamma.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
+            resP->chi.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
         }
 
 
         if ((simP->mode_stats == 0) || (simP->mode_stats == 4))
-            resP->regions.resize(mod.paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
+            resP->regions.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
 
 
 
         if (simP->mode_stats == 4)
         {
-            resP->gamma_approx.resize(mod.paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-            resP->chi_approx.resize(mod.paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
+            resP->gamma_approx.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
+            resP->chi_approx.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
 //                 resP->regions_approx.push_back(vector<double>());
 
-            resP->KL_entropy.resize(mod.paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-            resP->entropy.resize(mod.paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
+            resP->KL_entropy.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
+            resP->entropy.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
         }
     }
     else if (axes_ct == 1)
@@ -134,35 +134,35 @@ void initiate_results(model mod, simulation *simP, results *resP)
             int dim1 = simP->max_ax[1];
 
             simP->trans_imp_found = false;
-            resP->trans_imp.resize(mod.paras.Npop,vector<double>(resP->steps));
+            resP->trans_imp.resize(modP->paras.Npop,vector<double>(resP->steps));
 
-            resP->rate.resize(mod.paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
-            resP->gamma.resize(mod.paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
-            resP->chi.resize(mod.paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
+            resP->rate.resize(modP->paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
+            resP->gamma.resize(modP->paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
+            resP->chi.resize(modP->paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
 
-            resP->q.resize(mod.paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
+            resP->q.resize(modP->paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
 //                         cout << "start q size : " << resP->q.size() << endl;
-            resP->alpha_raw.resize(mod.paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
-            resP->alpha.resize(mod.paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
-            resP->sigma_V.resize(mod.paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
-            resP->I_balance.resize(mod.paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
+            resP->alpha_raw.resize(modP->paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
+            resP->alpha.resize(modP->paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
+            resP->sigma_V.resize(modP->paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
+            resP->I_balance.resize(modP->paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
         }
     }
     else
     {
         if (simP->mode_stats == 3)
         {
-            resP->rate.resize(mod.paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-            resP->q.resize(mod.paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-            resP->q_approx.resize(mod.paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
+            resP->rate.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
+            resP->q.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
+            resP->q_approx.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
 
-            resP->gamma.resize(mod.paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-            resP->gamma_approx.resize(mod.paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-            resP->chi.resize(mod.paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-            resP->chi_approx.resize(mod.paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
+            resP->gamma.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
+            resP->gamma_approx.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
+            resP->chi.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
+            resP->chi_approx.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
 
-            resP->KL_entropy.resize(mod.paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-            resP->entropy.resize(mod.paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
+            resP->KL_entropy.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
+            resP->entropy.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
         }
     }
 
@@ -188,19 +188,19 @@ void model::resize()
 	paras.J_I.resize(paras.Npop);
 //         paras.kappa.resize(paras.Npop);
 
-        paras.alpha_raw.resize(paras.Npop);
+    paras.alpha_raw.resize(paras.Npop);
 	paras.alpha.resize(paras.Npop);
 	paras.sigma_V.resize(paras.Npop);
 	paras.rate_max.resize(paras.Npop);
 
 	paras.gamma.resize(paras.Npop);
 	paras.delta.resize(paras.Npop);
-        paras.I_balance.resize(paras.Npop);
+    paras.I_balance.resize(paras.Npop);
 	paras.chi.resize(paras.Npop);
-        paras.regions.resize(paras.Npop);
+    paras.regions.resize(paras.Npop);
 
-        paras.KL.resize(paras.Npop);
-        paras.entropy.resize(paras.Npop);
+    paras.KL.resize(paras.Npop);
+    paras.entropy.resize(paras.Npop);
 
 }
 
@@ -554,7 +554,7 @@ double simulation::y_val()
 //         }
 }
 
-void simulation::initiate_y_axis(model mod)
+void simulation::initiate_y_axis(model *modP)
 {
 //         cout << "initiating y-axis..." << endl;
 
@@ -563,7 +563,7 @@ void simulation::initiate_y_axis(model mod)
             x_iter = -1;
             y_iter++; // keep track of current y-step
 
-            for (int p = 0; p < mod.paras.Npop; p++)
+            for (int p = 0; p < modP->paras.Npop; p++)
             {
                     trans_DM_found[p] = false;
                     trans_np_found[p] = false;
@@ -576,7 +576,7 @@ void simulation::initiate_y_axis(model mod)
         trans_imp_found = false;
 }
 
-void simulation::store_results(simulation sim, model * modP, results * resP)
+void simulation::store_results(simulation *simP, model * modP, results * resP)
 {
 //         unsigned a = resP->rate.size() - 1;
 //         cout << "size = " << a << endl;
@@ -650,7 +650,7 @@ void simulation::store_results(simulation sim, model * modP, results * resP)
 
 
 
-void simulation::store_results_approx(simulation sim, model *modP, results * resP)
+void simulation::store_results_approx(simulation *simP, model *modP, results * resP)
 {
 //         unsigned a = resP->gamma_approx.size() - 1;
 //
@@ -889,14 +889,14 @@ void draw_samples(computation *comP, results *resP)
 
 // vector<double> get_density_estimate(vector<int> data, computation sim, string kernel)
 // {
-//         vector<double> p_est(sim.AP_max,0);
+//         vector<double> p_est(simP->AP_max,0);
 //         cout << "getting density estimation..." << endl;
-//     //     vector<vector<double> > p_est_single (sim.N);
-//         for (int n=0; n<sim.N; ++n)
+//     //     vector<vector<double> > p_est_single (simP->N);
+//         for (int n=0; n<simP->N; ++n)
 //         {
 //                 if (kernel.compare("poisson") == 0)
-//                         for (int i=0; i<sim.AP_max; ++i)
-//                                 p_est[i] += poisson_distr(data[n],i)/(sim.N/sim.T);
+//                         for (int i=0; i<simP->AP_max; ++i)
+//                                 p_est[i] += poisson_distr(data[n],i)/(simP->N/simP->T);
 //                 else
 //                         cout << "kernel '" << kernel << "' not yet implemented" << endl;
 //         }

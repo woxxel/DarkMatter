@@ -130,45 +130,15 @@ def sharkfins(steps=10,rateWnt=None,alpha_0=None,tau_G=None,n=None,eps=None,eta=
     if (not mode_stats):
         if plot_para['multi']:
             if (Npop == 1):
-                fig, ax = plt.subplots(int(len(inpara['rateWnt'])/2)+1,2,figsize=(7.5,1+2.3*(len(inpara['rateWnt'])/2+1)))
-                #if (Npop == 2):
-                    #fig, ax = plt.subplots(2,len(inpara['rateWnt']),figsize=(7.5,1+2.3*(len(inpara['rateWnt'])/2+1)))
-                #print len(inpara['rateWnt'])/2+1
-                #print 1+2.2*(len(inpara['rateWnt'])/2+1)
+                fig, ax = plt.subplots(len(inpara['rateWnt'])//2+1,2,figsize=(7.5,1+2.3*(len(inpara['rateWnt'])//2+1)))
+            # if (Npop == 2):
+                # fig, ax = plt.subplots(2,len(inpara['rateWnt']),figsize=(7.5,1+2.3*(len(inpara['rateWnt'])//2+1)))
 
-                #ax[-1,-1].set_axis_bgcolor('none')
-                #ax[-1,-1].tick_params(labelcolor='none',top='off',bottom='off',left='off',right='off')
-                #ax[-1,-1].spines['top'].set_visible(False)
-                #ax[-1,-1].spines['right'].set_visible(False)
-                #ax[-1,-1].spines['bottom'].set_visible(False)
-                #ax[-1,-1].spines['left'].set_visible(False)
-
-                #ax[-1,-1].axis('off')
-            if plot_ax3D:
-                fig.delaxes(ax[-1,-1])
-                #fig2 = plt.figure()
-                ax3D = fig.add_subplot(len(inpara['rateWnt'])/2+1,2,len(inpara['rateWnt'])+1,projection='3d')
-                #ax3D = fig2.add_subplot(111,projection='3d')
-                #plt.ion()
-                # print("plotting 3D axis")
-                data_3D_inc = []
-                data_3D_DM = np.zeros([len(inpara['rateWnt']),steps,3])
-                data_3D_DM[:] = np.nan
-                #X = []
-                #Y = []
-                #Z = []
-                #Z = np.zeros((steps,steps))
-                #Z[:] = np.nan
-
-        # print("initializing several axes...")
         else:
             if (Npop == 1):
                 fig = plt.figure(figsize=(6,5))
-        #if (Npop == 2):
-            #fig = plt.figure(figsize=(6,10))
-  #elif (mode_stats == 3):
-      #results['KL'] = np.zeros((len(inpara['alpha_0'][0]),steps))
-  #steps = steps - 1
+            if (Npop == 2):
+                fig = plt.figure(figsize=(6,10))
 
     if (compile):
         compile_code()
@@ -236,24 +206,13 @@ def sharkfins(steps=10,rateWnt=None,alpha_0=None,tau_G=None,n=None,eps=None,eta=
                     plot_fins(ax_now,simulation[para_list[ax_list[1]]],simulation[para_list[ax_list[0]]],results['gamma'][p,...],results['chi'][p,...],results['regions'][p,...],plot_para)
                     set_axes(ax_now,simulation,para_list[ax_list[1]],para_list[ax_list[0]])
 
-                    #if (plot_ax3D):
-                            ## has to be done once only, for largest phase region
-                            ## if area shrinks, later values have to be adjusted accordingly!
-
-                            #if (not i):
-                                # right orientation?
-                                #X = simulation[para_list[ax_list[1]]]
-                                #Y = simulation[para_list[ax_list[0]]]
-
                     DM_bound[i,0] = 0
 
-                    if (plot_para['multi']):
-                        plot_3d()
-                    else:
+                    if (not plot_para['multi']):
                         ax_now.set_title('%s' % (const_labels[0]),fontsize=12)
 
-    plt.show(block=False)
-    return results
+    # plt.show(block=False)
+    # return results
 
     if (steps > 1):
         if (mode_stats == 0):
@@ -271,81 +230,7 @@ def sharkfins(steps=10,rateWnt=None,alpha_0=None,tau_G=None,n=None,eps=None,eta=
             print("test1")
 
             if (plot_para['multi'] and plot_ax3D):
-                #print "he"
-                x_plane = np.linspace(0,max(max(inpara[para_list[ax_list[1]]])),2)
-                y_plane = np.linspace(0,max(max(inpara[para_list[ax_list[2]]])),2)
-
-                #xx, yy = np.meshgrid(x_plane, y_plane)
-                #zz = np.zeros(xx.shape)
-                #ax3D.plot_surface(xx, yy, zz, alpha=1,color='w')
-
-
-
-                data_3D_inc = np.array(data_3D_inc)
-                data_3D_DM = np.array(data_3D_DM)
-
-                ### plot this in each i iteration step for i > 0, to avoid overshoot
-                X = data_3D_DM[:,0]
-                Y = data_3D_DM[:,2]
-                Z = data_3D_DM[:,1]
-
-                xi = np.linspace(X.min(),X.max(),steps)
-                yi = np.linspace(Y.min(),Y.max(),steps)
-                ##VERY IMPORTANT, to tell matplotlib how is your data organized
-                zi = griddata((X,Y), Z, (xi[None,:], yi[:,None]), method='cubic')
-
-                xig, yig = np.meshgrid(xi, yi)
-
-                fig2 = plt.figure()
-                ax3D = fig2.add_subplot(111,projection='3d')
-                surf = ax3D.plot_surface(xig, yig, zi,linewidth=0,color='r',alpha=0.6)
-                CS = ax3D.plot(X,Y,'.',zs=Z,markersize=0.5,color='k')
-
-                #print data_3D_inc.shape
-                #print data_3D_inc.shape > 10
-                #print any(data_3D_inc.shape) > 10
-
-                if (data_3D_inc.shape > 10):
-                    X = data_3D_inc[:,0]
-                    Y = data_3D_inc[:,2]
-                    Z = data_3D_inc[:,1]
-
-                    xi = np.linspace(X.min(),X.max(),steps)
-                    yi = np.linspace(Y.min(),Y.max(),steps)
-                    ##VERY IMPORTANT, to tell matplotlib how is your data organized
-                    zi = griddata((X,Y), Z, (xi[None,:], yi[:,None]), method='cubic')
-
-                    ####CS = ax3D.contour(X,Y,Z,15,linewidths=0.5,color='k')
-
-                    xig, yig = np.meshgrid(xi, yi)
-
-                    #fig2 = plt.figure()
-                    #ax3D = fig2.add_subplot(111,projection='3d')
-                    surf = ax3D.plot_surface(xig, yig, zi,linewidth=0,color='k',alpha=0)
-                    CS = ax3D.plot(X,Y,'.',zs=Z,markersize=0.5,color='k')
-
-
-
-                ax3D.azim = 250.
-                ax3D.elev = 15
-                ax3D.dist = 8
-
-                ax3D.set_xticks(np.linspace(inpara[para_list[ax_list[1]]][0][0],inpara[para_list[ax_list[1]]][0][1],5))
-                ax3D.tick_params(axis='x', pad=-5)
-                ax3D.set_yticks(inpara[para_list[ax_list[2]]])#np.linspace(inpara[para_list[ax_list[2]]][0][0],inpara[para_list[ax_list[2]]][-1][0],5))
-                ax3D.set_yticklabels(['%d'%(entry[0]) for entry in inpara[para_list[ax_list[2]]]],fontsize=12)#np.linspace(inpara[para_list[ax_list[2]]][0][0],inpara[para_list[ax_list[2]]][-1][0],5))
-                ax3D.tick_params(axis='y', pad=-3)
-                ax3D.set_zticks(np.linspace(inpara[para_list[ax_list[0]]][0][0],inpara[para_list[ax_list[0]]][0][1],5))
-
-                ax3D.set_xlim(x_plane)
-                ax3D.set_ylim(y_plane)
-
-                ax3D.set_zlim([0,0.12])
-                ax3D.set_xlabel(ax_labels[1],labelpad=-5)
-                ax3D.set_ylabel(r'$\displaystyle \tau_I\,$[ms]',labelpad=-5)#const_labels[0])
-                ax3D.zaxis.set_rotate_label(False)
-                ax3D.set_zlabel(ax_labels[0],rotation=90)
-
+                plot_3d(fig,inpara,simulation,results,para_list[ax_list[1]],para_list[ax_list[2]],para_list[ax_list[0]],ax_labels)
 
             elif plot_para['multi']:
                 print("test2")
@@ -684,7 +569,7 @@ def plot_fins(ax,x_arr,y_arr,gamma,chi,regions,plot_para):
     plot_regions = masked_array(regions,np.invert(mask_inconsistent + mask_no_peak))
     plot_implausible = masked_array(regions,np.invert(mask_implausible))
 
-    ax.tick_params(axis='both', which='major', labelsize=10)
+    # ax.tick_params(axis='both', which='major', labelsize=10)
 
     x_max = x_arr[-1]
     y_max = y_arr[-1]
@@ -709,8 +594,8 @@ def plot_fins(ax,x_arr,y_arr,gamma,chi,regions,plot_para):
         ax.plot(results['inc_trans'][mask_inc],y_arr[mask_inc],'k',linewidth=2,label=r'$\displaystyle \bar{\nu}_{inc}$')
         ax.plot(results['nu_implausible'][mask_inc],y_arr[mask_inc],'k:',linewidth=2,label=r'$\displaystyle \bar{\nu}_{imp}$')
 
-        ax.set_xlabel(ax_labels[1],fontsize=12)
-        ax.set_ylabel(ax_labels[0],fontsize=12)
+        # ax.set_xlabel(ax_labels[1],fontsize=12)
+        # ax.set_ylabel(ax_labels[0],fontsize=12)
 
     ax.set_xlim([0,x_arr[-1]])
     ax.set_ylim([0,y_arr[-1]])
@@ -740,14 +625,14 @@ def set_axes(ax,simulation,x_key,y_key):
                 x_array = array[:np.where(array>simulation[key][-1])[0][0]]
             except:
                 x_array = array[:]
-            ax.set_xticks(x_array)
+            # ax.set_xticks(x_array)
             # ax.set_x
         else:
             try:
                 y_array = array[:np.where(array>simulation[key][-1])[0][0]]
             except:
                 y_array = array[:]
-            ax.set_yticks(y_array)
+            # ax.set_yticks(y_array)
 
 
 def set_model(Npop,tau_A,tau_M,kappa,drive):
@@ -899,118 +784,215 @@ def write_input(model,fileModel,simulation,fileSim):
 
     ncid.close()
 
-def plot_3d():
+def plot_3d(fig,inpara,simulation,results,px,py,pz,ax_labels):
     print('3D-plotting not available')
-    return
+
+    fig.delaxes(ax[-1,-1])
+    #fig2 = plt.figure()
+    ax3D = fig.add_subplot(len(inpara['rateWnt'])/2+1,2,len(inpara['rateWnt'])+1,projection='3d')
+    #ax3D = fig2.add_subplot(111,projection='3d')
+    #plt.ion()
+    # print("plotting 3D axis")
+    data_3D_inc = []
+    data_3D_DM = np.zeros([len(inpara['rateWnt']),steps,3])
+    data_3D_DM[:] = np.nan
+
+    X = simulation[px]
+    Y = simulation[py]
+
+    #X = []
+    #Y = []
+    #Z = []
+    #Z = np.zeros((steps,steps))
+    #Z[:] = np.nan
+
+    gamma = results['gamma'][0,...]
+
+    # return
     # if (plot_ax3D):
-    #     print([0,0,simulation[para_list[ax_list[2]]]])
-    #     data_3D_DM[i,0] = [0,0,simulation[para_list[ax_list[2]]]]
-    #     print(gamma)
-    #     print(gamma.shape)
-    #     for x in range(gamma.shape[1]):
-    #         for y in range(gamma.shape[0]):
-    #             # find border to inconsistency
-    #             if (regions[y,x] == 3):
-    #                 if (y > 0):
-    #                     inc_bound[i,x] = simulation[para_list[ax_list[0]]][y]
-    #                     if plot_ax3D:
-    #                         data_3D_inc.append([simulation[para_list[ax_list[1]]][x],simulation[para_list[ax_list[0]]][y],simulation[para_list[ax_list[2]]]])
-    #                 break
-    #             if (regions[y,x] == 1):
-    #                 imp_bound[i,x] = simulation[para_list[ax_list[0]]][y]
-    #                 #break
-    #             # find DM transition point
-    #             print(gamma[y,x])#, DM_bound_found
-    #             if (0 < gamma[y,x] < 1):# and (not DM_bound_found)):
-    #                 DM_bound[i,x] = simulation[para_list[ax_list[0]]][y]
-    #                 DM_bound_max[i,:] = [simulation[para_list[ax_list[1]]][x],simulation[para_list[ax_list[0]]][y]]
-    #                 print("found DM_border @ x = %g, y = %g" % (simulation[para_list[ax_list[1]]][x],simulation[para_list[ax_list[0]]][y]))
-    #                 #DM_bound_found = True
-    #                 if plot_ax3D:
-    #                     #print [simulation[para_list[ax_list[1]]][x],simulation[para_list[ax_list[0]]][y],simulation[para_list[ax_list[2]]]]
-    #                     data_3D_DM[i,y] = [simulation[para_list[ax_list[1]]][x],simulation[para_list[ax_list[2]]],simulation[para_list[ax_list[0]]][y]]
-    #                 break
-    #
-    #     #if (plot_para['multi'] and plot_ax3D):
-    #
-    #     #data_3D_inc = np.array(data_3D_inc)
-    #     #data_3D_DM = np.array(data_3D_DM)
-    #
-    #     ### plot this in each i iteration step for i > 0, to avoid overshoot
-    #     X = data_3D_DM[:,0]
-    #     Y = data_3D_DM[:,1]
-    #     Z = data_3D_DM[:,2]
-    #
-    #     #print data_3D_DM
-    #     #print data_3D_DM.shape
-    #
-    #     xi = np.linspace(X.min(),X.max(),steps)
-    #     yi = np.linspace(Y.min(),Y.max(),steps)
-    #     ##VERY IMPORTANT, to tell matplotlib how is your data organized
-    #     zi = griddata((X,Y), Z, (xi[None,:], yi[:,None]), method='cubic')
-    #
-    #     xig, yig = np.meshgrid(xi, yi)
-    #
-    #     fig2 = plt.figure()
-    #     ax3D = fig2.add_subplot(111,projection='3d')
-    #     surf = ax3D.plot_surface(xig, yig, zi,linewidth=0,color='r',alpha=0.6)
-    #     CS = ax3D.plot(X,Y,'.',zs=Z,markersize=0.5,color='k')
-    #
-    #     #print data_3D_inc.shape
-    #     #print data_3D_inc.shape > 10
-    #     #print any(data_3D_inc.shape) > 10
-    #
-    #     if (data_3D_inc.shape > 10):
-    #         X = data_3D_inc[:,0]
-    #         Y = data_3D_inc[:,2]
-    #         Z = data_3D_inc[:,1]
-    #
-    #         xi = np.linspace(X.min(),X.max(),steps)
-    #         yi = np.linspace(Y.min(),Y.max(),steps)
-    #         ##VERY IMPORTANT, to tell matplotlib how is your data organized
-    #         zi = griddata((X,Y), Z, (xi[None,:], yi[:,None]), method='cubic')
-    #
-    #         ####CS = ax3D.contour(X,Y,Z,15,linewidths=0.5,color='k')
-    #
-    #         xig, yig = np.meshgrid(xi, yi)
-    #
-    #         #fig2 = plt.figure()
-    #         #ax3D = fig2.add_subplot(111,projection='3d')
-    #         surf = ax3D.plot_surface(xig, yig, zi,linewidth=0,color='k',alpha=0)
-    #         CS = ax3D.plot(X,Y,'.',zs=Z,markersize=0.5,color='k')
-    #
-    #
-    #
-    #
-    #     ## has to be done once only, for largest phase region
-    #     ## if area shrinks, later values have to be adjusted accordingly!
-    #
-    #     # right orientation?
-    #     #grid_X = np.tile(simulation[para_list[ax_list[1]]][:,np.newaxis], (1,steps))	#times = np.tile(Data['LEtimes'][0:dim0], (dim1,1))
-    #     #grid_Y = np.tile(simulation[para_list[ax_list[0]]][np.newaxis,:], (steps,1))
-    #     #if (not i):
-    #         #X = simulation[para_list[ax_list[1]]]
-    #         #Y = simulation[para_list[ax_list[0]]]#DM_bound[i]
-    #
-    #         #Z = simulation[para_list[ax_list[2]]]
-    #
-    #     #xi = np.linspace(0,X.max(),steps)
-    #     #yi = np.linspace(0,Y.max(),steps)
-    #     # VERY IMPORTANT, to tell matplotlib how is your data organized
-    #     #zi = griddata((X,Y), Z, (xi[None,:], yi[:,None]), method='cubic')
-    #
-    #     #CS = plt.contour(xi,yi,zi,15,linewidths=0.5,color='k')
-    #     #ax = fig.add_subplot(1, 2, 2, projection='3d')
-    #
-    #     #xig, yig = np.meshgrid(xi, yi)
-    #
-    #     #surf = ax.plot_surface(xig, yig, zi,linewidth=0)
-    #
-    #
-    #     ####ax3D.plot(simulation[para_list[ax_list[1]]],simulation[para_list[ax_list[2]]]*np.ones(steps),zs=DM_bound[i],color='k')
-    #     ####ax3D.plot(simulation[para_list[ax_list[1]]],simulation[para_list[ax_list[2]]]*np.ones(steps),zs=inc_bound[i],color='k')
-    #     #ax3D.plot(simulation[para_list[ax_list[1]]],DM_bound[i],zs=simulation[para_list[ax_list[2]]],zdir='y',color='k')
-    #     #ax3D.plot(simulation[para_list[ax_list[1]]],imp_bound[i],zs=simulation[para_list[ax_list[2]]],zdir='y',color='k')
-    #     #ax3D.plot(simulation[para_list[ax_list[1]]],inc_bound[i],zs=simulation[para_list[ax_list[2]]],zdir='y',color='k')
-    #
-    # ax[i//2,i%2].set_title('%s' % (const_labels[0]),fontsize=12)
+    print([0,0,simulation[py]])
+    data_3D_DM[i,0] = [0,0,simulation[py]]
+    print(gamma)
+    print(gamma.shape)
+    for x in range(gamma.shape[1]):
+        for y in range(gamma.shape[0]):
+            # find border to inconsistency
+            if (regions[y,x] == 3):
+                if (y > 0):
+                    inc_bound[i,x] = simulation[py][y]
+                    # if plot_ax3D:
+                    data_3D_inc.append([simulation[px][x],simulation[py][y],simulation[pz]])
+                break
+            if (regions[y,x] == 1):
+                imp_bound[i,x] = simulation[py][y]
+                #break
+            # find DM transition point
+            print(gamma[y,x])#, DM_bound_found
+            if (0 < gamma[y,x] < 1):# and (not DM_bound_found)):
+                DM_bound[i,x] = simulation[py][y]
+                DM_bound_max[i,:] = [simulation[px][x],simulation[py][y]]
+                print("found DM_border @ x = %g, y = %g" % (simulation[px][x],simulation[py][y]))
+                DM_bound_found = True
+                # if plot_ax3D:
+                    #print [simulation[para_list[ax_list[1]]][x],simulation[para_list[ax_list[0]]][y],simulation[para_list[ax_list[2]]]]
+                data_3D_DM[i,y] = [simulation[px][x],simulation[pz],simulation[py][y]]
+                break
+
+    #if (plot_para['multi'] and plot_ax3D):
+
+    #data_3D_inc = np.array(data_3D_inc)
+    #data_3D_DM = np.array(data_3D_DM)
+
+    ### plot this in each i iteration step for i > 0, to avoid overshoot
+    X = data_3D_DM[:,0]
+    Y = data_3D_DM[:,1]
+    Z = data_3D_DM[:,2]
+
+    #print data_3D_DM
+    #print data_3D_DM.shape
+
+    xi = np.linspace(X.min(),X.max(),steps)
+    yi = np.linspace(Y.min(),Y.max(),steps)
+    ##VERY IMPORTANT, to tell matplotlib how is your data organized
+    zi = griddata((X,Y), Z, (xi[None,:], yi[:,None]), method='cubic')
+
+    xig, yig = np.meshgrid(xi, yi)
+
+    fig2 = plt.figure()
+    ax3D = fig2.add_subplot(111,projection='3d')
+    surf = ax3D.plot_surface(xig, yig, zi,linewidth=0,color='r',alpha=0.6)
+    CS = ax3D.plot(X,Y,'.',zs=Z,markersize=0.5,color='k')
+
+    #print data_3D_inc.shape
+    #print data_3D_inc.shape > 10
+    #print any(data_3D_inc.shape) > 10
+
+    if (data_3D_inc.shape > 10):
+        X = data_3D_inc[:,0]
+        Y = data_3D_inc[:,2]
+        Z = data_3D_inc[:,1]
+
+        xi = np.linspace(X.min(),X.max(),steps)
+        yi = np.linspace(Y.min(),Y.max(),steps)
+        ##VERY IMPORTANT, to tell matplotlib how is your data organized
+        zi = griddata((X,Y), Z, (xi[None,:], yi[:,None]), method='cubic')
+
+        ####CS = ax3D.contour(X,Y,Z,15,linewidths=0.5,color='k')
+
+        xig, yig = np.meshgrid(xi, yi)
+
+        #fig2 = plt.figure()
+        #ax3D = fig2.add_subplot(111,projection='3d')
+        surf = ax3D.plot_surface(xig, yig, zi,linewidth=0,color='k',alpha=0)
+        CS = ax3D.plot(X,Y,'.',zs=Z,markersize=0.5,color='k')
+
+
+
+
+    ## has to be done once only, for largest phase region
+    ## if area shrinks, later values have to be adjusted accordingly!
+
+    # right orientation?
+    #grid_X = np.tile(simulation[para_list[ax_list[1]]][:,np.newaxis], (1,steps))	#times = np.tile(Data['LEtimes'][0:dim0], (dim1,1))
+    #grid_Y = np.tile(simulation[para_list[ax_list[0]]][np.newaxis,:], (steps,1))
+    #if (not i):
+        #X = simulation[para_list[ax_list[1]]]
+        #Y = simulation[para_list[ax_list[0]]]#DM_bound[i]
+
+        #Z = simulation[para_list[ax_list[2]]]
+
+    #xi = np.linspace(0,X.max(),steps)
+    #yi = np.linspace(0,Y.max(),steps)
+    # VERY IMPORTANT, to tell matplotlib how is your data organized
+    #zi = griddata((X,Y), Z, (xi[None,:], yi[:,None]), method='cubic')
+
+    #CS = plt.contour(xi,yi,zi,15,linewidths=0.5,color='k')
+    #ax = fig.add_subplot(1, 2, 2, projection='3d')
+
+    #xig, yig = np.meshgrid(xi, yi)
+
+    #surf = ax.plot_surface(xig, yig, zi,linewidth=0)
+
+
+    ###ax3D.plot(simulation[para_list[ax_list[1]]],simulation[para_list[ax_list[2]]]*np.ones(steps),zs=DM_bound[i],color='k')
+        ####ax3D.plot(simulation[para_list[ax_list[1]]],simulation[para_list[ax_list[2]]]*np.ones(steps),zs=inc_bound[i],color='k')
+        #ax3D.plot(simulation[para_list[ax_list[1]]],DM_bound[i],zs=simulation[para_list[ax_list[2]]],zdir='y',color='k')
+        #ax3D.plot(simulation[para_list[ax_list[1]]],imp_bound[i],zs=simulation[para_list[ax_list[2]]],zdir='y',color='k')
+        #ax3D.plot(simulation[para_list[ax_list[1]]],inc_bound[i],zs=simulation[para_list[ax_list[2]]],zdir='y',color='k')
+
+    ax3D.set_title('%s' % (const_labels[0]),fontsize=12)
+
+
+    x_plane = np.linspace(0,max(max(inpara[px])),2)
+    y_plane = np.linspace(0,max(max(inpara[pz])),2)
+
+    #xx, yy = np.meshgrid(x_plane, y_plane)
+    #zz = np.zeros(xx.shape)
+    #ax3D.plot_surface(xx, yy, zz, alpha=1,color='w')
+
+
+
+    data_3D_inc = np.array(data_3D_inc)
+    data_3D_DM = np.array(data_3D_DM)
+
+    ### plot this in each i iteration step for i > 0, to avoid overshoot
+    X = data_3D_DM[:,0]
+    Y = data_3D_DM[:,2]
+    Z = data_3D_DM[:,1]
+
+    xi = np.linspace(X.min(),X.max(),steps)
+    yi = np.linspace(Y.min(),Y.max(),steps)
+    ##VERY IMPORTANT, to tell matplotlib how is your data organized
+    zi = griddata((X,Y), Z, (xi[None,:], yi[:,None]), method='cubic')
+
+    xig, yig = np.meshgrid(xi, yi)
+
+    fig2 = plt.figure()
+    ax3D = fig2.add_subplot(111,projection='3d')
+    surf = ax3D.plot_surface(xig, yig, zi,linewidth=0,color='r',alpha=0.6)
+    CS = ax3D.plot(X,Y,'.',zs=Z,markersize=0.5,color='k')
+
+    #print data_3D_inc.shape
+    #print data_3D_inc.shape > 10
+    #print any(data_3D_inc.shape) > 10
+
+    if (data_3D_inc.shape > 10):
+        X = data_3D_inc[:,0]
+        Y = data_3D_inc[:,2]
+        Z = data_3D_inc[:,1]
+
+        xi = np.linspace(X.min(),X.max(),steps)
+        yi = np.linspace(Y.min(),Y.max(),steps)
+        ##VERY IMPORTANT, to tell matplotlib how is your data organized
+        zi = griddata((X,Y), Z, (xi[None,:], yi[:,None]), method='cubic')
+
+        ####CS = ax3D.contour(X,Y,Z,15,linewidths=0.5,color='k')
+
+        xig, yig = np.meshgrid(xi, yi)
+
+        #fig2 = plt.figure()
+        #ax3D = fig2.add_subplot(111,projection='3d')
+        surf = ax3D.plot_surface(xig, yig, zi,linewidth=0,color='k',alpha=0)
+        CS = ax3D.plot(X,Y,'.',zs=Z,markersize=0.5,color='k')
+
+
+
+    ax3D.azim = 250.
+    ax3D.elev = 15
+    ax3D.dist = 8
+
+    ax3D.set_xticks(np.linspace(inpara[px][0][0],inpara[px][0][1],5))
+    ax3D.tick_params(axis='x', pad=-5)
+    ax3D.set_yticks(inpara[py])#np.linspace(inpara[para_list[ax_list[2]]][0][0],inpara[para_list[ax_list[2]]][-1][0],5))
+    ax3D.set_yticklabels(['%d'%(entry[0]) for entry in inpara[pz]],fontsize=12)#np.linspace(inpara[para_list[ax_list[2]]][0][0],inpara[para_list[ax_list[2]]][-1][0],5))
+    ax3D.tick_params(axis='y', pad=-3)
+    ax3D.set_zticks(np.linspace(inpara[pz][0][0],inpara[pz][0][1],5))
+
+    ax3D.set_xlim(x_plane)
+    ax3D.set_ylim(y_plane)
+
+    ax3D.set_zlim([0,0.12])
+    ax3D.set_xlabel(ax_labels[1],labelpad=-5)
+    ax3D.set_ylabel(r'$\displaystyle \tau_I\,$[ms]',labelpad=-5)#const_labels[0])
+    ax3D.zaxis.set_rotate_label(False)
+    ax3D.set_zlabel(ax_labels[0],rotation=90)
