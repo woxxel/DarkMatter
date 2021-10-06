@@ -13,7 +13,7 @@ import matplotlib as mpl
 import matplotlib.image as mpimg
 from scipy.interpolate import griddata
 
-from netCDF4 import Dataset
+from netCDF4 import Dataset, stringtochar
 
 
 def sharkfins(steps=10,rateWnt=None,alpha_0=None,tau_G=None,n=None,eps=None,eta=None,Npop=1,drive=0,tau_M=10.,tau_A=5.,kappa=1,mode_calc="exact",mode_stats=0,plot_ax3D=False,save=0,file_format='png',compile=True,rerun=False):
@@ -100,6 +100,9 @@ def sharkfins(steps=10,rateWnt=None,alpha_0=None,tau_G=None,n=None,eps=None,eta=
         if (max_steps > len(inpara[para])):
             inpara[para]*=max_steps
 
+    order = np.array(['rateWnt','alpha_0','tau_G','n','eps','eta'],dtype='S7');
+
+
     #### tau vs nu
     # inpara['n'] = [[0],[0],[0]]
     # inpara['alpha_0']= [[0.01],[0.02],[0.04]]
@@ -164,7 +167,7 @@ def sharkfins(steps=10,rateWnt=None,alpha_0=None,tau_G=None,n=None,eps=None,eta=
             # print("max rate: ", 1./(2.*math.pi*np.sqrt(model['tau_M']/1000.*inpara['tau_G'][i][0]/1000.)))
 
         para_list = ['alpha_0','n','tau_G','rateWnt','eps','eta']
-        simulation, ax_list, ax_labels, const_labels, sv_str = set_simulation(inpara,i,steps,para_list,mode_calc,mode_stats)
+        simulation, ax_list, ax_labels, const_labels, sv_str = set_simulation(inpara,i,steps,para_list,order,mode_calc,mode_stats)
 
         fileResults = './data/results_%dsteps_const_%s=%g_mode=%d_drive=%d.nc' % (steps,para_list[ax_list[2]],simulation[para_list[ax_list[2]]],mode_stats,drive)
         if not os.path.exists(fileResults) or rerun:
@@ -433,7 +436,7 @@ def set_model(Npop,tau_A,tau_M,kappa,drive):
     return model
 
 
-def set_simulation(inpara,i,steps,para_list,mode_calc,mode_stats):
+def set_simulation(inpara,i,steps,para_list,order,mode_calc,mode_stats):
 
     simulation = {}
     for key in inpara:
@@ -507,6 +510,8 @@ def set_simulation(inpara,i,steps,para_list,mode_calc,mode_stats):
     simulation['mode_calc'] = int(mode_calc=='approx')
     simulation['mode_stats'] = int(mode_stats)
 
+    simulation['order'] = order
+
     return simulation, ax_list, ax_labels, const_labels, sv_str
 
 def write_input(model,fileModel,simulation,fileSim):
@@ -541,9 +546,16 @@ def write_input(model,fileModel,simulation,fileSim):
                 varType = 'f8'  #np.dtype('float64').char
             # var_type = type(simulation[key])
             # var_type = 'f8'
-
-        Var = ncid.createVariable(key,varType,(varDim,))
-        Var[:] = simulation[key]
+        if varType=='S':
+            nChar = len(max(simulation[key],key=len))
+            ncid.createDimension('charSz',nChar)
+            Var = ncid.createVariable(key,'%s1'%(varType),(varDim,'charSz'))
+            Var._Encoding = 'ascii'
+            print(stringtochar(simulation[key]))
+            Var[:] = stringtochar(simulation[key])
+        else:
+            Var = ncid.createVariable(key,varType,(varDim,))
+            Var[:] = simulation[key]
 
     # Var = ncid.createVariable('mode_calc','i',('one',))
     # if mode_calc == 'exact':

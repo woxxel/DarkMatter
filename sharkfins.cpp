@@ -12,7 +12,7 @@
 #include <gsl/gsl_multiroots.h>
 // #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
 
-#include "spdlog/spdlog.h"
+// #include "spdlog/spdlog.h"
 
 #include "./theory/structures.h"
 #include "./theory/functions.cpp"
@@ -23,7 +23,7 @@
 int main(int argc, char** argv)
 {
 
-	spdlog::set_level(spdlog::level::info);
+	// spdlog::set_level(spdlog::level::info);
 	if ((argc < 4) or (argc > 4))
 	{
 		cout << "Please specify (only) the input and output file name!" << endl;
@@ -63,7 +63,7 @@ int main(int argc, char** argv)
 
     for (sim.alpha_0_iter = 0; sim.alpha_0_iter < sim.alpha_0Sz; sim.alpha_0_iter++)
     {
-        spdlog::debug("in alpha");
+        // spdlog::debug("in alpha");
         for (int p = 0; p < mod.paras.Npop; ++p)
 		{
 			mod.paras.alpha_0[p] = sim.alpha_0[sim.alpha_0_iter];
@@ -74,7 +74,7 @@ int main(int argc, char** argv)
 
         for (sim.n_iter = 0; sim.n_iter < sim.nSz; sim.n_iter++)
         {
-            spdlog::debug("in n");
+            // spdlog::debug("in n");
             mod.paras.n = sim.n[sim.n_iter];
 
             if (res.axes[1] == 2)
@@ -83,7 +83,7 @@ int main(int argc, char** argv)
 
             for (sim.eps_iter = 0; sim.eps_iter < sim.epsSz; ++sim.eps_iter)
             {
-                spdlog::debug("in eps");
+                // spdlog::debug("in eps");
                 mod.paras.eps = sim.eps[sim.eps_iter];
                 if (res.axes[2] == 2)
                         sim.initiate_y_axis(modP);
@@ -91,7 +91,7 @@ int main(int argc, char** argv)
 
                 for (sim.eta_iter = 0; sim.eta_iter < sim.etaSz; ++sim.eta_iter)
                 {
-                    spdlog::debug("in eta");
+                    // spdlog::debug("in eta");
                     mod.paras.eta = sim.eta[sim.eta_iter];
 
                     mod.set_weights();  // weights are only influenced by eps, eta and tau_M
@@ -101,7 +101,7 @@ int main(int argc, char** argv)
 
                     for (sim.tau_G_iter = 0; sim.tau_G_iter < sim.tau_GSz; sim.tau_G_iter++)
                     {
-                        spdlog::debug("in tau_G");
+                        // spdlog::debug("in tau_G");
                         mod.paras.tau_G = sim.tau_G[sim.tau_G_iter];
 
                         // cout << "timeconstants: tau_M = " << mod.paras.tau_M << ", tau_G = " << mod.paras.tau_G << ", tau_A = " << mod.paras.tau_A << ", tau_N = " << mod.paras.tau_N << endl;
@@ -115,7 +115,7 @@ int main(int argc, char** argv)
 
                         for (sim.rateWnt_iter = 0; sim.rateWnt_iter < sim.rateWntSz; sim.rateWnt_iter++)
                         {
-							spdlog::debug("in rateWnt");
+							// spdlog::debug("in rateWnt");
                             sim.x_iter++;
                             // if (sim.mode_stats == 1)// && (sim.max_ax[1] == 1))
 //                                             sim.y_iter = 0;

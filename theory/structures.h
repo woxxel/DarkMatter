@@ -2,12 +2,76 @@
 
 using namespace std;
 
-struct hyperslab
-{
-    const size_t startp[3];
-    const size_t countp[3];
-    const ptrdiff_t stridep[3];
-};
+// class simulation_status {
+//
+//     /*
+//     in here, gather
+//         1. iteration values of all variables
+//         2. knowledge on which variables are constants and which ones vary
+//         3.
+//
+//     further, function to:
+//         1. iterate further
+//         2. check end of simulation
+//
+//     */
+//
+//     int n_var = 6;
+//     int iter_order[n_var];  // holds the order of indexes
+//     simulation_variable vars[n_var]; // initialize, such that variables are registered in order
+//     bool iter_status[6];
+//     bool iterating = True;
+//
+//     reset_iteration() {
+//         for (int i=0;i<n_var;i++)
+//         {
+//             iter_status[i] = true;
+//             vars[i].iter = 0;
+//         }
+//     }
+//
+//     void initialize(simulation *simP) {
+//
+//         // vars[i].initialize(simP->alpha_0,'alpha_0');
+//
+//     //     bool it = False;
+//     //     for (int i=0;i<n_var;i++) {
+//     //         it |= vars[i];
+//     //     }
+//     //     return it;
+//     }
+//
+//     run_iteration() {
+//
+//         while (iterating) {
+//             for (int i=0;i<6;i++) {
+//                 if (iter_status[i])
+//                 {
+//                     iter_status[i] = vars[i].iterate();
+//                     break;
+//                 }
+//             }
+//             iterating;
+//         }
+//     }
+// }
+//
+// class simulation_variable
+// {
+//     double val;
+//     string name;
+//     int iter;
+//     int max_iter;
+//
+//     void initialize()
+//     {
+//
+//     }
+//
+//     bool iterate(); // return false if end is reached, true else
+//     void print_status();
+//
+// };
 
 struct parameters
 {
@@ -111,26 +175,29 @@ class model
         double nu_peak_log_full(double gamma, double delta, double rate_max);
 };
 
-struct simulation
+class simulation
 {
-    int x_iter = -1;
-    int y_iter = -1;
+    public:
+        int x_iter = -1;
+        int y_iter = -1;
 
-    vector<double> n, alpha_0, tau_G, rateWnt, eps, eta;
-    unsigned n_iter, alpha_0_iter, tau_G_iter, rateWnt_iter, eps_iter, eta_iter;
-    int mode_calc, mode_stats;
-    size_t nSz, alpha_0Sz, tau_GSz, rateWntSz, epsSz, etaSz, steps;
+        vector<double> n, alpha_0, tau_G, rateWnt, eps, eta;
+        vector<vector<char>> order; // = ['rateWnt','alpha_0','tau_G','n','eta','eps']
 
-    unsigned axes_ct;
-    unsigned max_ax[2] = {0,0};
-    vector<bool> trans_DM_found, trans_np_found;
-    bool trans_imp_found, trans_inc_found;
+        unsigned n_iter, alpha_0_iter, tau_G_iter, rateWnt_iter, eps_iter, eta_iter;
+        int mode_calc, mode_stats;
+        size_t nSz, alpha_0Sz, tau_GSz, rateWntSz, epsSz, etaSz, steps, orderSz, charSz;
 
-    double y_val();
+        unsigned axes_ct;
+        unsigned max_ax[2] = {0,0};
+        vector<bool> trans_DM_found, trans_np_found;
+        bool trans_imp_found, trans_inc_found;
 
-    void initiate_y_axis(model *modP);
-    void store_results(simulation *simP, model *modP, results *resP);
-    void store_results_approx(simulation *simP, model *modP, results *resP);
+        double y_val();
+
+        void initiate_y_axis(model *modP);
+        void store_results(simulation *simP, model *modP, results *resP);
+        void store_results_approx(simulation *simP, model *modP, results *resP);
 };
 
 struct computation

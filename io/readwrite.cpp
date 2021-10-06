@@ -33,7 +33,7 @@ void write_to_ncid(int ncid, const char *varName, nc_type varType, int dimSz, co
 
 void read_model(string fileModel, model *modP)
 {
-    spdlog::info("reading model parameters from {} ... ",fileModel);
+    // spdlog::info("reading model parameters from {} ... ",fileModel);
     int ncid;
 
     nc_open(fileModel.c_str(), NC_NOWRITE, &ncid);
@@ -83,6 +83,8 @@ void read_simulation(string fileSim, simulation *simP)
     get_from_ncid(ncid, "rateWntSz", &simP->rateWntSz);
     get_from_ncid(ncid, "epsSz", &simP->epsSz);
     get_from_ncid(ncid, "etaSz", &simP->etaSz);
+    get_from_ncid(ncid, "orderSz", &simP->orderSz);
+    get_from_ncid(ncid, "charSz", &simP->charSz);
 
     simP->steps = max(max(max(simP->nSz,simP->alpha_0Sz),simP->tau_GSz),simP->rateWntSz);
     // cout << "sizes - n: " << simP->nSz << ", alpha_0: " << simP->alpha_0Sz << ", tau_G: " << simP->tau_GSz << ", rate: " << simP->rateWntSz << endl;
@@ -96,9 +98,46 @@ void read_simulation(string fileSim, simulation *simP)
     simP->eps.resize(simP->epsSz);
     simP->eta.resize(simP->etaSz);
 
+
     // read variables from ncid
     get_from_ncid(ncid, "mode_calc", &simP->mode_calc);
     get_from_ncid(ncid, "mode_stats", &simP->mode_stats);
+
+    vector<vector<char>> order(simP->orderSz, vector<char> (simP->charSz,'b'));
+    // simP->order.resize(simP->orderSz);
+    cout << "order 0: " << order[0][0] << endl;
+    cout << "order 0: " << order[0][1] << endl;
+    cout << "order 1: " << order[1][0] << endl;
+    int varid;
+    nc_inq_varid(ncid, "order", &varid);
+    cout << " got varid: " << varid << endl;
+    size_t start[2], count[2];
+    start[1] = 0;
+    count[0] = 1;
+    count[1] = simP->charSz;
+    for (int rec=0;rec<2;rec++)//simP->orderSz
+    {
+        cout << "rec: " << rec << endl;
+        start[0] = rec;
+        nc_get_vara(ncid, varid, start, count, &order[rec][0]);
+        string s = "";
+        for (int i=0;i<simP->charSz;i++)
+        {
+            s += order[rec][i];
+        }
+        cout << "obtained string: " << s << endl;
+    }
+    cout << "here" << endl;
+    // string a;
+    // a = (string) order;
+    // get_from_ncid(ncid, "order", &order[0]);
+    // cout << "  order 0: " << a << endl;
+    cout << "  order 0: " << order[0][0] << endl;
+    cout << "  order 1: " << order[0][1] << endl;
+    // get_from_ncid(ncid, "order", &simP->order);
+    // cout << "order 0: " << simP->order[0] << endl;
+    // cout << "order 1: " << simP->order[1] << endl;
+
     // cout << "mode calc: " << simP->mode_calc << endl;
     // cout << "mode stats: " << simP->mode_stats << endl;
     // cout << "sizes (in Sim) - n: " << simP->nSz << ", alpha_0: " << simP->alpha_0Sz << ", tau_G: " << simP->tau_GSz << ", rate: " << simP->rateWntSz << endl;
@@ -236,7 +275,7 @@ void write_measures(string fileOut, computation *comP, measures *mesP, results *
 
 void write_sharks(string fileOut, simulation *simP, model *modP, results *resP)
 {
-	spdlog::info("writing shark data to file '{}'...",fileOut);
+	// spdlog::info("writing shark data to file '{}'...",fileOut);
 
     int ncid, dimids[3], steps_dim, Npop_dim;
     int steps = resP->steps;
