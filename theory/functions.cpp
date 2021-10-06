@@ -558,22 +558,22 @@ void simulation::initiate_y_axis(model *modP)
 {
 //         cout << "initiating y-axis..." << endl;
 
-        if (mode_stats == 0 || mode_stats == 2 || mode_stats == 4)
+    if (mode_stats == 0 || mode_stats == 2 || mode_stats == 4)
+    {
+        x_iter = -1;
+        y_iter++; // keep track of current y-step
+
+        for (int p = 0; p < modP->paras.Npop; p++)
         {
-            x_iter = -1;
-            y_iter++; // keep track of current y-step
-
-            for (int p = 0; p < modP->paras.Npop; p++)
-            {
-                    trans_DM_found[p] = false;
-                    trans_np_found[p] = false;
-            }
+            trans_DM_found[p] = false;
+            trans_np_found[p] = false;
         }
-        else if (mode_stats == 3)// || mode_stats == 1)
-            y_iter = 0;
+    }
+    else if (mode_stats == 3)// || mode_stats == 1)
+        y_iter = 0;
 
-        trans_inc_found = false;
-        trans_imp_found = false;
+    trans_inc_found = false;
+    trans_imp_found = false;
 }
 
 void simulation::store_results(simulation *simP, model * modP, results * resP)

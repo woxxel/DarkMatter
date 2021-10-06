@@ -249,6 +249,9 @@ void write_sharks(string fileOut, simulation *simP, model *modP, results *resP)
     dimids[1] = steps_dim;
     dimids[2] = steps_dim;
 
+    int para_dimID[6];
+    write_prep_paras(ncid,steps_dim,&para_dimID[0],simP);
+
     int DM_id, np_id, inc_id, imp_id;
     int gamma_id, chi_id, regions_id;
     int gamma_approx_id, chi_approx_id, entropy_id, KL_entropy_id;
@@ -271,6 +274,8 @@ void write_sharks(string fileOut, simulation *simP, model *modP, results *resP)
     nc_def_var(ncid, "imp_trans", NC_DOUBLE, 2, &dimids[0], &imp_id);
 
     nc_enddef(ncid);
+
+    write_paras(ncid, para_dimID, simP);
 
     size_t start[3], count[3];
     start[2] = 0;
@@ -309,40 +314,73 @@ void write_sharks(string fileOut, simulation *simP, model *modP, results *resP)
     nc_close(ncid);
 }
 
+void write_prep_paras(int ncid, int dimSz, int *dimID, simulation *simP)
+{
+    nc_def_var(ncid, "rateWnt", NC_DOUBLE, 1, &dimSz, dimID);
+    nc_def_var(ncid, "tau_G", NC_DOUBLE, 1, &dimSz, dimID+1);
+    nc_def_var(ncid, "eta", NC_DOUBLE, 1, &dimSz, dimID+2);
+    nc_def_var(ncid, "eps", NC_DOUBLE, 1, &dimSz, dimID+3);
+    nc_def_var(ncid, "n", NC_DOUBLE, 1, &dimSz, dimID+4);
+    nc_def_var(ncid, "alpha_0", NC_DOUBLE, 1, &dimSz, dimID+5);
+
+    if (simP->rateWnt.size() == 1)
+        simP->rateWnt.resize(dimSz,simP->rateWnt[0]);
+    if (simP->tau_G.size() == 1)
+        simP->tau_G.resize(dimSz,simP->tau_G[0]);
+    if (simP->eta.size() == 1) {
+        cout << "eps resize" << endl;
+        simP->eta.resize(dimSz,simP->eta[0]);
+    }
+    if (simP->eps.size() == 1) {
+        cout << "eps resize" << endl;
+        simP->eps.resize(dimSz,simP->eps[0]);
+    }
+    if (simP->n.size() == 1)
+        simP->n.resize(dimSz,simP->n[0]);
+    if (simP->alpha_0.size() == 1)
+        simP->alpha_0.resize(dimSz,simP->alpha_0[0]);
+}
+
+void write_paras(int ncid, int *dimID, simulation *simP)
+{
+    nc_put_var(ncid, *dimID, &simP->rateWnt[0]);
+    nc_put_var(ncid, *(dimID+1), &simP->tau_G[0]);
+    nc_put_var(ncid, *(dimID+2), &simP->eta[0]);
+    nc_put_var(ncid, *(dimID+3), &simP->eps[0]);
+    nc_put_var(ncid, *(dimID+4), &simP->n[0]);
+    nc_put_var(ncid, *(dimID+5), &simP->alpha_0[0]);
+}
+
 void write_stats(string fileOut, model *modP, simulation *simP, results *resP)
 {
     cout << "writing simulation data to file '" << fileOut << "'..." << endl;
 
-    int ncid, dimids[3], steps_dim, Npop_dim;
+    int ncid, dimids[3], steps_dim1, steps_dim2, Npop_dim;
     nc_create(fileOut.c_str(), NC_CLOBBER, &ncid);
 
-    int dim1 = simP->max_ax[1];
-    int dim2 = simP->max_ax[0];
-    int steps = resP->steps;
+    int steps1 = simP->max_ax[1];
+    int steps2 = simP->max_ax[0];
+    // int steps = resP->steps;
 
     nc_def_dim(ncid, "Npop", modP->paras.Npop, &Npop_dim);
-    nc_def_dim(ncid, "steps", dim1, &steps_dim);
+    nc_def_dim(ncid, "steps_dim1", steps1, &steps_dim1);
+    nc_def_dim(ncid, "steps_dim2", steps2, &steps_dim2);
 
     dimids[0] = Npop_dim;
-    dimids[1] = steps_dim;
-    dimids[2] = steps_dim;
+    dimids[1] = steps_dim1;
+    dimids[2] = steps_dim2;
 
     size_t start[3], count[3];
     start[2] = 0;
     count[0] = 1;
     count[1] = 1;
-    count[2] = steps;
-
-    int eps_id, eta_id, n_id, tau_G_id;
-    nc_def_var(ncid, "eps", NC_DOUBLE, 1, &steps_dim, &eps_id);
-    nc_def_var(ncid, "eta", NC_DOUBLE, 1, &steps_dim, &eta_id);
-    nc_def_var(ncid, "n", NC_DOUBLE, 1, &steps_dim, &n_id);
-    nc_def_var(ncid, "tau_G", NC_DOUBLE, 1, &steps_dim, &tau_G_id);
-
-
+    count[2] = steps2;
 
     if (simP->mode_stats == 1)
     {
+        int para_dimID[6];
+        write_prep_paras(ncid,steps_dim2,&para_dimID[0],simP);
+
         int q_id, alpha_raw_id, alpha_id, sigma_V_id, I_balance_id, gamma_id, chi_id, nu_imp_id;
         // nc_def_var(ncid, "rateWnt", NC_DOUBLE, 3, &dimids[0], &rateWnt_id);
         nc_def_var(ncid, "q", NC_DOUBLE, 3, &dimids[0], &q_id);
@@ -357,30 +395,19 @@ void write_stats(string fileOut, model *modP, simulation *simP, results *resP)
 
         nc_enddef(ncid);
 
-        if (simP->eps.size() == 1)
-            simP->eps.resize(dim2,simP->eps[0]);
-        if (simP->eta.size() == 1)
-            simP->eta.resize(dim2,simP->eta[0]);
-        if (simP->n.size() == 1)
-            simP->n.resize(dim2,simP->n[0]);
-        if (simP->tau_G.size() == 1)
-            simP->tau_G.resize(dim2,simP->tau_G[0]);
+        write_paras(ncid, para_dimID, simP);
 
-        nc_put_var(ncid, eps_id, &simP->eps[0]);
-        nc_put_var(ncid, eta_id, &simP->eta[0]);
-        nc_put_var(ncid, n_id, &simP->n[0]);
-        nc_put_var(ncid, tau_G_id, &simP->tau_G[0]);
 
         for (int p=0; p<modP->paras.Npop; p++)
         {
             start[0] = p;
 
             start[1] = 0;
-            count[1] = steps;
+            count[1] = steps1;
             nc_put_vara(ncid, nu_imp_id, start, count, &resP->trans_imp[p][0]);
 
             count[1] = 1;
-            for (int rec=0; rec<steps; rec++)
+            for (int rec=0; rec<steps1; rec++)
             {
                 start[1] = rec;
                 nc_put_vara(ncid, gamma_id, start, count, &resP->gamma[p][rec][0]);
@@ -404,7 +431,7 @@ void write_stats(string fileOut, model *modP, simulation *simP, results *resP)
         nc_enddef(ncid);
 
         start[1] = 0;
-        count[1] = steps;
+        count[1] = steps1;
         for (int p=0; p<modP->paras.Npop; p++)
         {
             start[0] = p;

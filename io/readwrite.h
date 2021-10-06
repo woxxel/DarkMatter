@@ -3,6 +3,9 @@ using namespace std;
 void get_from_ncid(int ncid, const char *varName, void *varP);
 void get_from_ncid(int ncid, const char *varName, size_t *varP);
 
+void write_prep_paras(int ncid, int dimSz, int *dimID, simulation *simP);
+void write_paras(int ncid, int *dimID, simulation *simP);
+
 // void write_to_ncid(int ncid, const char *varName, nc_type varType, int dimSz, const int *dimids, double *varData);
 // void write_to_ncid(int ncid, const char *varName, nc_type varType, int dimSz, const int *dimids, double *varData, hyperslab hslab);
 
