@@ -97,46 +97,27 @@ void read_simulation(string fileSim, simulation *simP)
     simP->rateWnt.resize(simP->rateWntSz);
     simP->eps.resize(simP->epsSz);
     simP->eta.resize(simP->etaSz);
+    simP->order.resize(simP->orderSz);
 
 
     // read variables from ncid
     get_from_ncid(ncid, "mode_calc", &simP->mode_calc);
     get_from_ncid(ncid, "mode_stats", &simP->mode_stats);
 
-    vector<vector<char>> order(simP->orderSz, vector<char> (simP->charSz,'b'));
-    // simP->order.resize(simP->orderSz);
-    cout << "order 0: " << order[0][0] << endl;
-    cout << "order 0: " << order[0][1] << endl;
-    cout << "order 1: " << order[1][0] << endl;
+    // reading string... quite bulky - isn't there a better solution?
+    vector<vector<char>> order(simP->orderSz, vector<char> (simP->charSz));
     int varid;
     nc_inq_varid(ncid, "order", &varid);
-    cout << " got varid: " << varid << endl;
-    size_t start[2], count[2];
-    start[1] = 0;
-    count[0] = 1;
-    count[1] = simP->charSz;
-    for (int rec=0;rec<2;rec++)//simP->orderSz
+    size_t start[2] = {0,0}, count[2] = {1,simP->charSz};
+    for (unsigned rec=0;rec<simP->orderSz;rec++)//
     {
-        cout << "rec: " << rec << endl;
         start[0] = rec;
         nc_get_vara(ncid, varid, start, count, &order[rec][0]);
-        string s = "";
-        for (int i=0;i<simP->charSz;i++)
-        {
-            s += order[rec][i];
-        }
-        cout << "obtained string: " << s << endl;
+        simP->order[rec] = "";
+        for (unsigned i=0;i<simP->charSz;i++)
+            simP->order[rec] += order[rec][i];
+        // cout << "obtained string: " << simP->order[rec] << endl;
     }
-    cout << "here" << endl;
-    // string a;
-    // a = (string) order;
-    // get_from_ncid(ncid, "order", &order[0]);
-    // cout << "  order 0: " << a << endl;
-    cout << "  order 0: " << order[0][0] << endl;
-    cout << "  order 1: " << order[0][1] << endl;
-    // get_from_ncid(ncid, "order", &simP->order);
-    // cout << "order 0: " << simP->order[0] << endl;
-    // cout << "order 1: " << simP->order[1] << endl;
 
     // cout << "mode calc: " << simP->mode_calc << endl;
     // cout << "mode stats: " << simP->mode_stats << endl;
@@ -366,14 +347,10 @@ void write_prep_paras(int ncid, int dimSz, int *dimID, simulation *simP)
         simP->rateWnt.resize(dimSz,simP->rateWnt[0]);
     if (simP->tau_G.size() == 1)
         simP->tau_G.resize(dimSz,simP->tau_G[0]);
-    if (simP->eta.size() == 1) {
-        cout << "eps resize" << endl;
+    if (simP->eta.size() == 1)
         simP->eta.resize(dimSz,simP->eta[0]);
-    }
-    if (simP->eps.size() == 1) {
-        cout << "eps resize" << endl;
+    if (simP->eps.size() == 1)
         simP->eps.resize(dimSz,simP->eps[0]);
-    }
     if (simP->n.size() == 1)
         simP->n.resize(dimSz,simP->n[0]);
     if (simP->alpha_0.size() == 1)

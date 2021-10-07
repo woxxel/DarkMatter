@@ -13,65 +13,12 @@ using namespace std;
 //     further, function to:
 //         1. iterate further
 //         2. check end of simulation
-//
 //     */
 //
-//     int n_var = 6;
-//     int iter_order[n_var];  // holds the order of indexes
-//     simulation_variable vars[n_var]; // initialize, such that variables are registered in order
-//     bool iter_status[6];
-//     bool iterating = True;
 //
-//     reset_iteration() {
-//         for (int i=0;i<n_var;i++)
-//         {
-//             iter_status[i] = true;
-//             vars[i].iter = 0;
-//         }
-//     }
 //
-//     void initialize(simulation *simP) {
-//
-//         // vars[i].initialize(simP->alpha_0,'alpha_0');
-//
-//     //     bool it = False;
-//     //     for (int i=0;i<n_var;i++) {
-//     //         it |= vars[i];
-//     //     }
-//     //     return it;
-//     }
-//
-//     run_iteration() {
-//
-//         while (iterating) {
-//             for (int i=0;i<6;i++) {
-//                 if (iter_status[i])
-//                 {
-//                     iter_status[i] = vars[i].iterate();
-//                     break;
-//                 }
-//             }
-//             iterating;
-//         }
-//     }
 // }
-//
-// class simulation_variable
-// {
-//     double val;
-//     string name;
-//     int iter;
-//     int max_iter;
-//
-//     void initialize()
-//     {
-//
-//     }
-//
-//     bool iterate(); // return false if end is reached, true else
-//     void print_status();
-//
-// };
+
 
 struct parameters
 {
@@ -175,6 +122,21 @@ class model
         double nu_peak_log_full(double gamma, double delta, double rate_max);
 };
 
+
+struct simulation_variable
+{
+    double val, *valP;
+
+    string name;
+    int iter;
+    int max_iter;
+
+    void initialize(double *varP, unsigned varSz, string varName);
+    bool iterate();
+    void print_status();
+
+};
+
 class simulation
 {
     public:
@@ -182,7 +144,8 @@ class simulation
         int y_iter = -1;
 
         vector<double> n, alpha_0, tau_G, rateWnt, eps, eta;
-        vector<vector<char>> order; // = ['rateWnt','alpha_0','tau_G','n','eta','eps']
+        unsigned nVar;
+        vector<string> order; // contains the strings of parameters in the order that the iteration should walk through
 
         unsigned n_iter, alpha_0_iter, tau_G_iter, rateWnt_iter, eps_iter, eta_iter;
         int mode_calc, mode_stats;
@@ -194,6 +157,14 @@ class simulation
         bool trans_imp_found, trans_inc_found;
 
         double y_val();
+
+        vector<simulation_variable> vars; // initialize, such that variables are registered in order
+        bool iter_status[6];
+        bool iterating = true;
+        void initialize();
+        void reset_iteration();
+        void run_iteration();
+        void print_simStatus();
 
         void initiate_y_axis(model *modP);
         void store_results(simulation *simP, model *modP, results *resP);

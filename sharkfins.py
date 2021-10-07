@@ -551,7 +551,6 @@ def write_input(model,fileModel,simulation,fileSim):
             ncid.createDimension('charSz',nChar)
             Var = ncid.createVariable(key,'%s1'%(varType),(varDim,'charSz'))
             Var._Encoding = 'ascii'
-            print(stringtochar(simulation[key]))
             Var[:] = stringtochar(simulation[key])
         else:
             Var = ncid.createVariable(key,varType,(varDim,))
@@ -617,11 +616,6 @@ def plot_3d(fig,ax,inpara,results,px,py,pz,ax_labels,const_labels,from_disk=Fals
         cross_point = np.zeros(len(results),'int');
 
         for i,res in enumerate(results):
-
-            print('px: ',px)
-            print('py: ',py)
-            print()
-            print('pz: ',pz)
 
             inc_bound[i,:] = res['inc_trans'][0,:]
             DM_bound[i,:] = res['DM_trans'][0,:]

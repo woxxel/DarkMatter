@@ -16,6 +16,7 @@
 
 #include "./theory/structures.h"
 #include "./theory/functions.cpp"
+#include "./theory/simFunctions.cpp"
 #include "./io/readwrite.cpp"
 
 // using namespace std;
@@ -48,6 +49,11 @@ int main(int argc, char** argv)
     read_simulation(fileSim,simP);
 
     initiate_results(modP,simP,resP);
+
+	simP->initialize();
+	simP->run_iteration();
+	// simP->print_simStatus();
+
 	// cout << "sizes (after sim) - n: " << simP->nSz << ", alpha_0: " << simP->alpha_0Sz << ", tau_G: " << simP->tau_GSz << ", rate: " << simP->rateWntSz << endl;
 
     model mod_approx, *mod_approxP = &mod_approx;
