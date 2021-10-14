@@ -11,170 +11,191 @@
 #include "functions.h"
 
 // define classes
-
 void initiate_results(model *modP, simulation *simP, results *resP)
 {
-    // first of: steps!
-    unsigned axes_ct = 2;
-    resP->axesDim.resize(6);
+    simP->trans_DM_found.resize(modP->paras.Npop,false);
+    simP->trans_np_found.resize(modP->paras.Npop,false);
+    simP->trans_imp_found = false;
+    simP->trans_inc_found = false;
 
-    resP->axesDim[0] = simP->alpha_0Sz;
-    if (simP->alpha_0Sz >= 10)
+    // now: size of border vectors
+    resP->trans_DM.resize(modP->paras.Npop,vector<double>(simP->vars[0].steps));
+    resP->trans_np.resize(modP->paras.Npop,vector<double>(simP->vars[0].steps));
+    resP->trans_inc.resize(modP->paras.Npop,vector<double>(simP->vars[0].steps));
+    resP->trans_imp.resize(modP->paras.Npop,vector<double>(simP->vars[0].steps));
+
+    resP->rate.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
+    resP->q.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
+    resP->gamma.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
+    resP->chi.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
+
+    // if ((simP->mode_stats == 0) || (simP->mode_stats == 4))
+    resP->regions.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
+
+    if (simP->mode_stats == 1)
     {
-        resP->axes[0] = axes_ct;
-        axes_ct--;
-    }
-    resP->axesDim[1] = simP->nSz;
-    if (simP->nSz >= 10)
-    {
-        resP->axes[1] = axes_ct;
-        axes_ct--;
-    }
-    resP->axesDim[2] = simP->epsSz;
-    if (simP->epsSz >= 10)
-    {
-        resP->axes[2] = axes_ct;
-        axes_ct--;
-    }
-    resP->axesDim[3] = simP->etaSz;
-    if (simP->etaSz >= 10)
-    {
-        resP->axes[3] = axes_ct;
-        axes_ct--;
-    }
-    resP->axesDim[4] = simP->tau_GSz;
-    if (simP->tau_GSz >= 10)
-    {
-        resP->axes[4] = axes_ct;
-        if (axes_ct > 0) axes_ct--;
-    }
-    resP->axesDim[5] = simP->rateWntSz;
-    if (simP->rateWntSz >= 10)
-    {
-        resP->axes[5] = axes_ct;
-        if (axes_ct > 0) axes_ct--;
+        // cout << "start q size : " << resP->q.size() << endl;
+        resP->alpha_raw.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
+        resP->alpha.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
+        resP->sigma_V.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
+        resP->I_balance.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
     }
 
-    for (unsigned i=0;i<resP->axesDim.size();++i)
+    if ((simP->mode_stats == 2) || (simP->mode_stats == 4))
     {
-//                 cout << "axes '" << i << "': " << resP->axes[i] << endl;
-        for (int a=0; a<2; ++a)
-            if (resP->axesDim[i] > simP->max_ax[a])
-            {
-                if (a == 0)
-                    simP->max_ax[1] = simP->max_ax[0];
+        resP->q_approx.resize(modP->paras.Npop,vector<vector<double> >(simP->steps,vector<double>(simP->steps)));
+        resP->gamma_approx.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
+        resP->chi_approx.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
 
-                simP->max_ax[a] = resP->axesDim[i];
-//                         cout << "new max " << a << ": " << simP->max_ax[a] << endl;
-                break;
-            }
-    }
-    simP->steps = simP->max_ax[0];
-//         for (int a=0; a<2; ++a)
-//             cout << "max " << a << ": " << simP->max_ax[a] << endl;
+        resP->KL_entropy.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
+        resP->entropy.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
 
-//         nth_element(resP->axesDim.begin(),resP->axesDim.begin()+1,resP->axesDim.end());
-//         cout << "scnd largst element: " << resP->axesDim[1] << endl;
-
-    if (axes_ct == 2)
-    {
-        simP->initiate_y_axis(modP);
-        resP->steps = 1000;
-    }
-    else
-        resP->steps = simP->steps;
-
-//         cout << "mode_stats = " << simP->mode_stats << endl;
-//         cout << "Npop = " << modP->paras.Npop << endl;
-
-
-    if (axes_ct == 0)
-    {
-        simP->trans_DM_found.resize(modP->paras.Npop,false);
-        simP->trans_np_found.resize(modP->paras.Npop,false);
-        simP->trans_imp_found = false;
-        simP->trans_inc_found = false;
-
-        // now: size of border vectors
-        resP->trans_DM.resize(modP->paras.Npop,vector<double>(resP->steps));
-        resP->trans_np.resize(modP->paras.Npop,vector<double>(resP->steps));
-        resP->trans_inc.resize(modP->paras.Npop,vector<double>(resP->steps));
-        resP->trans_imp.resize(modP->paras.Npop,vector<double>(resP->steps));
-
-        resP->rate.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-
-        if (simP->mode_stats != 2)
-        {
-            resP->gamma.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-            resP->chi.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-        }
-
-
-        if ((simP->mode_stats == 0) || (simP->mode_stats == 4))
-            resP->regions.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-
-
-
-        if (simP->mode_stats == 4)
-        {
-            resP->gamma_approx.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-            resP->chi_approx.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-//                 resP->regions_approx.push_back(vector<double>());
-
-            resP->KL_entropy.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-            resP->entropy.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-        }
-    }
-    else if (axes_ct == 1)
-    {
-        simP->x_iter = -1;
-        simP->y_iter = 0;
-        if (simP->mode_stats == 1)
-        {
-            int dim1 = simP->max_ax[1];
-
-            simP->trans_imp_found = false;
-            resP->trans_imp.resize(modP->paras.Npop,vector<double>(resP->steps));
-
-            resP->rate.resize(modP->paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
-            resP->gamma.resize(modP->paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
-            resP->chi.resize(modP->paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
-
-            resP->q.resize(modP->paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
-//                         cout << "start q size : " << resP->q.size() << endl;
-            resP->alpha_raw.resize(modP->paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
-            resP->alpha.resize(modP->paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
-            resP->sigma_V.resize(modP->paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
-            resP->I_balance.resize(modP->paras.Npop,vector<vector<double> >(dim1,vector<double>(resP->steps)));
-        }
-    }
-    else
-    {
-        if (simP->mode_stats == 3)
-        {
-            resP->rate.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-            resP->q.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-            resP->q_approx.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-
-            resP->gamma.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-            resP->gamma_approx.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-            resP->chi.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-            resP->chi_approx.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-
-            resP->KL_entropy.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-            resP->entropy.resize(modP->paras.Npop,vector<vector<double> >(resP->steps,vector<double>(resP->steps)));
-        }
-    }
-
-
-    if ((simP->mode_stats == 3) || (simP->mode_stats == 4))
-    {
-        resP->p_range.resize(resP->steps);
-        resP->p_exact.resize(resP->steps);
-        resP->cdf_theory.resize(resP->steps);
+        resP->p_range.resize(simP->steps);
+        resP->p_exact.resize(simP->steps);
+        resP->cdf_theory.resize(simP->steps);
     }
 }
 
+void compare_approx(model *modP, model *mod_approxP, simulation *simP, results *resP)
+{
+    for (int p = 0; p < modP->paras.Npop; p++)
+    {
+        long double cosh_tmp = cosh(modP->paras.gamma[p]*modP->paras.delta[p]*sqrt(-2*log(pow(10,-6)/modP->paras.rate_max[p]))); // check if pdf can be calculated
+        if (!isinf(cosh_tmp) && !isnan(cosh_tmp))
+        {
+            // cout << resP->KL_entropy.size() << endl;
+            modP->paras.KL[p] = KL_divergence(p,0,modP->paras.rate_max[p],modP->paras,mod_approxP->paras);
+            modP->paras.entropy[p] = shannon_entropy(p,0,modP->paras.rate_max[p],modP->paras);
+            // if (simP->steps == 1)
+            // {
+            // cout << "Calculate pdf and cdf from selfconsistent solution..." << endl;
+
+            resP->d_nu = modP->paras.rate_max[p]/simP->steps;
+
+            resP->p_exact[0] = 0;
+            resP->cdf_theory[0] = 0;
+//                                                                         cout << "write p for " << simP->steps << " steps with d_nu = " << resP->d_nu << "." << endl;
+            for (unsigned i=1; i<simP->steps; ++i)
+            {
+                resP->p_range[i] = i*resP->d_nu;    // should be written in some seperate function
+                resP->p_exact[i] = modP->distribution_exact(resP->p_range[i],0);
+//                                                                                     resP->max_prob = max(resP->p_exact[i],resP->max_prob);
+                resP->cdf_theory[i] = resP->cdf_theory[i-1] + pdf2hist((i-1)*resP->d_nu,i*resP->d_nu,modP->paras);
+
+                // obtain maximum value of probability density (with bins of width=rate_max/N_max)
+            }
+            // }
+        }
+        else
+        {
+            modP->paras.KL[p] = NAN;
+            modP->paras.entropy[p] = NAN;
+        }
+    }
+}
+
+void find_transitions(model *modP, simulation *simP, results *resP)
+{
+    for (int p = 0; p < modP->paras.Npop; p++)
+    {
+
+        if (modP->paras.gamma[p] > 1) {
+            if (!simP->trans_DM_found[p]) {
+                // cout << " found DM transition for p=" << p << " and iter #" << simP->vars[1].iter << ", @ rate=" << modP->paras.rate[p] << endl;
+                resP->trans_DM[p][simP->vars[1].iter] = modP->paras.rate[p];      // doesnt work in cases, when there is a second DM transition at high nu
+                simP->trans_DM_found[p] = true;
+            }
+        } else {
+            simP->trans_DM_found[p] = false;
+        }
+
+        if (modP->no_peak(p)) {
+            if (!simP->trans_np_found[p]) {
+                // cout << " found no peak transition for p=" << p << " and iter #" << simP->y_iter << ", @ rate=" << modP->paras.rate[p] << endl;
+                resP->trans_np[p][simP->vars[1].iter] = modP->paras.rate[p];
+                simP->trans_np_found[p] = true;
+            }
+        } else {
+            // simP->trans_np_found[p] = false;
+        }
+    }
+
+	// starting to find boundaries
+	if (modP->implausible()) {
+		if (!simP->trans_imp_found) {
+			for (int p = 0; p < modP->paras.Npop; p++)
+				resP->trans_imp[p][simP->vars[1].iter] = modP->paras.rate[p];
+			simP->trans_imp_found = true;
+		}
+	} else {
+		// simP->trans_imp_found = false;
+	}
+
+	if (modP->inconsistent()) {
+		if (!simP->trans_inc_found) {
+			simP->trans_inc_found = true;
+			for (int p = 0; p < modP->paras.Npop; p++)
+			{
+				resP->trans_inc[p][simP->vars[1].iter] = modP->paras.rate[p];
+
+				if (!simP->trans_DM_found[p]) {
+					resP->trans_DM[p][simP->vars[1].iter] = NAN;
+					simP->trans_DM_found[p] = true;
+				}
+
+				if (!simP->trans_np_found[p]) {
+					// cout << "forcing np end @ rate = " << modP->paras.rate[p] << endl;
+					// cout << "previous value: " << resP->trans_np[p][simP->vars[1].iter]<< endl;
+					resP->trans_np[p][simP->vars[1].iter] = NAN;
+					simP->trans_np_found[p] = true;
+				}
+
+				if (!simP->trans_imp_found) {
+					resP->trans_imp[p][simP->vars[1].iter] = NAN;
+					simP->trans_imp_found = true;
+				}
+			}
+		}
+	} else {
+		simP->trans_inc_found = false;
+	}
+		//                                                         }
+	if (simP->trans_inc_found && simP->mode_stats==3)
+		for (int p = 0; p < modP->paras.Npop; p++)
+			resP->KL_entropy[p][simP->vars[1].iter][simP->vars[0].iter] = NAN;
+
+//                                     cout << "stuff done" << endl;
+	if ((simP->mode_stats == 0) || (simP->mode_stats == 4))
+	{
+        int val;
+		for (int p = 0; p < modP->paras.Npop; ++p)
+		{
+			if (simP->trans_inc_found) val = 3;
+			else if (simP->trans_np_found[p]) val = 2;
+			else if (simP->trans_imp_found) val = 1;
+			else val = 0;
+
+			modP->paras.regions[p] = val;
+//                                                     regions[simP->n_iter][simP->alpha_0_iter][simP->tau_G_iter][simP->rateWnt_iter][p] = val;
+		}
+	}
+
+	// check if this is the last iteration along x-axis
+	if ((simP->vars[0].iter==simP->vars[0].steps-1) && (simP->mode_stats==2))
+	{
+		for (int p = 0; p < modP->paras.Npop; ++p)
+		{
+			if (!simP->trans_DM_found[p])
+				resP->trans_DM[p][simP->vars[1].iter] = NAN;
+			if (!simP->trans_np_found[p])
+				resP->trans_np[p][simP->vars[1].iter] = NAN;
+			if (!simP->trans_imp_found)
+				resP->trans_imp[p][simP->vars[1].iter] = NAN;
+			if (!simP->trans_inc_found)
+				resP->trans_inc[p][simP->vars[1].iter] = NAN;
+		}
+	}
+};
 
 void model::resize()
 {
@@ -206,40 +227,40 @@ void model::resize()
 
 void model::set_weights()
 {
-//         cout << "number of populations: " << paras.Npop << endl;
+    // implement setter, calling set_weights only when according variables are changed
+    if (paras.drive == 2)
+        paras.J_0 = paras.J * paras.tau_M;
 
-        if (paras.drive == 2)
-                paras.J_0 = paras.tau_M;
+    if (paras.Npop == 1)
+    {
+        paras.J_I[0] = paras.J * paras.tau_M;		   // J_II
+        paras.J_I[1] = paras.J * paras.tau_M;		   // J_EI
 
-        if (paras.Npop == 1)
-        {
-                paras.J_I[0] = paras.tau_M;				// J_II
-                paras.J_I[1] = paras.tau_M;		// J_EI
+        paras.J_E[0] = 0;			       // J_IE
+        paras.J_E[1] = 0;				   // J_EE
+        // cout << "new weights: " << paras.J_I[0] << endl;
+        // cout << "J: " << paras.J << endl;
+    }
+    else if (paras.Npop == 2)
+    {
+        // watch out for indexing:
+        // inhibitory population: index 0
+        // excitatory population: index 1
+        paras.J_I[0] = paras.J * sqrt(1 - gsl_pow_2(paras.eps)) * paras.tau_M;				// J_II
+        paras.J_I[1] = paras.J * sqrt(1 - gsl_pow_2(paras.eta * paras.eps)) * paras.tau_M;	// J_EI
 
-                paras.J_E[0] = 0;			                                // J_IE
-                paras.J_E[1] = 0;					// J_EE
+        paras.J_E[0] = paras.J * paras.eps * paras.tau_M;			                            // J_IE
+        paras.J_E[1] = paras.J * paras.eta * paras.eps * paras.tau_M;					        // J_EE
 
-        }
-        else if (paras.Npop == 2)
-        {
-                // watch out for indexing:
-                // inhibitory population: index 0
-                // excitatory population: index 1
-                paras.J_I[0] = sqrt(1 - gsl_pow_2(paras.eps)) * paras.tau_M;				// J_II
-                paras.J_I[1] = sqrt(1 - gsl_pow_2(paras.eta * paras.eps)) * paras.tau_M;		// J_EI
-
-                paras.J_E[0] = paras.eps * paras.tau_M;			                                // J_IE
-                paras.J_E[1] = paras.eta * paras.eps * paras.tau_M;					// J_EE
-
-                //! for p=1, the excitatory population receives inhibition, but is decoupled, such that it gives no feedback
+        //! for p=1, the excitatory population receives inhibition, but is decoupled, such that it gives no feedback
 //                 cout << "J_I: " << paras.J_I[0] << "," << paras.J_I[1] << endl;
 //                 cout << "J_E: " << paras.J_E[0] << "," << paras.J_E[1] << endl;
-        }
-        else
-        {
-                cout << "There is no algorithm set yet to assign weights for more than 2 populations. Please fix that before you continue!" << endl;
-                exit(0);
-        }
+    }
+    else
+    {
+        cout << "There is no algorithm set yet to assign weights for more than 2 populations. Please fix that before you continue!" << endl;
+        exit(0);
+    }
 }
 
 void model::get_sigma_V()
@@ -538,45 +559,20 @@ double I_squared_q(double alpha, double sigma_V, double q, double rate_max)
 
 
 
-double simulation::y_val()
-{
-        if (tau_GSz > 1)
-            return tau_G[tau_G_iter];
-        else if (alpha_0Sz > 1)
-            return alpha_0[alpha_0_iter];
-        else if (nSz > 1)
-            return n[n_iter];
-        else
-            return 0;
-//         {
-//             cout << "no y-axis could be found - quitting..." << endl;
-//             exit(0);
-//         }
-}
+// double simulation::y_val()
+// {
+//     if (tau_GSz > 1)
+//         return tau_G[tau_G_iter];
+//     else if (alpha_0Sz > 1)
+//         return alpha_0[alpha_0_iter];
+//     else if (nSz > 1)
+//         return n[n_iter];
+//     else
+//         return 0;
+// }
 
-void simulation::initiate_y_axis(model *modP)
-{
-//         cout << "initiating y-axis..." << endl;
 
-    if (mode_stats == 0 || mode_stats == 2 || mode_stats == 4)
-    {
-        x_iter = -1;
-        y_iter++; // keep track of current y-step
-
-        for (int p = 0; p < modP->paras.Npop; p++)
-        {
-            trans_DM_found[p] = false;
-            trans_np_found[p] = false;
-        }
-    }
-    else if (mode_stats == 3)// || mode_stats == 1)
-        y_iter = 0;
-
-    trans_inc_found = false;
-    trans_imp_found = false;
-}
-
-void simulation::store_results(simulation *simP, model * modP, results * resP)
+void simulation::store_results(simulation *simP, model * modP, model * mod_approxP, results * resP)
 {
 //         unsigned a = resP->rate.size() - 1;
 //         cout << "size = " << a << endl;
@@ -584,90 +580,58 @@ void simulation::store_results(simulation *simP, model * modP, results * resP)
 //         cout << "rate=" << paras.rate << " ,\t q=" << paras.q[0] << " ,\t alpha=" << paras.alpha[0] << " ,\t gamma=" << paras.gamma[0] << " ,\t chi=" << paras.chi[0] << endl;
         //! write: rate, q, alpha, alpha+alpha_0, sigma_V, gamma, chi, threshold transition, nu_no_peak, nu_inconsistent
 
-        for (int p = 0; p < modP->paras.Npop; p++)
+    for (int p = 0; p < modP->paras.Npop; p++)
+    {
+        resP->rate[p][vars[1].iter][vars[0].iter] = modP->paras.rate[p];
+        resP->q[p][vars[1].iter][vars[0].iter] = modP->paras.q[p];
+
+        resP->gamma[p][vars[1].iter][vars[0].iter] = modP->paras.gamma[p];
+        resP->chi[p][vars[1].iter][vars[0].iter] = modP->paras.chi[p];
+
+        resP->regions[p][vars[1].iter][vars[0].iter] = modP->paras.regions[p];
+
+        if (mode_stats == 1)
         {
-//                 cout << "in" << endl;
-//                 cout << "rate: " << modP->paras.rate[p] << endl;
-//                 cout << " x/y : " << x_iter << "/" << y_iter << endl;
-//                 cout << "size rate: " << resP->rate.size() << endl;
-                resP->rate[p][y_iter][x_iter] = modP->paras.rate[p];
-
-//                 cout << " x/y : " << x_iter << "/" << y_iter << endl;
-//                 cout << "rate: " << modP->paras.rate[p] << endl;
-//                 cout << "storing gamma / chi" << endl;
-                if (mode_stats != 2)
-                {
-//                         cout << "gamma: " << modP->paras.gamma[p] << endl;
-//                         cout << "gamma size : " << resP->gamma.size() << "," << resP->gamma[p].size() << "," << resP->gamma[p][y_iter].size() << endl;
-
-                        resP->gamma[p][y_iter][x_iter] = modP->paras.gamma[p];
-
-//                         cout << "chi: " << modP->paras.chi[p] << endl;
-                        resP->chi[p][y_iter][x_iter] = modP->paras.chi[p];
-                }
-
-//                 cout << "store special" << endl;
-                if (mode_stats == 1)
-                {
-//                         cout << "q: " << modP->paras.q[p] << endl;
-//                         cout << "q size : " << resP->q.size() << endl;//"," << resP->q[p].size() << "," << resP->q[p][y_iter].size() << endl;
-                        resP->q[p][y_iter][x_iter] = modP->paras.q[p];
-
-//                         cout << "alpha_raw" << endl;
-                        resP->alpha_raw[p][y_iter][x_iter] = modP->paras.alpha_raw[p];
-//                         cout << "alpha" << endl;
-                        resP->alpha[p][y_iter][x_iter] = modP->paras.alpha[p];
-//                         cout << "sigma_V" << endl;
-                        resP->sigma_V[p][y_iter][x_iter] = modP->paras.sigma_V[p];
-//                         cout << "I_bal" << endl;
-                        resP->I_balance[p][y_iter][x_iter] = modP->paras.I_balance[p];
-                }
-
-//                 cout << "done?!" << endl;
-                if (mode_stats == 3)
-                {
-                        resP->q[p][y_iter][x_iter] = modP->paras.q[p];
-
-//                         cout << "KL" << endl;
-                        resP->KL_entropy[p][y_iter][x_iter] = modP->paras.KL[p];
-//                         cout << "entropy" << endl;
-                        resP->entropy[p][y_iter][x_iter] = modP->paras.entropy[p];
-                }
-
-                if (mode_stats == 4)
-                {
-                        resP->KL_entropy[p][y_iter][x_iter] = modP->paras.KL[p];
-                        resP->entropy[p][y_iter][x_iter] = modP->paras.entropy[p];
-                }
-
-//                 cout << "storing regions" << endl;
-                if ((mode_stats == 0) || (mode_stats == 4))
-                {
-                        resP->regions[p][y_iter][x_iter] = modP->paras.regions[p];
-                }
+            resP->alpha_raw[p][vars[1].iter][vars[0].iter] = modP->paras.alpha_raw[p];
+            resP->alpha[p][vars[1].iter][vars[0].iter] = modP->paras.alpha[p];
+            resP->sigma_V[p][vars[1].iter][vars[0].iter] = modP->paras.sigma_V[p];
+            resP->I_balance[p][vars[1].iter][vars[0].iter] = modP->paras.I_balance[p];
         }
+
+        if (mode_stats == 2)
+        {
+            resP->q_approx[p][vars[1].iter][vars[0].iter] = mod_approxP->paras.q[p];
+            resP->gamma_approx[p][vars[1].iter][vars[0].iter] = mod_approxP->paras.gamma[p];
+            resP->chi_approx[p][vars[1].iter][vars[0].iter] = mod_approxP->paras.chi[p];
+
+            resP->KL_entropy[p][vars[1].iter][vars[0].iter] = modP->paras.KL[p];
+            resP->entropy[p][vars[1].iter][vars[0].iter] = modP->paras.entropy[p];
+        }
+
+    }
 }
 
 
 
-void simulation::store_results_approx(simulation *simP, model *modP, results * resP)
-{
-//         unsigned a = resP->gamma_approx.size() - 1;
-//
-// //         resP->rate[a].push_back(paras.rate);
-        for (int p = 0; p < modP->paras.Npop; p++)
-        {
-                if (mode_stats == 3)
-                        resP->q_approx[p][y_iter][x_iter] = modP->paras.q[p];
-
-//         cout << "gamma: " << modP->paras.gamma[0] << endl;
-//         cout << "gamma_size: " << resP->gamma_approx.size() << endl;
-                resP->gamma_approx[p][y_iter][x_iter] = modP->paras.gamma[p];
-        //         cout << "chi: " << modP->paras.chi[0] << endl;
-                resP->chi_approx[p][y_iter][x_iter] = modP->paras.chi[p];
-//         resP->regions_approx[a].push_back(modP->paras.regions[0]);
-        }
-}
+// void simulation::store_results_approx(simulation *simP, model *modP, results * resP)
+// {
+// //         unsigned a = resP->gamma_approx.size() - 1;
+// //
+// // //         resP->rate[a].push_back(paras.rate);
+//     cout << "storing" << endl;
+//     for (int p = 0; p < modP->paras.Npop; p++)
+//     {
+//         if (mode_stats == 2)
+//             resP->q_approx[p][vars[1].iter][vars[0].iter] = modP->paras.q[p];
+//         cout <<
+// //         cout << "gamma: " << modP->paras.gamma[0] << endl;
+// //         cout << "gamma_size: " << resP->gamma_approx.size() << endl;
+//         resP->gamma_approx[p][vars[1].iter][vars[0].iter] = modP->paras.gamma[p];
+//         resP->chi_approx[p][vars[1].iter][vars[0].iter] = modP->paras.chi[p];
+// //         resP->regions_approx[a].push_back(modP->paras.regions[0]);
+//     }
+//     cout << "done" << endl;
+// }
 
 // void model::store_update(results * resP)
 // {
@@ -820,179 +784,4 @@ double int_distribution_exact(double nu, void *params)
 
         double rate_ratio = nu/rate_max;
         return (nu > 0) ? gamma/(rate_max*sqrt(-M_PI*log(rate_ratio)))*exp(-gsl_pow_2(delta)/2)*pow(rate_ratio,gsl_pow_2(gamma)-1)*cosh(gamma*delta*sqrt(-2*log(rate_ratio))) : 0;
-}
-
-
-
-
-double poisson_distr(int k, double lambda)
-{
-        return exp(k*log(lambda)-lambda-lgamma(k+1.0));
-}
-
-
-void draw_rates(model *modP, computation *comP, results *resP)
-{
-//         cout << "start! k: " << comP->k << ", N: " << comP->N << endl;
-        resP->rate_inf[comP->k].resize(comP->N);
-        // initiate variables
-        double rate_inf_tmp;
-
-        // initiate random number generator
-        gsl_rng_env_setup();
-        const gsl_rng_type *TYPE = gsl_rng_mt19937;
-        gsl_rng * rng = gsl_rng_alloc(TYPE);
-//         printf("r is a '%s' generator\n", gsl_rng_name(rng));
-        gsl_rng_set(rng, 1 + comP->seed_theory[comP->k]);
-
-
-        // for each neuron get rate_inf
-        for (int n=0; n<comP->N; ++n)
-        {
-                // rejection sampling algorithm
-                bool found = false;
-                do
-                {
-                        rate_inf_tmp = gsl_rng_uniform_pos(rng)*modP->paras.rate_max[0];                // generate random rate
-//                         cout << "\t nu = " << rate_inf_tmp << " ,\t p(nu) = " << modP->distribution_exact(rate_inf_tmp,0) << endl;
-                        // and accept sample according to theoretically predicted probability
-                        if (gsl_ran_flat(rng, 0,resP->max_prob) < modP->distribution_exact(rate_inf_tmp,0))
-                        {
-                                resP->rate_inf[comP->k][n] = rate_inf_tmp;
-//                                 resP->N_AP[comP->k][n] = int(rate_inf_tmp*comP->T);
-                                found = true;
-                        }
-                }
-                while (found == false);
-        }
-}
-
-void draw_samples(computation *comP, results *resP)
-{
-        resP->rate_T[comP->k][comP->j].resize(comP->N,0);
-        resP->N_AP[comP->k][comP->j].resize(comP->N,0);
-
-        random_device rd;
-
-//         seed: comP->seed_time[comP->k*comP->draw_finite_time]
-//         cout << "random generator test: " << rd << endl;
-
-        mt19937 gen(rd()); // this gives almost deterministic results, for whatever reason...
-        for (int n=0; n<comP->N; ++n)
-        {
-                poisson_distribution<> d(resP->rate_inf[comP->k][n]*comP->T);    // initiating poisson distribution with mean rate_inf*T
-
-                resP->N_AP[comP->k][comP->j][n] = d(gen);
-                resP->rate_T[comP->k][comP->j][n] = resP->N_AP[comP->k][comP->j][n]/comP->T;                       // generating a random number of spikes from this
-        }
-}
-
-// vector<double> get_density_estimate(vector<int> data, computation sim, string kernel)
-// {
-//         vector<double> p_est(simP->AP_max,0);
-//         cout << "getting density estimation..." << endl;
-//     //     vector<vector<double> > p_est_single (simP->N);
-//         for (int n=0; n<simP->N; ++n)
-//         {
-//                 if (kernel.compare("poisson") == 0)
-//                         for (int i=0; i<simP->AP_max; ++i)
-//                                 p_est[i] += poisson_distr(data[n],i)/(simP->N/simP->T);
-//                 else
-//                         cout << "kernel '" << kernel << "' not yet implemented" << endl;
-//         }
-//     //     for (int i=0; i<N_max; ++i)
-//     //         cout << "prob(i=" << i << "): " << p_est[i] << endl;
-//         return p_est;
-// }
-
-
-// void bayesian_estimate(model *modP, computation *comP, results *resP)
-// {
-//         // wanna calculate: P(lambda|k) = P(k|lambda)*p(lambda)/p(k)
-//         // if no prior beliefs exist, p(lambda) = p(k) -> P(lambda|k) = P(k|lambda)
-//         // however, if we take p(lambda) to be firing rate distribution from theory, we obtain the following:
-//
-// //     P_k_lambda  = poisson_distr(k,nu*T);
-// //     p_lambda    = modP->distribution_exact(nu,0);
-// //     p_k = int(P_k_lambda*p_lambda) d lambda
-//
-//         resP->p_bayes_est[comP->k][comP->j].resize(resP->steps,0);
-//         for (int n=0; n<comP->N; ++n)
-//         {
-// //                 cout << "APs for neuron " << n << ": " << k << endl;
-//                 double p_k = 0;
-//
-//                 for (int i=1; i < resP->steps; ++i)    // "integration" over lambda    //should also work with integration (faster?)
-//                         p_k += poisson_distr(resP->N_AP[comP->k][comP->j][n],resP->factor*i)*bayes_est_prior(i*resP->d_nu,modP,comP->prior);
-//
-//                 resP->p_bayes_est[comP->k][comP->j][0] = 0;
-//                 for (int i=1; i < resP->steps; ++i)    // construction of posterior
-//                         resP->p_bayes_est[comP->k][comP->j][i] += poisson_distr(resP->N_AP[comP->k][comP->j][n],resP->factor*i)*bayes_est_prior(i*resP->d_nu,modP,comP->prior)/p_k / (resP->d_nu*comP->N);
-//         }
-// }
-//
-//
-// double bayes_est_prior(double nu, model *modP, string prior)
-// {
-//         if (not prior.compare("mean_field"))
-//             return modP->distribution_exact(nu,0);
-//         else if (not prior.compare("plain"))
-//             return 1;
-//         else
-//         {
-//             cout << "Specify a prior!" << endl;
-//             exit(0);
-//         }
-// }
-
-
-vector<double> get_cdf(vector<double> p, int steps, double d_nu)     // compute cdf
-{
-        vector<double> cdf(steps,0);
-        for(int i=1; i<=steps; ++i)
-                cdf[i] = cdf[i-1] + p[i]*d_nu;
-
-        return cdf;
-}
-
-void post_process(computation *comP, model *modP, model *mod_approxP, results *resP)
-{
-//         resP->KS.resize(comP->draw_from_theory);
-//         resP->KL_entropy_single.resize(resP->steps);
-
-//         cout << "gamma: " << modP->paras.gamma[0] << "," << mod_approxP->paras.gamma[0] << endl;
-//         cout << "delta: " << modP->paras.delta[0] << "," << mod_approxP->paras.delta[0] << endl;
-
-//         double  KL_tmp = KL_divergence(0,modP->paras.rate_max[0],modP->paras,mod_approxP->paras);
-//         cout << "KL = " << KL_tmp << endl;
-//         for (int i=1; i<resP->steps; ++i)
-//         {
-//                 resP->KL_entropy_single[i] = KL_divergence((i-1)*resP->d_nu,i*resP->d_nu,modP->paras,mod_approxP->paras);
-//                 cout << "KL[" << i << "] = " << resP->KL_entropy_single[i] << endl;
-//         }
-
-        for (int k=0; k<comP->draw_from_theory; ++k)
-        {
-                resP->KS[k].resize(comP->draw_finite_time,0);
-//                 resP->KL_entropy[k].resize(comP->draw_finite_time,0);
-
-                for (int j=0; j<comP->draw_finite_time; ++j)
-                {
-                        vector<double> cdf_tmp = get_cdf(resP->p_bayes_est[k][j],resP->steps,resP->d_nu);
-
-                        double KS_tmp = 0;
-                        for (int i=1; i<resP->steps; ++i)
-                        {
-                                KS_tmp = abs(cdf_tmp[i] - resP->cdf_theory[i]);
-//                                 cout << "KS tmp: " << KS_tmp << ",\tKS old: " << resP->KS[k][j] << endl;
-                                resP->KS[k][j] = (KS_tmp > resP->KS[k][j]) ? KS_tmp : resP->KS[k][j];
-
-//                                 cout << "p[" << i << "]: " << resP->p_exact[i] << " vs " << resP->p_bayes_est[k][j][i] << ", log2: " << log2(resP->p_exact[i]/resP->p_bayes_est[k][j][i]) << endl;
-//                                 if(resP->p_bayes_est[k][j][i]>pow(10,-3) && resP->p_exact[i]>pow(10,-3))
-//                                     resP->KL_entropy[k][j] += resP->p_exact[i] * resP->d_nu * log2(resP->p_exact[i]/resP->p_bayes_est[k][j][i]);
-                        }
-//                         cout << "KS test: " << resP->KS[k][j] << endl;
-                }
-        }
-
 }

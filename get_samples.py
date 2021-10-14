@@ -2,7 +2,9 @@ import numpy as np
 #from numpy.ma import masked_array
 #import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
-from scipy.io import netcdf
+# from scipy.io import netcdf
+from netCDF4 import Dataset, stringtochar
+
 import os,math, imp
 import matplotlib as mpl
 

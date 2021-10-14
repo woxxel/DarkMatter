@@ -2,28 +2,10 @@
 
 using namespace std;
 
-// class simulation_status {
-//
-//     /*
-//     in here, gather
-//         1. iteration values of all variables
-//         2. knowledge on which variables are constants and which ones vary
-//         3.
-//
-//     further, function to:
-//         1. iterate further
-//         2. check end of simulation
-//     */
-//
-//
-//
-// }
-
-
 struct parameters
 {
     int Npop;
-	double tau_G, tau_A, tau_N, tau_M;
+	double tau_G, tau_A, tau_N, tau_M, J;
 	double eta, eps, n;
     double kappa;
     vector<double> rate, alpha_0;
@@ -44,15 +26,6 @@ struct parameters
 	vector<double> gamma, delta, chi, I_balance;
     vector<double> regions;
     vector<double> entropy, KL;
-
-    friend ostream& operator <<(ostream& os, parameters const& s)
-    {
-        return os << s.Npop << '\n'
-                  << s.tau_G << '\n'
-                  << s.tau_A << '\n'
-                  << s.tau_N << '\n'
-                  << s.tau_M << '\n';
-    }
 };
 
 struct results
@@ -125,13 +98,16 @@ class model
 
 struct simulation_variable
 {
-    double val, *valP;
+    double *valP, *paraP;
+
+    unsigned paraSz;
 
     string name;
-    int iter;
-    int max_iter;
+    unsigned iter, steps;
 
-    void initialize(double *varP, unsigned varSz, string varName);
+    // void (model::*onUpdate)();    // function which is called every time the variable updates
+
+    void initialize(double *modVarP, unsigned modVarSz, double *varP, unsigned varSz, string varName);
     bool iterate();
     void print_status();
 
@@ -140,8 +116,6 @@ struct simulation_variable
 class simulation
 {
     public:
-        int x_iter = -1;
-        int y_iter = -1;
 
         vector<double> n, alpha_0, tau_G, rateWnt, eps, eta;
         unsigned nVar;
@@ -149,10 +123,8 @@ class simulation
 
         unsigned n_iter, alpha_0_iter, tau_G_iter, rateWnt_iter, eps_iter, eta_iter;
         int mode_calc, mode_stats;
-        size_t nSz, alpha_0Sz, tau_GSz, rateWntSz, epsSz, etaSz, steps, orderSz, charSz;
+        size_t nSz, alpha_0Sz, tau_GSz, rateWntSz, epsSz, etaSz, orderSz, charSz, steps;
 
-        unsigned axes_ct;
-        unsigned max_ax[2] = {0,0};
         vector<bool> trans_DM_found, trans_np_found;
         bool trans_imp_found, trans_inc_found;
 
@@ -160,14 +132,14 @@ class simulation
 
         vector<simulation_variable> vars; // initialize, such that variables are registered in order
         bool iter_status[6];
-        bool iterating = true;
-        void initialize();
+        // bool iterating = true;
+        void initialize(model *modP);
         void reset_iteration();
-        void run_iteration();
+        bool run_iteration(model *modP);
         void print_simStatus();
 
-        void initiate_y_axis(model *modP);
-        void store_results(simulation *simP, model *modP, results *resP);
+        void initiate_y_axis(int Npop);
+        void store_results(simulation *simP, model *modP, model *mod_approxP, results *resP);
         void store_results_approx(simulation *simP, model *modP, results *resP);
 };
 
