@@ -13,8 +13,8 @@ from plotting.statistics import *
 class network:
 
     def __init__(self,tau_I=0.005,tau_m=0.01,alpha_0=0.0,J=-1.):
-        self.tau_I = tau_I   # synaptic timeconstant in s
-        self.tau_m = tau_m   # membrane timeconstant in s
+        self.tau_I = tau_I          # synaptic timeconstant in s
+        self.tau_m = tau_m          # membrane timeconstant in s
         self.J = J * tau_m          # synaptic coupling strength
         self.alpha_0 = alpha_0
 
@@ -40,7 +40,7 @@ class network:
         return 2 * (self.tau_I + self.tau_m)
 
 def approximations(steps=1000,rateWnt=[0,20],alpha_0=[0,0.02,0.04],tau_G=[0.005],eps=[0.5],eta=[0.9],n=[0],J=-1.,Npop=1,drive=0,save=0,file_format='png',rerun=False,compile=False):
-
+    
     options = {
         'Npop': Npop,
         'order': ['rateWnt','alpha_0','tau_G','n','eta','eps'],

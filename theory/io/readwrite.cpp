@@ -249,7 +249,7 @@ void write_results(string fileOut, simulation *simP, model *modP, results *resP)
 	// spdlog::info("writing shark data to file '{}'...",fileOut);
 	cout << "writing result data to file " << fileOut << "...";
 
-    int ncid, dimids[3], steps_dim, steps_dim1, Npop_dim;
+    int ncid, dimids[4], steps_dim, steps_dim1, Npop_dim, distr_dim;
     int steps_1 = simP->vars[1].steps;
     int steps = simP->vars[0].steps;
 
@@ -262,6 +262,11 @@ void write_results(string fileOut, simulation *simP, model *modP, results *resP)
     dimids[0] = Npop_dim;
     dimids[1] = steps_dim1;
     dimids[2] = steps_dim;
+
+    size_t start[4], count[4];
+    start[2] = 0;
+    count[0] = 1;
+    count[2] = steps;
 
     int para_dimID[6];
     write_prep_paras(ncid,&para_dimID[0],simP);
@@ -297,14 +302,26 @@ void write_results(string fileOut, simulation *simP, model *modP, results *resP)
         nc_def_var(ncid, "KL_entropy", NC_DOUBLE, 3, &dimids[0], &KL_entropy_id);
     }
 
+    if (simP->mode_stats == 3)
+    {
+        int p_Sz = resP->p_exact.size();
+        nc_def_dim(ncid, "distribution_dim", p_Sz, &distr_dim);
+
+        dimids[3] = distr_dim;
+
+        start[3] = 0;
+        count[3] = p_Sz;
+
+        nc_def_var(ncid, "p_range", NC_DOUBLE, 4, &dimids[0], &p_range_id);
+        nc_def_var(ncid, "p_exact", NC_DOUBLE, 4, &dimids[0], &p_exact_id);
+        nc_def_var(ncid, "p_approx", NC_DOUBLE, 4, &dimids[0], &p_approx_id);
+        nc_def_var(ncid, "cdf_theory", NC_DOUBLE, 4, &dimids[0], &cdf_theory_id);
+    }
+
     nc_enddef(ncid);
 
     write_paras(ncid, para_dimID, simP);
 
-    size_t start[3], count[3];
-    start[2] = 0;
-    count[0] = 1;
-    count[2] = steps;
 
     for (int p=0; p<modP->paras.Npop; p++)
     {
@@ -342,6 +359,16 @@ void write_results(string fileOut, simulation *simP, model *modP, results *resP)
                 nc_put_vara(ncid, chi_approx_id, start, count, &resP->chi_approx[p][rec][0]);
                 nc_put_vara(ncid, entropy_id, start, count, &resP->entropy[p][rec][0]);
                 nc_put_vara(ncid, KL_entropy_id, start, count, &resP->KL_entropy[p][rec][0]);
+            }
+            if (simP->mode_stats == 3)
+            {
+                for (int rec1=0; rec1<steps; rec1++)
+                {
+                    nc_put_vara(ncid, p_range_id, start, count, &resP->p_range[p][rec][rec1][0]);
+                    nc_put_vara(ncid, p_exact_id, start, count, &resP->p_exact[p][rec][rec1][0]);
+                    nc_put_vara(ncid, p_approx_id, start, count, &resP->p_approx[p][rec][rec1][0]);
+                    nc_put_vara(ncid, cdf_theory_id, start, count, &resP->cdf_theory[p][rec][rec1][0]);
+                }
             }
         }
     }

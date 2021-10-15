@@ -62,7 +62,7 @@ int main(int argc, char** argv)
 		mod.solve_selfcon(sim.mode_calc);
 		// cout << "done" << endl;
 		// cout << "gamma : " << mod.paras.gamma[0] << endl;
-
+		
 		// cout << "solving approx... " << endl;
 		if ((sim.mode_stats == 2) || (sim.mode_stats == 4))
 		{

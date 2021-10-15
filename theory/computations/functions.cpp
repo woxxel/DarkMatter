@@ -56,6 +56,24 @@ void initiate_results(model *modP, simulation *simP, results *resP)
     }
 }
 
+void get_distribution(model *modP, simulation *simP, results *resP)
+{
+    for (int p = 0; p < modP->paras.Npop; p++)
+    {
+        resP->d_nu = modP->paras.rate_max[p]/simP->steps;
+
+        resP->p_exact[0] = 0;
+        resP->cdf_theory[0] = 0;
+        for (unsigned i=1; i<simP->steps; ++i)
+        {
+            resP->p_range[i] = i*resP->d_nu;    // should be written in some seperate function
+            resP->p_exact[i] = modP->distribution_exact(resP->p_range[i],0);
+            // resP->max_prob = max(resP->p_exact[i],resP->max_prob);
+            resP->cdf_theory[i] = resP->cdf_theory[i-1] + pdf2hist((i-1)*resP->d_nu,i*resP->d_nu,modP->paras);
+        }
+    }
+}
+
 void compare_approx(model *modP, model *mod_approxP, simulation *simP, results *resP)
 {
     for (int p = 0; p < modP->paras.Npop; p++)
@@ -74,20 +92,14 @@ void compare_approx(model *modP, model *mod_approxP, simulation *simP, results *
 
             resP->p_exact[0] = 0;
             resP->cdf_theory[0] = 0;
-//                                                                         cout << "write p for " << simP->steps << " steps with d_nu = " << resP->d_nu << "." << endl;
             for (unsigned i=1; i<simP->steps; ++i)
             {
                 resP->p_range[i] = i*resP->d_nu;    // should be written in some seperate function
                 resP->p_exact[i] = modP->distribution_exact(resP->p_range[i],0);
-//                                                                                     resP->max_prob = max(resP->p_exact[i],resP->max_prob);
+                // resP->max_prob = max(resP->p_exact[i],resP->max_prob);
                 resP->cdf_theory[i] = resP->cdf_theory[i-1] + pdf2hist((i-1)*resP->d_nu,i*resP->d_nu,modP->paras);
-
-                // obtain maximum value of probability density (with bins of width=rate_max/N_max)
             }
-            // }
-        }
-        else
-        {
+        } else {
             modP->paras.KL[p] = NAN;
             modP->paras.entropy[p] = NAN;
         }
@@ -269,102 +281,101 @@ void model::get_sigma_V()
 	for (int p = 0; p < paras.Npop; p++)
 	{
 		// get sigma_V
-//                 cout << "tau_G: " << paras.tau_G << ", tau_A: " << paras.tau_A << ", tau_N: " << paras.tau_N << ", tau_M: " << paras.tau_M << endl;
-                // from excitatory AMPA synapses
-                double var_V_A = gsl_pow_2(paras.J_E[p]) * paras.kappa * paras.rate[p] / (paras.tau_A + paras.tau_M) * ( gsl_pow_2(1-paras.n)/2 + (1-paras.n)*paras.n*paras.tau_A / (paras.tau_A + paras.tau_N) );
+        // cout << "tau_G: " << paras.tau_G << ", tau_A: " << paras.tau_A << ", tau_N: " << paras.tau_N << ", tau_M: " << paras.tau_M << endl;
+        // from excitatory AMPA synapses
+        double var_V_A = gsl_pow_2(paras.J_E[p]) * paras.kappa * paras.rate[p] / (paras.tau_A + paras.tau_M) * ( gsl_pow_2(1-paras.n)/2 + (1-paras.n)*paras.n*paras.tau_A / (paras.tau_A + paras.tau_N) );
                 // from excitatory NMDA synapses
 		double var_V_N = gsl_pow_2(paras.J_E[p]) * paras.kappa * paras.rate[p] / (paras.tau_N + paras.tau_M) * ( paras.n*paras.n/2 + (1-paras.n)*paras.n*paras.tau_N / (paras.tau_A + paras.tau_N) );
                 // from inhibitory GABA synapses
 		double var_V_G = gsl_pow_2(paras.J_I[p]) * paras.rate[p] * 0.5 / (paras.tau_G + paras.tau_M);
 
-                // from external drive
-//                 cout << "J_I = " << paras.J_I[p] << ", J_0 = " << paras.J_0 << endl;
+        // from external drive
+        // cout << "J_I = " << paras.J_I[p] << ", J_0 = " << paras.J_0 << endl;
 
-                // total
+        // total
 		double var_V = var_V_A + var_V_N + var_V_G;
 //                 cout << "var total: " << var_V << ", from external sources: " << var_V_0 << endl;
 
 		double var_V_dot = var_V_A / (paras.tau_A * paras.tau_M) + var_V_N / (paras.tau_N * paras.tau_M) + var_V_G / (paras.tau_G * paras.tau_M);
 
-                if (paras.drive == 2)
-                {
-                        double var_V_0 = sqrt(1/paras.K_0) * paras.J_0 * paras.J_I[p] * paras.rate[p] * 0.5 / (paras.tau_0 + paras.tau_M);
-                        var_V += var_V_0;
-                        var_V_dot += var_V_0 / (paras.tau_0 * paras.tau_M);
-                }
+        if (paras.drive == 2)
+        {
+            double var_V_0 = sqrt(1/paras.K_0) * paras.J_0 * paras.J_I[p] * paras.rate[p] * 0.5 / (paras.tau_0 + paras.tau_M);
+            var_V += var_V_0;
+            var_V_dot += var_V_0 / (paras.tau_0 * paras.tau_M);
+        }
 		paras.sigma_V[p] = sqrt(var_V);
 
 		// and the maximum firing rate response
 		paras.rate_max[p] = sqrt(var_V_dot / var_V) / (2 * M_PI);
 //                 cout << "sigma population " << p << ": " << paras.sigma_V[p] << endl;
-
 	}
 }
 
 void model::get_alpha()
 {
-        for (int p = 0; p < paras.Npop; p++)
+    for (int p = 0; p < paras.Npop; p++)
+    {
+        double alpha_sq = gsl_pow_2(paras.J_I[p]) * paras.q[0];
+
+        if (paras.Npop > 1)
+            alpha_sq += gsl_pow_2(paras.J_E[p]) * paras.kappa * paras.q[1];
+
+        double alpha_sq_0;
+        if (paras.drive == 2)
         {
-                double alpha_sq = gsl_pow_2(paras.J_I[p]) * paras.q[0];
-
-                if (paras.Npop > 1)
-                        alpha_sq += gsl_pow_2(paras.J_E[p]) * paras.kappa * paras.q[1];
-
-                double alpha_sq_0;
-                if (paras.drive == 2)
-                {
-                        // quenched variance from afferent, spiking drive (gauss distributed synapse numbers)
-                        // after substitution of v_0 = nu_I * J/J_0 * sqrt(K/K_0)
-                        alpha_sq_0 = 1/paras.K_0 * gsl_pow_2(paras.J_I[p]) * gsl_pow_2(paras.rate[p]);
-                }
-                else
-                        alpha_sq_0 = 0;
-
-                paras.alpha_raw[p] = sqrt( alpha_sq + alpha_sq_0);
-                paras.alpha[p] = sqrt( alpha_sq + alpha_sq_0 + gsl_pow_2(paras.alpha_0[p]));
-//                 cout << "alpha total: " << gsl_pow_2(paras.alpha[p]) << ", from external sources: " << alpha_sq_0 << endl;
+                // quenched variance from afferent, spiking drive (gauss distributed synapse numbers)
+                // after substitution of v_0 = nu_I * J/J_0 * sqrt(K/K_0)
+            alpha_sq_0 = 1/paras.K_0 * gsl_pow_2(paras.J_I[p]) * gsl_pow_2(paras.rate[p]);
         }
+        else
+            alpha_sq_0 = 0;
+
+        paras.alpha_raw[p] = sqrt( alpha_sq + alpha_sq_0);
+        paras.alpha[p] = sqrt( alpha_sq + alpha_sq_0 + gsl_pow_2(paras.alpha_0[p]));
+//                 cout << "alpha total: " << gsl_pow_2(paras.alpha[p]) << ", from external sources: " << alpha_sq_0 << endl;
+    }
 }
 
 void model::get_delta()
 {
-        for (int p = 0; p < paras.Npop; p++)
-        {
-                double I_balance = sqrt( I_squared_nu(paras.alpha[p],paras.sigma_V[p],paras.rate[p],paras.rate_max[p]) );
-                paras.I_balance[p] = I_balance;
-                paras.delta[p] = I_balance/paras.alpha[p];
-        }
+    for (int p = 0; p < paras.Npop; p++)
+    {
+        double I_balance = sqrt( I_squared_nu(paras.alpha[p],paras.sigma_V[p],paras.rate[p],paras.rate_max[p]) );
+        paras.I_balance[p] = I_balance;
+        paras.delta[p] = I_balance/paras.alpha[p];
+    }
 }
 
 //! all those could have an added boolean, showing whether they were calculated yet, and only evaluate, if not. however, this would require boolean to be updated, whenever some variable is changed
 void model::get_gamma()
 {
-        for (int p = 0; p < paras.Npop; p++)
-                paras.gamma[p] = paras.sigma_V[p]/paras.alpha[p];
+    for (int p = 0; p < paras.Npop; p++)
+        paras.gamma[p] = paras.sigma_V[p]/paras.alpha[p];
 }
 
 void model::get_chi()
 {
-        for (int p = 0; p < paras.Npop; p++)
+    for (int p = 0; p < paras.Npop; p++)
 	{
-                double nu_peak_log_I = nu_peak_log_full(paras.gamma[p],paras.delta[p],paras.rate_max[p]);
-                paras.chi[p] = -log10(exp(1)) * nu_peak_log_I + log10(paras.rate[p]);
-        }
+        double nu_peak_log_I = nu_peak_log_full(paras.gamma[p],paras.delta[p],paras.rate_max[p]);
+        paras.chi[p] = -log10(exp(1)) * nu_peak_log_I + log10(paras.rate[p]);
+    }
 }
 
 double model::nu_peak_log_full(double gamma, double delta, double rate_max)
 {
-        return log(rate_max) - (gsl_pow_2(gamma*delta)-2*(gsl_pow_2(gamma)- 1) + gamma*delta*sqrt(gsl_pow_2(gamma*delta)-4*(gsl_pow_2(gamma)-1))) /(4*gsl_pow_2(gsl_pow_2(gamma) - 1));
+    return log(rate_max) - (gsl_pow_2(gamma*delta)-2*(gsl_pow_2(gamma)- 1) + gamma*delta*sqrt(gsl_pow_2(gamma*delta)-4*(gsl_pow_2(gamma)-1))) /(4*gsl_pow_2(gsl_pow_2(gamma) - 1));
 }
 
 double model::distribution_exact(double nu, int p)
 {
-        //! should not be evaluated, if gamma*delta > 200 or so, as cosh -> infty
-        double rate_ratio = nu/paras.rate_max[p];
+    //! should not be evaluated, if gamma*delta > 200 or so, as cosh -> infty
+    double rate_ratio = nu/paras.rate_max[p];
 //         cout << "ratio: " << rate_ratio << endl;
 //         cout << "log: " << log(rate_ratio) << endl;
 //         cout << "cosh: " << cosh(paras.gamma[p]*paras.delta[p]*sqrt(-2*log(rate_ratio))) << endl;
-        return paras.gamma[p]/(paras.rate_max[p]*sqrt(-M_PI*log(rate_ratio)))*exp(-gsl_pow_2(paras.delta[p])/2)*pow(rate_ratio,gsl_pow_2(paras.gamma[p])-1)*cosh(paras.gamma[p]*paras.delta[p]*sqrt(-2*log(rate_ratio)));
+    return paras.gamma[p]/(paras.rate_max[p]*sqrt(-M_PI*log(rate_ratio)))*exp(-gsl_pow_2(paras.delta[p])/2)*pow(rate_ratio,gsl_pow_2(paras.gamma[p])-1)*cosh(paras.gamma[p]*paras.delta[p]*sqrt(-2*log(rate_ratio)));
 }
 
 void model::solve_selfcon(int mode_calc)
@@ -446,65 +457,64 @@ void model::solve_selfcon(int mode_calc)
 
 bool model::q_border1(unsigned p)
 {
-        return (1 < paras.rate[p]/paras.rate_max[p] * sqrt(gsl_pow_2(paras.alpha[p]) + gsl_pow_2(paras.sigma_V[p]))/paras.sigma_V[p]);
+    return (1 < paras.rate[p]/paras.rate_max[p] * sqrt(gsl_pow_2(paras.alpha[p]) + gsl_pow_2(paras.sigma_V[p]))/paras.sigma_V[p]);
 }
 
 bool model::q_border2(unsigned p)
 {
-        return (1 < paras.q[p]/gsl_pow_2(paras.rate_max[p]) * sqrt(2 * gsl_pow_2(paras.alpha[p]) + gsl_pow_2(paras.sigma_V[p]))/paras.sigma_V[p]);
+    return (1 < paras.q[p]/gsl_pow_2(paras.rate_max[p]) * sqrt(2 * gsl_pow_2(paras.alpha[p]) + gsl_pow_2(paras.sigma_V[p]))/paras.sigma_V[p]);
 }
 
 bool model::inconsistent()
 {
-        for (int p = 0; p < paras.Npop; p++)
-                if (q_border1(p) || q_border2(p))
-                        return true;
-        return false;
+    for (int p = 0; p < paras.Npop; p++)
+        if (q_border1(p) || q_border2(p))
+            return true;
+    return false;
 }
 
 bool model::no_peak(unsigned p)
 {
-
-        return (gsl_pow_2(paras.gamma[p] * paras.delta[p])-4*(gsl_pow_2(paras.gamma[p]) - 1) < 0);
+    return (gsl_pow_2(paras.gamma[p] * paras.delta[p])-4*(gsl_pow_2(paras.gamma[p]) - 1) < 0);
 }
 
 bool model::implausible()
 {
-        double lower = 0.9;
-        double upper = 1;
+    double lower = 0.9;
+    double upper = 1;
 
 //         cout << "rate max: " << paras.rate_max[0] << ", gamma: " << paras.gamma[0] << ", delta: " << paras.delta[0] << endl;
-        for (int p = 0; p < paras.Npop; p++)
-        {
-                struct parameters_int Pparas;
+    for (int p = 0; p < paras.Npop; p++)
+    {
+        struct parameters_int Pparas;
 
-                Pparas.rate_max = paras.rate_max[p];
-                Pparas.gamma = paras.gamma[p];
-                Pparas.delta = paras.delta[p];
+        Pparas.rate_max = paras.rate_max[p];
+        Pparas.gamma = paras.gamma[p];
+        Pparas.delta = paras.delta[p];
 
-                gsl_function p_integrate;
-                p_integrate.function = &int_distribution_exact; //this should be changed to general function (can't be, as this function here needs to have special variables -> integration)
-                p_integrate.params = &Pparas;
-                // integration method, where function is divided into subintervals. at each iteration, intervall with highest error is split up -> good approximation of function
-                gsl_integration_workspace *ww = gsl_integration_workspace_alloc(10000);	//! workspace for storage of integration data (up to 1000 intervalls)
-                gsl_set_error_handler_off();
-                double res, err;
-        //         try
-        //         {
-                gsl_integration_qags(&p_integrate, lower*paras.rate_max[p], upper*paras.rate_max[p], 1e-7, 1e-7, 10000, ww, &res, &err);		//! integrate G from xth2 to infty
-        //         } catch (const std::exception& e){
-        //             cout << "whatup?" << endl;
-        //         } catch (...)
-        //         {
-        //             cout << "error while integrating..." << endl;
-        //         }
-                gsl_integration_workspace_free (ww);
+        gsl_function p_integrate;
+        p_integrate.function = &int_distribution_exact; //this should be changed to general function (can't be, as this function here needs to have special variables -> integration)
+        p_integrate.params = &Pparas;
+        // integration method, where function is divided into subintervals. at each iteration, intervall with highest error is split up -> good approximation of function
+        gsl_integration_workspace *ww = gsl_integration_workspace_alloc(10000);	//! workspace for storage of integration data (up to 1000 intervalls)
+        gsl_set_error_handler_off();
+        double res, err;
+//         try
+//         {
+        gsl_integration_qags(&p_integrate, lower*paras.rate_max[p], upper*paras.rate_max[p], 1e-7, 1e-7, 10000, ww, &res, &err);		//! integrate G from xth2 to infty
+//         } catch (const std::exception& e){
+//             cout << "whatup?" << endl;
+//         } catch (...)
+//         {
+//             cout << "error while integrating..." << endl;
+//         }
+        gsl_integration_workspace_free (ww);
 
-        //         cout << "result of integrating distribution over [" << lower << "," << upper << "]: " << res << endl;
-                if (res > 0.1)
-                        return true;
-        }
-        return false;
+//         cout << "result of integrating distribution over [" << lower << "," << upper << "]: " << res << endl;
+        if (res > 0.1)
+            return true;
+    }
+    return false;
 }
 
 
@@ -516,26 +526,26 @@ int selfconsistency_f (const gsl_vector * q, void * paras, gsl_vector * f)
 	vector<double> q_search(paraP->Npop);
 
 	for (int p = 0; p < paraP->Npop; p++)
-                q_search[p] = gsl_vector_get(q,p);
+        q_search[p] = gsl_vector_get(q,p);
 
 	for (int p = 0; p < paraP->Npop; p++)
 	{
 		// get alpha
-                double alpha_sq = gsl_pow_2(paraP->J_I[p]) * q_search[0];
+        double alpha_sq = gsl_pow_2(paraP->J_I[p]) * q_search[0];
 
-                if (paraP->Npop > 1)
-                        alpha_sq += gsl_pow_2(paraP->J_E[p]) * paraP->kappa * q_search[1];
+        if (paraP->Npop > 1)
+                alpha_sq += gsl_pow_2(paraP->J_E[p]) * paraP->kappa * q_search[1];
 
-                double alpha_sq_0;
-                if (paraP->drive == 2)
-                {
-                        // quenched variance from afferent, spiking drive (gauss distributed synapse numbers)
-                        alpha_sq_0 = sqrt(1./paraP->K_0) * gsl_pow_2(paraP->J_I[p]) * gsl_pow_2(paraP->rate[p]);
-                }
-                else
-                        alpha_sq_0 = 0;
+        double alpha_sq_0;
+        if (paraP->drive == 2)
+        {
+                // quenched variance from afferent, spiking drive (gauss distributed synapse numbers)
+            alpha_sq_0 = sqrt(1./paraP->K_0) * gsl_pow_2(paraP->J_I[p]) * gsl_pow_2(paraP->rate[p]);
+        }
+        else
+            alpha_sq_0 = 0;
 
-                paraP->alpha[p] = sqrt( alpha_sq + alpha_sq_0 + gsl_pow_2(paraP->alpha_0[p]) );
+        paraP->alpha[p] = sqrt( alpha_sq + alpha_sq_0 + gsl_pow_2(paraP->alpha_0[p]) );
 		// set the function
 		gsl_vector_set (f, p, selfcon(paraP->alpha[p],paraP->sigma_V[p],paraP->rate[p],q_search[p],paraP->rate_max[p]));
 	}
@@ -651,42 +661,42 @@ double shannon_entropy(int p, double lower, double upper, parameters paras)
 {
 //         struct parameters_int *para = (struct parameters_int *) paras;
 
-        struct parameters_int Pparas;
+    struct parameters_int Pparas;
 
-        Pparas.rate_max = paras.rate_max[p];
-        Pparas.gamma = paras.gamma[p];
-        Pparas.delta = paras.delta[p];
+    Pparas.rate_max = paras.rate_max[p];
+    Pparas.gamma = paras.gamma[p];
+    Pparas.delta = paras.delta[p];
 
-        gsl_function p_integrate;
-        p_integrate.function = &int_shannon_entropy; //this should be changed to general function (can't be, as this function here needs to have special variables -> integration)
-        p_integrate.params = &Pparas;
-        // integration method, where function is divided into subintervals. at each iteration, intervall with highest error is split up -> good approximation of function
-        gsl_integration_workspace *ww = gsl_integration_workspace_alloc(10000);	//! workspace for storage of integration data (up to 1000 intervalls)
-        gsl_set_error_handler_off();
-        double res, err;
-        gsl_integration_qag(&p_integrate, lower, upper, 1e-7, 1e-7, 10000, 6, ww, &res, &err);		//! integrate G from xth2 to infty
-        gsl_integration_workspace_free (ww);
+    gsl_function p_integrate;
+    p_integrate.function = &int_shannon_entropy; //this should be changed to general function (can't be, as this function here needs to have special variables -> integration)
+    p_integrate.params = &Pparas;
+    // integration method, where function is divided into subintervals. at each iteration, intervall with highest error is split up -> good approximation of function
+    gsl_integration_workspace *ww = gsl_integration_workspace_alloc(10000);	//! workspace for storage of integration data (up to 1000 intervalls)
+    gsl_set_error_handler_off();
+    double res, err;
+    gsl_integration_qag(&p_integrate, lower, upper, 1e-7, 1e-7, 10000, 6, ww, &res, &err);		//! integrate G from xth2 to infty
+    gsl_integration_workspace_free (ww);
 
 //         cout << "result of integrating distribution over [" << lower << "," << upper << "]: " << res << endl;
-        return res;//*(upper-lower);
+    return res;//*(upper-lower);
 }
 
 double int_shannon_entropy(double nu, void *params)
 {
-        struct parameters_int paras = *(struct parameters_int *) params;
-    //         struct parameters_int *paras = (struct parameters_int *) parameters;
+    struct parameters_int paras = *(struct parameters_int *) params;
+//         struct parameters_int *paras = (struct parameters_int *) parameters;
 
-        double rate_max = paras.rate_max;
-        double delta = paras.delta;
-        double gamma = paras.gamma;
+    double rate_max = paras.rate_max;
+    double delta = paras.delta;
+    double gamma = paras.gamma;
 
-        double rate_ratio = nu/rate_max;
+    double rate_ratio = nu/rate_max;
 
-        long double rho_exact = (nu > 0) ? gamma/(rate_max*sqrt(-M_PI*log(rate_ratio)))*exp(-gsl_pow_2(delta)/2)*pow(rate_ratio,gsl_pow_2(gamma)-1)*cosh(gamma*delta*sqrt(-2*log(rate_ratio))) : 0;
+    long double rho_exact = (nu > 0) ? gamma/(rate_max*sqrt(-M_PI*log(rate_ratio)))*exp(-gsl_pow_2(delta)/2)*pow(rate_ratio,gsl_pow_2(gamma)-1)*cosh(gamma*delta*sqrt(-2*log(rate_ratio))) : 0;
 
 //         cout << "rho exact: " << rho_exact << ",\t rho approx: " << rho_approx << endl;
 
-        return -rho_exact*log2(rho_exact);
+    return -rho_exact*log2(rho_exact);
 }
 
 
@@ -694,27 +704,27 @@ double KL_divergence(int p, double lower, double upper, parameters paras, parame
 {
 //         struct parameters_int *para = (struct parameters_int *) paras;
 
-        struct parameters_int Pparas;
+    struct parameters_int Pparas;
 
-        Pparas.rate_max = paras.rate_max[p];
-        Pparas.gamma = paras.gamma[p];
-        Pparas.delta = paras.delta[p];
+    Pparas.rate_max = paras.rate_max[p];
+    Pparas.gamma = paras.gamma[p];
+    Pparas.delta = paras.delta[p];
 
-        Pparas.gamma_approx = paras_approx.gamma[p];
-        Pparas.delta_approx = paras_approx.delta[p];
+    Pparas.gamma_approx = paras_approx.gamma[p];
+    Pparas.delta_approx = paras_approx.delta[p];
 
-        gsl_function p_integrate;
-        p_integrate.function = &int_KL; //this should be changed to general function (can't be, as this function here needs to have special variables -> integration)
-        p_integrate.params = &Pparas;
-        // integration method, where function is divided into subintervals. at each iteration, intervall with highest error is split up -> good approximation of function
-        gsl_integration_workspace *ww = gsl_integration_workspace_alloc(10000);	//! workspace for storage of integration data (up to 1000 intervalls)
-        gsl_set_error_handler_off();
-        double res, err;
-        gsl_integration_qag(&p_integrate, lower, upper, 1e-7, 1e-7, 10000, 6, ww, &res, &err);		//! integrate G from xth2 to infty
-        gsl_integration_workspace_free (ww);
+    gsl_function p_integrate;
+    p_integrate.function = &int_KL; //this should be changed to general function (can't be, as this function here needs to have special variables -> integration)
+    p_integrate.params = &Pparas;
+    // integration method, where function is divided into subintervals. at each iteration, intervall with highest error is split up -> good approximation of function
+    gsl_integration_workspace *ww = gsl_integration_workspace_alloc(10000);	//! workspace for storage of integration data (up to 1000 intervalls)
+    gsl_set_error_handler_off();
+    double res, err;
+    gsl_integration_qag(&p_integrate, lower, upper, 1e-7, 1e-7, 10000, 6, ww, &res, &err);		//! integrate G from xth2 to infty
+    gsl_integration_workspace_free (ww);
 
 //         cout << "result of integrating distribution over [" << lower << "," << upper << "]: " << res << endl;
-        return res;//*(upper-lower);
+    return res;//*(upper-lower);
 }
 
 double int_KL(double nu, void *params)
@@ -754,34 +764,34 @@ double pdf2hist(double lower, double upper, parameters paras)
 {
 //         struct parameters_int *para = (struct parameters_int *) paras;
 
-        struct parameters_int Pparas;
+    struct parameters_int Pparas;
 
-        Pparas.rate_max = paras.rate_max[0];
-        Pparas.gamma = paras.gamma[0];
-        Pparas.delta = paras.delta[0];
+    Pparas.rate_max = paras.rate_max[0];
+    Pparas.gamma = paras.gamma[0];
+    Pparas.delta = paras.delta[0];
 
-        gsl_function p_integrate;
-        p_integrate.function = &int_distribution_exact; //this should be changed to general function (can't be, as this function here needs to have special variables -> integration)
-        p_integrate.params = &Pparas;
-        // integration method, where function is divided into subintervals. at each iteration, intervall with highest error is split up -> good approximation of function
-        gsl_integration_workspace *ww = gsl_integration_workspace_alloc(10000);	//! workspace for storage of integration data (up to 1000 intervalls)
-        double res, err;
-        gsl_integration_qag(&p_integrate, lower, upper, 1e-7, 1e-7, 10000, 6, ww, &res, &err);		//! integrate G from xth2 to infty
-        gsl_integration_workspace_free (ww);
+    gsl_function p_integrate;
+    p_integrate.function = &int_distribution_exact; //this should be changed to general function (can't be, as this function here needs to have special variables -> integration)
+    p_integrate.params = &Pparas;
+    // integration method, where function is divided into subintervals. at each iteration, intervall with highest error is split up -> good approximation of function
+    gsl_integration_workspace *ww = gsl_integration_workspace_alloc(10000);	//! workspace for storage of integration data (up to 1000 intervalls)
+    double res, err;
+    gsl_integration_qag(&p_integrate, lower, upper, 1e-7, 1e-7, 10000, 6, ww, &res, &err);		//! integrate G from xth2 to infty
+    gsl_integration_workspace_free (ww);
 
 //         cout << "result of integrating distribution over [" << lower << "," << upper << "]: " << res << endl;
-        return res*(upper-lower);
+    return res*(upper-lower);
 }
 
 double int_distribution_exact(double nu, void *params)
 {
-        struct parameters_int paras = *(struct parameters_int *) params;
-    //         struct parameters_int *paras = (struct parameters_int *) parameters;
+    struct parameters_int paras = *(struct parameters_int *) params;
+//         struct parameters_int *paras = (struct parameters_int *) parameters;
 
-        double rate_max = paras.rate_max;
-        double delta = paras.delta;
-        double gamma = paras.gamma;
+    double rate_max = paras.rate_max;
+    double delta = paras.delta;
+    double gamma = paras.gamma;
 
-        double rate_ratio = nu/rate_max;
-        return (nu > 0) ? gamma/(rate_max*sqrt(-M_PI*log(rate_ratio)))*exp(-gsl_pow_2(delta)/2)*pow(rate_ratio,gsl_pow_2(gamma)-1)*cosh(gamma*delta*sqrt(-2*log(rate_ratio))) : 0;
+    double rate_ratio = nu/rate_max;
+    return (nu > 0) ? gamma/(rate_max*sqrt(-M_PI*log(rate_ratio)))*exp(-gsl_pow_2(delta)/2)*pow(rate_ratio,gsl_pow_2(gamma)-1)*cosh(gamma*delta*sqrt(-2*log(rate_ratio))) : 0;
 }

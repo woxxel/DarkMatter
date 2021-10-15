@@ -13,6 +13,7 @@ double int_distribution_exact(double nu, void *params);
 double pdf2hist(double lower, double upper, parameters paras);
 // double GR_implausible_test(double lower, double upper, model mod);
 // vector<double> get_density_estimate(vector<int> data, computation com, string kernel);
+void get_distribution(model *modP, simulation *simP, results *resP)
 
 double int_shannon_entropy(double nu, void *params);
 double shannon_entropy(int p, double lower, double upper, parameters paras);

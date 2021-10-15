@@ -16,9 +16,9 @@ def sharkfins(steps=10,Npop=1,plot_ax3D=False,save=0,file_format='png',rerun=Fal
 ## stats:
 ####    0: sharkfins
 ####    1: rate_dependence stats
-####    2: borders phase space
-####    3: compare exact vs. approx (single)
-####    4: KL-phase-space (costly!)
+#######    2: borders phase space
+####    2: compare exact vs. approx (single)
+####    3: KL-phase-space (costly!)
 
     steps = steps + 1       # correct for removal of first item
 
@@ -67,7 +67,6 @@ def sharkfins(steps=10,Npop=1,plot_ax3D=False,save=0,file_format='png',rerun=Fal
             inpara[key]*=sim_steps
         else:
             assert sim_steps == len(inpara[key]), 'Make sure all parameters are specified as having the same length (%s has length %d / %d)' % (key,len(inpara[key]),sim_steps)
-
 
     ## general plot setup
     # plot parameters
