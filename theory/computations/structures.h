@@ -1,22 +1,54 @@
 #include <vector>
+#include <iostream>
 
 using namespace std;
 
+class simulation;
+class model;
+
+struct results
+{
+    vector<vector<vector<double> > > rate, q, q_approx, alpha_raw, alpha, sigma_V, gamma, gamma_approx, chi, chi_approx, delta, I_balance, regions, regions_approx, entropy, KL_entropy;
+    vector<vector<vector<vector<double> > > > infoContent;
+
+    vector<unsigned> axesDim;
+
+    vector<vector<double> > KS;
+    // vector<double> KL_entropy;
+
+    vector<vector<vector<double> > > rate_T;
+    vector<vector<vector<int> > > N_AP;
+    vector<vector<double> > rate_inf;
+    // vector<double> p_est_inf, p_est_T;
+    vector<vector<vector<double> > > p_bayes_est;
+    vector<double> p_bayes_est_measures;
+    vector<double> cdf_theory;
+    // vector<double> p_k;
+    vector<int> p_hist;
+
+    vector<vector<double> > trans_DM, trans_np, trans_inc, trans_imp;
+    vector<vector<double> > trans_DM_approx, trans_np_approx, trans_inc_approx, trans_imp_approx;
+
+    double d_nu, max_prob, factor;
+    int steps;
+
+    int axes[6] = {0,0,0,0,0,0};
+};
+
+
 struct parameters
 {
-    int Npop;
+    unsigned Npop;
 	double tau_G, tau_A, tau_N, tau_M, J;
 	double eta, eps, n;
     double kappa;
-    vector<double> rate, alpha_0;
+    vector<double> rate, q, alpha_0;
 
     //external drive
     int drive;
     double J_0; // synaptic strength with respect to recurrent weights J
     double K_0; // average incoming number of synapses as multiple of recurrent connections number K
     double tau_0;
-
-	vector<double> q;
 
 	vector<double> J_E, J_I;
 //         vector<double> kappa;
@@ -28,58 +60,46 @@ struct parameters
     vector<double> entropy, KL;
 };
 
-struct results
+
+struct info_paras
 {
-    vector<double> p_exact, p_range, p_approx;
-    vector<vector<double> > rate_inf;
-//         vector<double> delta, gamma, chi;
-    vector<vector<vector<double> > > rate, alpha_raw, alpha, sigma_V, I_balance;
+    double nu0, c;
 
-    vector<vector<vector<double> > > gamma, chi, regions;//, regions_approx;
-    vector<vector<vector<double> > > q, q_approx;
-    vector<vector<vector<double> > > gamma_approx, chi_approx;
-
-    vector<unsigned> axesDim;
-
-    double alpha_single, sigma_V_single, I_single, chi_single;
-//         vector<vector<double> > q, alpha_raw, alpha, sigma_V, gamma, chi;
-
-    vector<vector<double> > KS;
-    vector<vector<vector<double> > > entropy, KL_entropy;
-//         vector<double> KL_entropy;
-
-    vector<vector<vector<double> > > rate_T;
-    vector<vector<vector<int> > > N_AP;
-//         vector<double> p_est_inf, p_est_T;
-    vector<vector<vector<double> > > p_bayes_est;
-    vector<double> p_bayes_est_measures;
-    vector<double> cdf_theory;
-//         vector<double> p_k;
-    vector<int> p_hist;
-
-    vector<vector<double> > trans_DM, trans_np, trans_inc, trans_imp;
-
-    double d_nu, max_prob, factor;
-    int steps;
-
-    int axes[6] = {0,0,0,0,0,0};
+    unsigned nZeta;
+    double minZeta, maxZeta;
 };
 
 class model
 {
 	public:
         parameters paras;
+
+        vector<double> trans_DM, trans_np, trans_inc, trans_imp;
+        vector<bool> trans_DM_found, trans_np_found;
+        bool trans_imp_found, trans_inc_found;
+
+        vector< vector <double> > infoContent;
+
+        vector<bool> in_DM, in_np;
+        bool in_imp, in_inc;
+
         void set_weights();
         void solve_selfcon(int mode_calc);
         void write_results(results * resP);
         double distribution_exact(double nu, int p);
         bool q_border1(unsigned p);
         bool q_border2(unsigned p);
+
+        bool DM_border(unsigned p);
         bool inconsistent();
         bool no_peak(unsigned p);
         bool implausible();
 
+        void integrate_information(info_paras infoParas);
+
+        void find_transitions(simulation *simP, results *resP);
         void store_update(results *resP);
+
 
 // 		model();
         void resize();
@@ -92,9 +112,8 @@ class model
         void get_gamma();
         void get_chi();
 
-        double nu_peak_log_full(double gamma, double delta, double rate_max);
+        double nu_peak_log_full(unsigned p);
 };
-
 
 struct simulation_variable
 {
@@ -113,9 +132,12 @@ struct simulation_variable
 
 };
 
+
 class simulation
 {
     public:
+
+        info_paras infoParas;
 
         vector<double> n, alpha_0, tau_G, rateWnt, eps, eta;
         unsigned nVar;
@@ -125,8 +147,8 @@ class simulation
         int mode_calc, mode_stats;
         size_t nSz, alpha_0Sz, tau_GSz, rateWntSz, epsSz, etaSz, orderSz, charSz, steps;
 
-        vector<bool> trans_DM_found, trans_np_found;
-        bool trans_imp_found, trans_inc_found;
+        vector<bool> trans_DM_found, trans_np_found, trans_DM_found_approx, trans_np_found_approx;
+        bool trans_imp_found, trans_inc_found, trans_imp_found_approx, trans_inc_found_approx;
 
         double y_val();
 
@@ -138,9 +160,8 @@ class simulation
         bool run_iteration(model *modP);
         void print_simStatus();
 
-        void initiate_y_axis(int Npop);
-        void store_results(simulation *simP, model *modP, model *mod_approxP, results *resP);
-        void store_results_approx(simulation *simP, model *modP, results *resP);
+        void initiate_y_axis(model *modP);
+        void store_results(model *modP, model *mod_approxP, results *resP);
 };
 
 struct computation
@@ -174,4 +195,6 @@ struct parameters_int
 	double gamma, delta;
 
 	double gamma_approx, delta_approx;
+
+    double nu0,zeta,c;
 };

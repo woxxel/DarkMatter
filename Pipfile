@@ -10,6 +10,8 @@ scipy = "*"
 netcdf4 = "*"
 ipython = "*"
 ipykernel = "*"
+dash = "*"
+pandas = "*"
 
 [dev-packages]
 

@@ -1,6 +1,3 @@
-#include <vector>
-
-// #include "simFunctions.h"
 
 void simulation_variable::initialize(double *modVarP, unsigned modVarSz, double *varP, unsigned varSz, string varName)
 {
@@ -92,7 +89,7 @@ bool simulation::run_iteration(model *modP)
                 iter_status[i-1] = true;
             else if (vars[i].iter==0)
             {
-                initiate_y_axis(modP->paras.Npop);
+                initiate_y_axis(modP);
             }
             if (iter_status[i])
                 break;
@@ -104,15 +101,25 @@ bool simulation::run_iteration(model *modP)
     return loops!=nVar;
 };
 
-void simulation::initiate_y_axis(int Npop)
+void simulation::initiate_y_axis(model *modP)
 {
     // cout << "initiating y-axis..." << endl;
-    for (int p = 0; p < Npop; p++)
+    for (unsigned p = 0; p < modP->paras.Npop; p++)
     {
         trans_DM_found[p] = false;
         trans_np_found[p] = false;
+
+        modP->trans_DM[p] = NAN;
+        modP->trans_np[p] = NAN;
+        modP->trans_inc[p] = NAN;
+        modP->trans_imp[p] = NAN;
+        trans_DM_found_approx[p] = false;
+        trans_np_found_approx[p] = false;
     }
 
     trans_inc_found = false;
     trans_imp_found = false;
+
+    trans_inc_found_approx = false;
+    trans_imp_found_approx = false;
 }

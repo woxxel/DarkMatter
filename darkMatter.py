@@ -96,8 +96,7 @@ def set_model(fileModel,options):
     model.set_para('tau_M',0.010,options)        # membrane timeconstant in sec
     model.set_para('tau_A',0.005,options)        # GABAergic timeconstant in sec
     model.set_para('tau_N',0.2,options)          # NMDA timeconstant in sec
-    model.set_para('J',1.,options)          # NMDA timeconstant in sec
-    print("weight now: ", model.J)
+    model.set_para('J',-1.,options)          # NMDA timeconstant in sec
 
     model.set_para('kappa',1,options)            # connectivity ratio (should have dim=Npop)
     model.set_para('drive',0,options)            # external drive (1=on, 0=off)
@@ -141,11 +140,17 @@ def set_simulation(fileSim,options,steps):
     sim.set_para('mode_calc',0,options)        # 0=exact, 1=approx
     sim.set_para('mode_stats',0,options)       # 0=general stats, 1=...
 
+    sim.set_para('nu0',0.,options)       #
+    sim.set_para('c',0.1,options)       #
+    sim.set_para('minZeta',-2.,options)       #
+    sim.set_para('maxZeta',2.,options)       #
+    sim.set_para('nZeta',10,options)       #
+
     order = ['rateWnt','alpha_0','tau_G','n','eps','eta']
     sim.set_para('order',order,options)
     sim.prepare_sim_paras(steps)
 
-    sv_str = 'steps=%d' % steps
+    sv_str = 'mode=%d_steps=%d' % (sim.mode_stats,steps)
     sv_str += '_iter'
     for key in order:
         val = getattr(sim,key)

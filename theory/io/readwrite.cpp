@@ -34,7 +34,7 @@ void write_to_ncid(int ncid, const char *varName, nc_type varType, int dimSz, co
 void read_model(string fileModel, model *modP)
 {
     // spdlog::info("reading model parameters from {} ... ",fileModel);
-    cout << "reading model parameters from " << fileModel << "... ";
+    // cout << "reading model parameters from " << fileModel << "... ";
     int ncid;
 
     nc_open(fileModel.c_str(), NC_NOWRITE, &ncid);
@@ -47,7 +47,6 @@ void read_model(string fileModel, model *modP)
     get_from_ncid(ncid, "tau_N", &modP->paras.tau_N);
     get_from_ncid(ncid, "tau_M", &modP->paras.tau_M);
     get_from_ncid(ncid, "J", &modP->paras.J);
-    cout << "J: " << modP->paras.J << endl;
     // get_from_ncid(ncid, "tau_G", &modP->paras.tau_G);
 
 // get the interaction parameters of populations
@@ -68,12 +67,12 @@ void read_model(string fileModel, model *modP)
     }
 
     nc_close(ncid);
-    cout << "done!" << endl;
+    // cout << "done!" << endl;
 }
 
 void read_simulation(string fileSim, simulation *simP)
 {
-    cout << "reading simulation parameters from " << fileSim << "... ";
+    // cout << "reading simulation parameters from " << fileSim << "... ";
 
     int ncid;
 
@@ -128,13 +127,21 @@ void read_simulation(string fileSim, simulation *simP)
     get_from_ncid(ncid, "eps", &simP->eps[0]);
     get_from_ncid(ncid, "eta", &simP->eta[0]);
 
+
+    get_from_ncid(ncid, "nu0", &simP->infoParas.nu0);
+    get_from_ncid(ncid, "c", &simP->infoParas.c);
+
+    get_from_ncid(ncid, "minZeta", &simP->infoParas.minZeta);
+    get_from_ncid(ncid, "maxZeta", &simP->infoParas.maxZeta);
+    get_from_ncid(ncid, "nZeta", &simP->infoParas.nZeta);
+
     nc_close(ncid);
-    cout << "done!" << endl;
+    // cout << "done!" << endl;
 }
 
 void read_computation(string fileComp, computation *comP)
 {
-    cout << "reading computation parameters from " << fileComp << "... " ;
+    // cout << "reading computation parameters from " << fileComp << "... " ;
 
     int ncid;
     nc_open(fileComp.c_str(), NC_NOWRITE, &ncid);
@@ -169,14 +176,14 @@ void read_computation(string fileComp, computation *comP)
         }
     }
     nc_close(ncid);
-    cout << "done!" << endl;
+    // cout << "done!" << endl;
 }
 
 
 
 void read_measures(string fileMeasures, measures *mesP)
 {
-    cout << "reading measurement data from " << fileMeasures << "... ";
+    // cout << "reading measurement data from " << fileMeasures << "... ";
 
     int ncid;
     nc_open(fileMeasures.c_str(), NC_NOWRITE, &ncid);
@@ -189,35 +196,35 @@ void read_measures(string fileMeasures, measures *mesP)
     mesP->rates.resize(mesP->N);
     get_from_ncid(ncid, "rates", &mesP->rates);
     nc_close(ncid);
-    cout << "done!" << endl;
+    // cout << "done!" << endl;
 }
 
 
 
-void write_theory(string fileOut, results *resP)
-{
-    cout << "(write theory) writing results to " << fileOut << "... ";
-
-    int ncid, resolution_dim;
-    nc_create(fileOut.c_str(), NC_CLOBBER, &ncid);
-
-    int p_Sz = resP->p_exact.size();
-    nc_def_dim(ncid, "resolution", p_Sz, &resolution_dim);
-
-    write_to_ncid(ncid,"p_range", NC_DOUBLE, 1, &resolution_dim, &resP->p_range.front());
-    write_to_ncid(ncid,"p_exact", NC_DOUBLE, 1, &resolution_dim, &resP->p_exact.front());
-    write_to_ncid(ncid,"p_approx", NC_DOUBLE, 1, &resolution_dim, &resP->p_approx.front());
-    write_to_ncid(ncid,"cdf_theory", NC_DOUBLE, 1, &resolution_dim, &resP->cdf_theory.front());
-
-    nc_close(ncid);
-    cout << "done!" << endl;
-}
+// void write_theory(string fileOut, results *resP)
+// {
+//     cout << "(write theory) writing results to " << fileOut << "... ";
+//
+//     int ncid, resolution_dim;
+//     nc_create(fileOut.c_str(), NC_CLOBBER, &ncid);
+//
+//     int p_Sz = resP->p_exact.size();
+//     nc_def_dim(ncid, "resolution", p_Sz, &resolution_dim);
+//
+//     write_to_ncid(ncid,"p_range", NC_DOUBLE, 1, &resolution_dim, &resP->p_range.front());
+//     write_to_ncid(ncid,"p_exact", NC_DOUBLE, 1, &resolution_dim, &resP->p_exact.front());
+//     write_to_ncid(ncid,"p_approx", NC_DOUBLE, 1, &resolution_dim, &resP->p_approx.front());
+//     write_to_ncid(ncid,"cdf_theory", NC_DOUBLE, 1, &resolution_dim, &resP->cdf_theory.front());
+//
+//     nc_close(ncid);
+//     cout << "done!" << endl;
+// }
 
 
 
 void write_measures(string fileOut, computation *comP, measures *mesP, results *resP)
 {
-    cout << "writing measures (results) to " << fileOut << "..." << endl;
+    // cout << "writing measures (results) to " << fileOut << "..." << endl;
 
     int ncid, one_dim, N_dim, resolution_dim;
     nc_create(fileOut.c_str(), NC_CLOBBER, &ncid);
@@ -232,7 +239,7 @@ void write_measures(string fileOut, computation *comP, measures *mesP, results *
     write_to_ncid(ncid,"d_nu", NC_DOUBLE, 1, &one_dim, &resP->d_nu);
     write_to_ncid(ncid,"rates", NC_DOUBLE, 1, &N_dim, &mesP->rates.front());
     // rates->put(&mesP->rates.front(), mesP->N);
-    write_to_ncid(ncid,"p_range", NC_DOUBLE, 1, &resolution_dim, &resP->p_range.front());
+    // write_to_ncid(ncid,"p_range", NC_DOUBLE, 1, &resolution_dim, &resP->p_range.front());
     // p_range->put(&resP->p_range.front(), p_Sz);
     write_to_ncid(ncid,"p_bayes_est", NC_DOUBLE, 1, &resolution_dim, &resP->p_bayes_est_measures.front());  // whats with measures vs ~measures?
     // p_bayes_est->put(&resP->p_bayes_est_measures.front(), p_Sz);
@@ -240,7 +247,7 @@ void write_measures(string fileOut, computation *comP, measures *mesP, results *
     // NcVar *p_k = writeResults.add_var("p_k", ncDouble, resolution_dim);
     // p_k->put(&resP->p_k.front(),p_Sz);
     nc_close(ncid);
-    cout << "done!" << endl;
+    // cout << "done!" << endl;
 }
 
 
@@ -249,81 +256,105 @@ void write_results(string fileOut, simulation *simP, model *modP, results *resP)
 	// spdlog::info("writing shark data to file '{}'...",fileOut);
 	cout << "writing result data to file " << fileOut << "...";
 
-    int ncid, dimids[4], steps_dim, steps_dim1, Npop_dim, distr_dim;
-    int steps_1 = simP->vars[1].steps;
-    int steps = simP->vars[0].steps;
+    int ncid, dimids[4], steps_dim, steps_dim1, Npop_dim, info_dim;
+    unsigned steps = simP->vars[0].steps;
+    unsigned steps_1 = simP->vars[1].steps;
+    unsigned steps_info = simP->infoParas.nZeta;
 
     nc_create(fileOut.c_str(), NC_CLOBBER, &ncid);
 
     nc_def_dim(ncid, "Npop", modP->paras.Npop, &Npop_dim);
-    nc_def_dim(ncid, "steps_dim1", steps_1, &steps_dim1);
     nc_def_dim(ncid, "steps_dim", steps, &steps_dim);
+    nc_def_dim(ncid, "steps_dim1", steps_1, &steps_dim1);
+    nc_def_dim(ncid, "info_dim", steps_info, &info_dim);
 
     dimids[0] = Npop_dim;
     dimids[1] = steps_dim1;
     dimids[2] = steps_dim;
+    dimids[3] = info_dim;
 
-    size_t start[4], count[4];
+    size_t start[3], count[3];
     start[2] = 0;
+    start[3] = 0;
+
     count[0] = 1;
     count[2] = steps;
+    count[3] = steps_info;
 
     int para_dimID[6];
     write_prep_paras(ncid,&para_dimID[0],simP);
 
     int DM_id, np_id, inc_id, imp_id;
-    int q_id, gamma_id, chi_id, regions_id;
+    int DM_approx_id, np_approx_id, inc_approx_id, imp_approx_id;
+    int q_id, gamma_id, chi_id, delta_id, I_balance_id, regions_id, regions_approx_id;
+    int info_id;
     nc_def_var(ncid, "q", NC_DOUBLE, 3, &dimids[0], &q_id);
     nc_def_var(ncid, "gamma", NC_DOUBLE, 3, &dimids[0], &gamma_id);
     nc_def_var(ncid, "chi", NC_DOUBLE, 3, &dimids[0], &chi_id);
-    if (simP->mode_stats == 0)
+    nc_def_var(ncid, "delta", NC_DOUBLE, 3, &dimids[0], &delta_id);
+    nc_def_var(ncid, "I_balance", NC_DOUBLE, 3, &dimids[0], &I_balance_id);
+    if ((simP->mode_stats == 0) || (simP->mode_stats == 3))
+    {
         nc_def_var(ncid, "regions", NC_DOUBLE, 3, &dimids[0], &regions_id);
+        if (simP->mode_stats == 3)
+            nc_def_var(ncid, "regions_approx", NC_DOUBLE, 3, &dimids[0], &regions_approx_id);
+    }
     nc_def_var(ncid, "DM_trans", NC_DOUBLE, 2, &dimids[0], &DM_id);
     nc_def_var(ncid, "np_trans", NC_DOUBLE, 2, &dimids[0], &np_id);
     nc_def_var(ncid, "inc_trans", NC_DOUBLE, 2, &dimids[0], &inc_id);
     nc_def_var(ncid, "imp_trans", NC_DOUBLE, 2, &dimids[0], &imp_id);
 
-    int alpha_raw_id, alpha_id, sigma_V_id, I_balance_id;
+    int alpha_raw_id, alpha_id, sigma_V_id;
     if (simP->mode_stats == 1)
     {
         nc_def_var(ncid, "alpha_raw", NC_DOUBLE, 3, &dimids[0], &alpha_raw_id);
         nc_def_var(ncid, "alpha", NC_DOUBLE, 3, &dimids[0], &alpha_id);
         nc_def_var(ncid, "sigma_V", NC_DOUBLE, 3, &dimids[0], &sigma_V_id);
-        nc_def_var(ncid, "I_balance", NC_DOUBLE, 3, &dimids[0], &I_balance_id);
     }
 
     int q_approx_id, gamma_approx_id, chi_approx_id, entropy_id, KL_entropy_id;
-    if (simP->mode_stats == 2)
+    if ((simP->mode_stats == 2) || (simP->mode_stats == 3))
     {
         nc_def_var(ncid, "q_approx", NC_DOUBLE, 3, &dimids[0], &q_approx_id);
         nc_def_var(ncid, "gamma_approx", NC_DOUBLE, 3, &dimids[0], &gamma_approx_id);
         nc_def_var(ncid, "chi_approx", NC_DOUBLE, 3, &dimids[0], &chi_approx_id);
         nc_def_var(ncid, "entropy", NC_DOUBLE, 3, &dimids[0], &entropy_id);
         nc_def_var(ncid, "KL_entropy", NC_DOUBLE, 3, &dimids[0], &KL_entropy_id);
+
+        nc_def_var(ncid, "DM_trans_approx", NC_DOUBLE, 2, &dimids[0], &DM_approx_id);
+        nc_def_var(ncid, "np_trans_approx", NC_DOUBLE, 2, &dimids[0], &np_approx_id);
+        nc_def_var(ncid, "inc_trans_approx", NC_DOUBLE, 2, &dimids[0], &inc_approx_id);
+        nc_def_var(ncid, "imp_trans_approx", NC_DOUBLE, 2, &dimids[0], &imp_approx_id);
     }
 
-    if (simP->mode_stats == 3)
+    if (simP->mode_stats == 4)
     {
-        int p_Sz = resP->p_exact.size();
-        nc_def_dim(ncid, "distribution_dim", p_Sz, &distr_dim);
-
-        dimids[3] = distr_dim;
-
-        start[3] = 0;
-        count[3] = p_Sz;
-
-        nc_def_var(ncid, "p_range", NC_DOUBLE, 4, &dimids[0], &p_range_id);
-        nc_def_var(ncid, "p_exact", NC_DOUBLE, 4, &dimids[0], &p_exact_id);
-        nc_def_var(ncid, "p_approx", NC_DOUBLE, 4, &dimids[0], &p_approx_id);
-        nc_def_var(ncid, "cdf_theory", NC_DOUBLE, 4, &dimids[0], &cdf_theory_id);
+        nc_def_var(ncid, "infoContent", NC_DOUBLE, 4, &dimids[0], &info_id);
     }
+
+    // int p_range_id, p_exact_id, p_approx_id, cdf_theory_id;
+    // if (simP->mode_stats == 3)
+    // {
+    //     unsigned p_Sz = resP->p_exact.size();
+    //     nc_def_dim(ncid, "distribution_dim", p_Sz, &distr_dim);
+    //
+    //     dimids[3] = distr_dim;
+    //
+    //     start[3] = 0;
+    //     count[3] = p_Sz;
+    //
+    //     nc_def_var(ncid, "p_range", NC_DOUBLE, 4, &dimids[0], &p_range_id);
+    //     nc_def_var(ncid, "p_exact", NC_DOUBLE, 4, &dimids[0], &p_exact_id);
+    //     nc_def_var(ncid, "p_approx", NC_DOUBLE, 4, &dimids[0], &p_approx_id);
+    //     nc_def_var(ncid, "cdf_theory", NC_DOUBLE, 4, &dimids[0], &cdf_theory_id);
+    // }
 
     nc_enddef(ncid);
 
     write_paras(ncid, para_dimID, simP);
 
 
-    for (int p=0; p<modP->paras.Npop; p++)
+    for (unsigned p=0; p<modP->paras.Npop; p++)
     {
         start[0] = p;
 
@@ -334,25 +365,42 @@ void write_results(string fileOut, simulation *simP, model *modP, results *resP)
         nc_put_vara(ncid, inc_id, start, count, &resP->trans_inc[p][0]);
         nc_put_vara(ncid, imp_id, start, count, &resP->trans_imp[p][0]);
 
+        if ((simP->mode_stats == 2) || (simP->mode_stats == 3))
+        {
+            nc_put_vara(ncid, DM_approx_id, start, count, &resP->trans_DM_approx[p][0]);
+            nc_put_vara(ncid, np_approx_id, start, count, &resP->trans_np_approx[p][0]);
+            nc_put_vara(ncid, inc_approx_id, start, count, &resP->trans_inc_approx[p][0]);
+            nc_put_vara(ncid, imp_approx_id, start, count, &resP->trans_imp_approx[p][0]);
+        }
+
         count[1] = 1;
 
-        for (int rec=0; rec<steps_1; rec++)
+        for (unsigned rec=0; rec<steps_1; rec++)
         {
             start[1] = rec;
+
+            start[2] = 0;
+            count[2] = steps;
             nc_put_vara(ncid, q_id, start, count, &resP->q[p][rec][0]);
             nc_put_vara(ncid, gamma_id, start, count, &resP->gamma[p][rec][0]);
             nc_put_vara(ncid, chi_id, start, count, &resP->chi[p][rec][0]);
+            nc_put_vara(ncid, delta_id, start, count, &resP->delta[p][rec][0]);
+            nc_put_vara(ncid, I_balance_id, start, count, &resP->I_balance[p][rec][0]);
 
-            if (simP->mode_stats == 0)
+            if ((simP->mode_stats == 0) || (simP->mode_stats == 3))
+            {
                 nc_put_vara(ncid, regions_id, start, count, &resP->regions[p][rec][0]);
+                if (simP->mode_stats == 3)
+                    nc_put_vara(ncid, regions_approx_id, start, count, &resP->regions_approx[p][rec][0]);
+
+            }
             if (simP->mode_stats == 1)
             {
                 nc_put_vara(ncid, alpha_raw_id, start, count, &resP->alpha_raw[p][rec][0]);
                 nc_put_vara(ncid, alpha_id, start, count, &resP->alpha[p][rec][0]);
                 nc_put_vara(ncid, sigma_V_id, start, count, &resP->sigma_V[p][rec][0]);
-                nc_put_vara(ncid, I_balance_id, start, count, &resP->I_balance[p][rec][0]);
             }
-            if (simP->mode_stats == 2)
+            if ((simP->mode_stats == 2) || (simP->mode_stats == 3))
             {
                 nc_put_vara(ncid, q_approx_id, start, count, &resP->q_approx[p][rec][0]);
                 nc_put_vara(ncid, gamma_approx_id, start, count, &resP->gamma_approx[p][rec][0]);
@@ -360,16 +408,28 @@ void write_results(string fileOut, simulation *simP, model *modP, results *resP)
                 nc_put_vara(ncid, entropy_id, start, count, &resP->entropy[p][rec][0]);
                 nc_put_vara(ncid, KL_entropy_id, start, count, &resP->KL_entropy[p][rec][0]);
             }
-            if (simP->mode_stats == 3)
+            if (simP->mode_stats == 4)
             {
-                for (int rec1=0; rec1<steps; rec1++)
+
+                count[2] = 1;
+                for (unsigned rec1=0; rec1<steps; rec1++)
                 {
-                    nc_put_vara(ncid, p_range_id, start, count, &resP->p_range[p][rec][rec1][0]);
-                    nc_put_vara(ncid, p_exact_id, start, count, &resP->p_exact[p][rec][rec1][0]);
-                    nc_put_vara(ncid, p_approx_id, start, count, &resP->p_approx[p][rec][rec1][0]);
-                    nc_put_vara(ncid, cdf_theory_id, start, count, &resP->cdf_theory[p][rec][rec1][0]);
+                    cout << "start: " << start[0] << "," << start[1] << "," << start[2] << "," << start[3] << endl;
+                    cout << "count: " << count[0] << "," << count[1] << "," << count[2] << "," << count[3] << endl;
+                    start[2] = rec1;
+                    nc_put_vara(ncid, info_id, start, count, &resP->infoContent[p][rec][rec1][0]);
                 }
             }
+            // if (simP->mode_stats == 3)
+            // {
+            //     for (unsigned rec1=0; rec1<steps; rec1++)
+            //     {
+            //         nc_put_vara(ncid, p_range_id, start, count, &resP->p_range[p][rec][rec1][0]);
+            //         nc_put_vara(ncid, p_exact_id, start, count, &resP->p_exact[p][rec][rec1][0]);
+            //         nc_put_vara(ncid, p_approx_id, start, count, &resP->p_approx[p][rec][rec1][0]);
+            //         nc_put_vara(ncid, cdf_theory_id, start, count, &resP->cdf_theory[p][rec][rec1][0]);
+            //     }
+            // }
         }
     }
 

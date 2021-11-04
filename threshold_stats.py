@@ -40,9 +40,6 @@ def threshold_stats(steps=1000,rateWnt=[0,20],alpha_0=[0,0.02,0.04],tau_G=[0.005
         x_key = 'tau_G'
 
     currents = True
-    # x_key = 'n'
-
-    print("plotting stuff...")
 
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
@@ -58,13 +55,8 @@ def threshold_stats(steps=1000,rateWnt=[0,20],alpha_0=[0,0.02,0.04],tau_G=[0.005
         'two_row': True
     }
 
-    #print res[trans_idx['inc']]
-    #print res['inc_trans']
-
-
-    #if not x_key == 'n':
     if plt_para['two_row']:
-        fig, ax = plt.subplots(2,3,figsize=(7.5,3.5))
+        fig, ax = plt.subplots(2,3,figsize=(7.5,4),dpi=300)
     else:
         fig, ax = plt.subplots(2,3,figsize=(7.5,2))
         fig.delaxes(ax[1,0])
@@ -77,7 +69,7 @@ def threshold_stats(steps=1000,rateWnt=[0,20],alpha_0=[0,0.02,0.04],tau_G=[0.005
 
 
     #big_ax = fig.add_subplot(111)
-    big_ax = plt.axes([0.1,0.1,0.8,0.8])
+    big_ax = plt.axes([0.1,0.05,0.8,0.8])
     big_ax.set_facecolor('none')
     big_ax.tick_params(labelcolor='none',top='off',bottom='off',left='off',right='off')
     big_ax.spines['top'].set_visible(False)
@@ -107,12 +99,28 @@ def threshold_stats(steps=1000,rateWnt=[0,20],alpha_0=[0,0.02,0.04],tau_G=[0.005
             trans_idx[key][a] = idx[0] if len(idx) else -1
 
     x_lim = res['inc_trans'][0,0]
-    plot_q(ax[0,0],res,x_key,trans_idx,plt_para,x_lim)
-    plot_q_zoom(ax[0,1],res,x_key,trans_idx,plt_para,1)
-    plot_currents(ax[0,2],res,x_key,trans_idx,plt_para,x_lim)
-    plot_gamma(ax[1,0],res,x_key,trans_idx,plt_para,x_lim)
-    plot_chi(ax[1,1],res,x_key,trans_idx,plt_para,x_lim)
+    plot_q(ax[0,0],res,x_key,trans_idx,plt_para,x_lim,order=0)
+    # ax[0,0].text(8,43,r'$\displaystyle q\approx\bar{\nu}^2$',fontsize=10)
+    ax[0,0].legend(prop={'size':10},bbox_to_anchor=(0.5,0.05),loc='lower left',handlelength=1)
 
+    plot_q_zoom(ax[0,1],res,x_key,trans_idx,plt_para,1,order=0)
+    # ax[0,1].text(0.1,3.5,r'$\displaystyle q\approx \frac{\bar{\nu}\nu_{max}}{\sqrt{2}}$',fontsize=10)
+    plot_currents(ax[0,2],res,x_key,trans_idx,plt_para,x_lim,order=0)
+    plot_gamma(ax[1,0],res,x_key,trans_idx,plt_para,x_lim,order=0)
+    plot_chi(ax[1,1],res,x_key,trans_idx,plt_para,x_lim,order=0)
+
+    set_title(ax[0,0],1,'',(-0.075,0),10)
+    set_title(ax[0,1],2,'',(-0.075,0),10)
+    set_title(ax[0,2],3,'',(-0.075,0),10)
+    set_title(ax[1,0],4,'',(-0.075,0),10)
+    set_title(ax[1,1],5,'',(-0.075,0),10)
+    set_title(ax[1,2],6,'',(-0.075,0),10)
+
+    plt.setp(ax[0,0],xlabel='')
+    plt.setp(ax[0,1],xlabel='')
+    plt.setp(ax[0,2],xlabel='')
+    plt.setp(ax[1,0],xlabel='')
+    plt.setp(ax[1,1],xlabel='')
 
     options = {
         'rateWnt': [0,20],
@@ -121,15 +129,22 @@ def threshold_stats(steps=1000,rateWnt=[0,20],alpha_0=[0,0.02,0.04],tau_G=[0.005
         'J': J
     }
     results_bounds = darkMatter(steps=500,options=options,rerun=rerun)
-    plot_regions(ax[1,2],results_bounds,trans_idx,plt_para,res[x_key][-1])
+    plot_regions(ax[1,2],results_bounds,trans_idx,plt_para,res[x_key][-1],order=0)
+    plt.setp(ax[1,2],xlabel='')
 
-    plt.subplots_adjust(left=0.075, bottom=0.11, right=0.99, top=0.925, wspace=0.4, hspace=0.35)
+    plt.subplots_adjust(left=0.075, bottom=0.11, right=0.99, top=0.925, wspace=0.4, hspace=0.6)
     for i in range(2):
         for j in range(3):
             ax[i,j].spines['right'].set_color('none')
             ax[i,j].yaxis.set_ticks_position('left')
             ax[i,j].spines['top'].set_color('none')
             ax[i,j].xaxis.set_ticks_position('bottom')
+
+    # fig.tight_layout(pad=0.5)
+    if save:
+        sv_name = './figures/heterogeneity.%s' % (file_format)
+        plt.savefig(sv_name,format=file_format,dpi=600)
+        print('Figure saved as "%s"' % sv_name)
 
     plt.show(block=False)
 
@@ -325,40 +340,28 @@ def plot_distr(alpha_0=[0,0.04],rateWnt=[0.5,2,10],tau_M=0.010,save=0,file_forma
     big_ax1 = plt.axes([0.1,0.05,0.35,0.9])
     big_ax1.set_axis_bgcolor('none')
     big_ax1.tick_params(labelcolor='none',top='off',bottom='off',left='off',right='off')
-    big_ax1.spines['top'].set_visible(False)
-    big_ax1.spines['right'].set_visible(False)
-    big_ax1.spines['bottom'].set_visible(False)
-    big_ax1.spines['left'].set_visible(False)
+    remove_frame(big_ax1)
     plt.setp(big_ax1,xticks=[],yticks=[])
     big_ax1.set_xlabel(r'$\displaystyle I$')
 
     big_ax1 = plt.axes([0.05,0.05,0.35,0.75 ])
     big_ax1.set_axis_bgcolor('none')
     big_ax1.tick_params(labelcolor='none',top='off',bottom='off',left='off',right='off')
-    big_ax1.spines['top'].set_visible(False)
-    big_ax1.spines['right'].set_visible(False)
-    big_ax1.spines['bottom'].set_visible(False)
-    big_ax1.spines['left'].set_visible(False)
+    remove_frame(big_ax1)
     plt.setp(big_ax1,xticks=[],yticks=[])
     big_ax1.set_ylabel(r'$\displaystyle \rho(I)$',color='r')
 
     big_ax1 = plt.axes([0.05,0.25,0.35,0.75])
     big_ax1.set_axis_bgcolor('none')
     big_ax1.tick_params(labelcolor='none',top='off',bottom='off',left='off',right='off')
-    big_ax1.spines['top'].set_visible(False)
-    big_ax1.spines['right'].set_visible(False)
-    big_ax1.spines['bottom'].set_visible(False)
-    big_ax1.spines['left'].set_visible(False)
+    remove_frame(big_ax1)
     plt.setp(big_ax1,xticks=[],yticks=[])
     big_ax1.set_ylabel(r'$\displaystyle \nu$ [Hz]')
 
     big_ax2 = plt.axes([0.6,0.075,0.35,0.9])
     big_ax2.set_axis_bgcolor('none')
     big_ax2.tick_params(labelcolor='none',top='off',bottom='off',left='off',right='off')
-    big_ax2.spines['top'].set_visible(False)
-    big_ax2.spines['right'].set_visible(False)
-    big_ax2.spines['bottom'].set_visible(False)
-    big_ax2.spines['left'].set_visible(False)
+    remove_frame(big_ax2)
     plt.setp(big_ax2,xticks=[],yticks=[])
     big_ax2.set_xlabel(r'$\displaystyle \rho(\nu)$')
 
