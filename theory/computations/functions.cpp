@@ -69,8 +69,8 @@ void initiate_results(model *modP, simulation *simP, results *resP)
 
     if (simP->mode_stats == 4)
     {
-        modP->infoContent.resize(modP->paras.Npop,vector<double>(simP->infoParas.nZeta));
-        resP->infoContent.resize(modP->paras.Npop,vector<vector<vector<double> > >(simP->vars[1].steps,vector<vector<double> >(simP->vars[0].steps,vector<double>(simP->infoParas.nZeta))));
+        modP->infoContent.resize(modP->paras.Npop);
+        resP->infoContent.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
     }
 }
 
@@ -157,104 +157,6 @@ double I_squared_q(double alpha, double sigma_V, double q, double rate_max)
 {
 	return -( gsl_pow_2(alpha) + 0.5*gsl_pow_2(sigma_V) ) * log( (gsl_pow_2(q)/gsl_pow_4(rate_max) ) * (1 + 2*gsl_pow_2(alpha / sigma_V)) );
 }
-
-void simulation::store_results(model * modP, model * mod_approxP, results * resP)
-{
-//         unsigned a = resP->rate.size() - 1;
-//         cout << "size = " << a << endl;
-//         unsigned size = resP->rate[a].size()+1;
-//         cout << "rate=" << paras.rate << " ,\t q=" << paras.q[0] << " ,\t alpha=" << paras.alpha[0] << " ,\t gamma=" << paras.gamma[0] << " ,\t chi=" << paras.chi[0] << endl;
-        //! write: rate, q, alpha, alpha+alpha_0, sigma_V, gamma, chi, threshold transition, nu_no_peak, nu_inconsistent
-    for (unsigned p = 0; p < modP->paras.Npop; p++)
-    {
-        resP->rate[p][vars[1].iter][vars[0].iter] = modP->paras.rate[p];
-        resP->q[p][vars[1].iter][vars[0].iter] = modP->paras.q[p];
-
-        resP->gamma[p][vars[1].iter][vars[0].iter] = modP->paras.gamma[p];
-        resP->chi[p][vars[1].iter][vars[0].iter] = modP->paras.chi[p];
-        resP->delta[p][vars[1].iter][vars[0].iter] = modP->paras.delta[p];
-        resP->I_balance[p][vars[1].iter][vars[0].iter] = modP->paras.I_balance[p];
-
-        if ((!trans_DM_found[p]) && (modP->trans_DM_found[p]))
-        {
-            resP->trans_DM[p][vars[1].iter] = modP->trans_DM[p];
-            trans_DM_found[p] = true;
-        }
-        if ((!trans_np_found[p]) && (modP->trans_np_found[p]))
-        {
-            resP->trans_np[p][vars[1].iter] = modP->trans_np[p];
-            trans_np_found[p] = true;
-        }
-        if ((!trans_imp_found) && (modP->trans_imp_found))
-        {
-            resP->trans_imp[p][vars[1].iter] = modP->trans_imp[p];
-            trans_imp_found = true;
-        }
-        if ((!trans_inc_found) && (modP->trans_inc_found))
-        {
-            resP->trans_inc[p][vars[1].iter] = modP->trans_inc[p];
-            trans_inc_found = true;
-        }
-        if ((mode_stats == 2) || (mode_stats == 3))
-        {
-            if ((!trans_DM_found_approx[p]) && (mod_approxP->trans_DM_found[p]))
-            {
-                resP->trans_DM_approx[p][vars[1].iter] = mod_approxP->trans_DM[p];
-                trans_DM_found_approx[p] = true;
-            }
-            if ((!trans_np_found_approx[p]) && (mod_approxP->trans_np_found[p]))
-            {
-                resP->trans_np_approx[p][vars[1].iter] = mod_approxP->trans_np[p];
-                trans_np_found_approx[p] = true;
-            }
-            if ((!trans_imp_found_approx) && (mod_approxP->trans_imp_found))
-            {
-                resP->trans_imp_approx[p][vars[1].iter] = mod_approxP->trans_imp[p];
-                trans_imp_found_approx = true;
-            }
-            if ((!trans_inc_found_approx) && (mod_approxP->trans_inc_found))
-            {
-                resP->trans_inc_approx[p][vars[1].iter] = mod_approxP->trans_inc[p];
-                trans_inc_found_approx = true;
-            }
-        }
-
-        if ((mode_stats == 0) || (mode_stats == 3))
-        {
-            resP->regions[p][vars[1].iter][vars[0].iter] = modP->paras.regions[p];
-            if ((mode_stats == 2) || (mode_stats == 3))
-                resP->regions_approx[p][vars[1].iter][vars[0].iter] = mod_approxP->paras.regions[p];
-        }
-
-        if (mode_stats == 1)
-        {
-            resP->alpha_raw[p][vars[1].iter][vars[0].iter] = modP->paras.alpha_raw[p];
-            resP->alpha[p][vars[1].iter][vars[0].iter] = modP->paras.alpha[p];
-            resP->sigma_V[p][vars[1].iter][vars[0].iter] = modP->paras.sigma_V[p];
-        }
-
-        if ((mode_stats == 2) || (mode_stats == 3))
-        {
-            resP->q_approx[p][vars[1].iter][vars[0].iter] = mod_approxP->paras.q[p];
-            resP->gamma_approx[p][vars[1].iter][vars[0].iter] = mod_approxP->paras.gamma[p];
-            resP->chi_approx[p][vars[1].iter][vars[0].iter] = mod_approxP->paras.chi[p];
-
-            resP->KL_entropy[p][vars[1].iter][vars[0].iter] = modP->paras.KL[p];
-            resP->entropy[p][vars[1].iter][vars[0].iter] = modP->paras.entropy[p];
-        }
-
-        if (mode_stats == 4)
-        {
-            for (unsigned z=0; z<infoParas.nZeta; z++)
-            {
-                // cout << "handing over data: " << modP->infoContent[p][z] << endl;
-                resP->infoContent[p][vars[1].iter][vars[0].iter][z] = modP->infoContent[p][z];
-            }
-        }
-    }
-}
-
-
 
 // void simulation::store_results_approx(simulation *simP, model *modP, results * resP)
 // {
@@ -407,21 +309,21 @@ double int_distribution_exact(double nu, void *params)
     return rate_distribution(nu,paras.rate_max,paras.gamma,paras.delta);
 }
 
-double information_fct(double nu, double nu0, double zeta, double c)
+double information_fct(double nu, double nu0, double zeta)
 {
     // cout << "paras in info: nu=" << nu << ", nu0=" << nu0 << ", zeta=" << zeta << ", c=" << c << endl;
     // cout << "evaluating info: " << c*pow(nu - nu0,zeta) << endl;
 
-    if (nu > 0.9*nu0) return 0;
+    // if (nu > 0.9*nu0) return 0;
 
     double base = 1.;
     double a = zeta>0 ? zeta : base;
     double b = zeta<0 ? -zeta : base;
     double x = nu/nu0;
-    
+
     // cout << "paras in info: nu=" << nu << "/" << nu0 << ", x=" << x << ", a=" << a << ", b=" << b << endl;
 
-    return std::beta(a,b) * pow(x,a-1) * pow(1-x,b-1);
+    return pow(std::beta(a,b),-1) * pow(x,a-1) * pow(1-x,b-1);
 
     // return c*pow(nu - nu0,zeta);
 }
@@ -431,5 +333,5 @@ double int_information_distribution(double nu, void *params)
     struct parameters_int paras = *(struct parameters_int *) params;
 
     // cout << "p(nu)=" << rate_distribution(nu,paras.rate_max,paras.gamma,paras.delta) << "; I(nu)=" << information_fct(nu,paras.nu0,paras.zeta,paras.c) << endl;
-    return information_fct(nu,paras.rate_max,paras.zeta,paras.c) * nu * rate_distribution(nu,paras.rate_max,paras.gamma,paras.delta);
+    return information_fct(nu,paras.rate_max,paras.zeta) * nu * rate_distribution(nu,paras.rate_max,paras.gamma,paras.delta);
 }

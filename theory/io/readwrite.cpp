@@ -85,6 +85,7 @@ void read_simulation(string fileSim, simulation *simP)
     get_from_ncid(ncid, "rateWntSz", &simP->rateWntSz);
     get_from_ncid(ncid, "epsSz", &simP->epsSz);
     get_from_ncid(ncid, "etaSz", &simP->etaSz);
+    get_from_ncid(ncid, "zetaSz", &simP->zetaSz);
     get_from_ncid(ncid, "orderSz", &simP->orderSz);
     get_from_ncid(ncid, "charSz", &simP->charSz);
 
@@ -99,6 +100,7 @@ void read_simulation(string fileSim, simulation *simP)
     simP->rateWnt.resize(simP->rateWntSz);
     simP->eps.resize(simP->epsSz);
     simP->eta.resize(simP->etaSz);
+    simP->zeta.resize(simP->zetaSz);
     simP->order.resize(simP->orderSz);
 
     // read variables from ncid
@@ -126,14 +128,14 @@ void read_simulation(string fileSim, simulation *simP)
     get_from_ncid(ncid, "rateWnt", &simP->rateWnt[0]);
     get_from_ncid(ncid, "eps", &simP->eps[0]);
     get_from_ncid(ncid, "eta", &simP->eta[0]);
+    get_from_ncid(ncid, "zeta", &simP->zeta[0]);
+    // cout << "zeta: " << simP->zeta[0] << endl;
+    // get_from_ncid(ncid, "nu0", &simP->infoParas.nu0);
+    // get_from_ncid(ncid, "c", &simP->infoParas.c);
 
-
-    get_from_ncid(ncid, "nu0", &simP->infoParas.nu0);
-    get_from_ncid(ncid, "c", &simP->infoParas.c);
-
-    get_from_ncid(ncid, "minZeta", &simP->infoParas.minZeta);
-    get_from_ncid(ncid, "maxZeta", &simP->infoParas.maxZeta);
-    get_from_ncid(ncid, "nZeta", &simP->infoParas.nZeta);
+    // get_from_ncid(ncid, "minZeta", &simP->infoParas.minZeta);
+    // get_from_ncid(ncid, "maxZeta", &simP->infoParas.maxZeta);
+    // get_from_ncid(ncid, "nZeta", &simP->infoParas.nZeta);
 
     nc_close(ncid);
     // cout << "done!" << endl;
@@ -254,24 +256,25 @@ void write_measures(string fileOut, computation *comP, measures *mesP, results *
 void write_results(string fileOut, simulation *simP, model *modP, results *resP)
 {
 	// spdlog::info("writing shark data to file '{}'...",fileOut);
-	cout << "writing result data to file " << fileOut << "...";
+	// cout << "writing result data to file " << fileOut << "...";
 
-    int ncid, dimids[4], steps_dim, steps_dim1, Npop_dim, info_dim;
+    int ncid, dimids[3], steps_dim, steps_dim1, Npop_dim;//, info_dim;
     unsigned steps = simP->vars[0].steps;
     unsigned steps_1 = simP->vars[1].steps;
-    unsigned steps_info = simP->infoParas.nZeta;
+    // unsigned steps_info = simP->infoParas.nZeta;
+    // cout << "steps info: " << steps_info << endl;
 
     nc_create(fileOut.c_str(), NC_CLOBBER, &ncid);
 
     nc_def_dim(ncid, "Npop", modP->paras.Npop, &Npop_dim);
     nc_def_dim(ncid, "steps_dim", steps, &steps_dim);
     nc_def_dim(ncid, "steps_dim1", steps_1, &steps_dim1);
-    nc_def_dim(ncid, "info_dim", steps_info, &info_dim);
+    // nc_def_dim(ncid, "info_dim", steps_info, &info_dim);
 
     dimids[0] = Npop_dim;
     dimids[1] = steps_dim1;
     dimids[2] = steps_dim;
-    dimids[3] = info_dim;
+    // dimids[3] = info_dim;
 
     size_t start[3], count[3];
     start[2] = 0;
@@ -279,9 +282,9 @@ void write_results(string fileOut, simulation *simP, model *modP, results *resP)
 
     count[0] = 1;
     count[2] = steps;
-    count[3] = steps_info;
+    // count[3] = steps_info;
 
-    int para_dimID[6];
+    int para_dimID[7];
     write_prep_paras(ncid,&para_dimID[0],simP);
 
     int DM_id, np_id, inc_id, imp_id;
@@ -329,7 +332,7 @@ void write_results(string fileOut, simulation *simP, model *modP, results *resP)
 
     if (simP->mode_stats == 4)
     {
-        nc_def_var(ncid, "infoContent", NC_DOUBLE, 4, &dimids[0], &info_id);
+        nc_def_var(ncid, "infoContent", NC_DOUBLE, 3, &dimids[0], &info_id);
     }
 
     // int p_range_id, p_exact_id, p_approx_id, cdf_theory_id;
@@ -352,7 +355,6 @@ void write_results(string fileOut, simulation *simP, model *modP, results *resP)
     nc_enddef(ncid);
 
     write_paras(ncid, para_dimID, simP);
-
 
     for (unsigned p=0; p<modP->paras.Npop; p++)
     {
@@ -380,7 +382,7 @@ void write_results(string fileOut, simulation *simP, model *modP, results *resP)
             start[1] = rec;
 
             start[2] = 0;
-            count[2] = steps;
+            // count[2] = steps;
             nc_put_vara(ncid, q_id, start, count, &resP->q[p][rec][0]);
             nc_put_vara(ncid, gamma_id, start, count, &resP->gamma[p][rec][0]);
             nc_put_vara(ncid, chi_id, start, count, &resP->chi[p][rec][0]);
@@ -411,14 +413,15 @@ void write_results(string fileOut, simulation *simP, model *modP, results *resP)
             if (simP->mode_stats == 4)
             {
 
-                count[2] = 1;
-                for (unsigned rec1=0; rec1<steps; rec1++)
-                {
-                    // cout << "start: " << start[0] << "," << start[1] << "," << start[2] << "," << start[3] << endl;
-                    // cout << "count: " << count[0] << "," << count[1] << "," << count[2] << "," << count[3] << endl;
-                    start[2] = rec1;
-                    nc_put_vara(ncid, info_id, start, count, &resP->infoContent[p][rec][rec1][0]);
-                }
+                // count[2] = 1;
+                nc_put_vara(ncid, info_id, start, count, &resP->infoContent[p][rec][0]);
+                // for (unsigned rec1=0; rec1<steps; rec1++)
+                // {
+                //     // cout << "start: " << start[0] << "," << start[1] << "," << start[2] << "," << start[3] << endl;
+                //     // cout << "count: " << count[0] << "," << count[1] << "," << count[2] << "," << count[3] << endl;
+                //     start[2] = rec1;
+                //     nc_put_vara(ncid, info_id, start, count, &resP->infoContent[p][rec][rec1][0]);
+                // }
             }
             // if (simP->mode_stats == 3)
             // {
@@ -434,7 +437,7 @@ void write_results(string fileOut, simulation *simP, model *modP, results *resP)
     }
 
     nc_close(ncid);
-    cout << "done!" << endl;
+    // cout << "done!" << endl;
 }
 
 void write_prep_paras(int ncid, int *dimID, simulation *simP)

@@ -11,7 +11,7 @@ double selfcon(double alpha, double sigma_V, double rateWnt, double q, double ra
 
 double int_distribution_exact(double nu, void *params);
 double int_information_distribution(double nu, void *params);
-double information_fct(double nu, double nu0, double zeta, double c);
+double information_fct(double nu, double nu0, double zeta);
 
 double pdf2hist(double lower, double upper, parameters paras);
 // double GR_implausible_test(double lower, double upper, model mod);
@@ -37,7 +37,7 @@ void draw_samples(computation *comP, results *resP);
 vector<double> get_cdf(vector<double> p, int steps, double d_nu);
 void post_process(computation *comP, model *modP, model *mod_approxP, simulation *simP, results *resP);
 
-void fill_line(int value, double *gammaP, computation com, unsigned n_iter, unsigned alpha_iter, unsigned tau_G_iter, unsigned rate_iter, unsigned p);
+// void fill_line(int value, double *gammaP, computation com, unsigned n_iter, unsigned alpha_iter, unsigned tau_G_iter, unsigned rate_iter, unsigned p);
 
 //! read/write stuff
 void print_state(size_t iter, gsl_multiroot_fsolver * s);

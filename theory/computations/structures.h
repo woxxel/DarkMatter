@@ -9,7 +9,8 @@ class model;
 struct results
 {
     vector<vector<vector<double> > > rate, q, q_approx, alpha_raw, alpha, sigma_V, gamma, gamma_approx, chi, chi_approx, delta, I_balance, regions, regions_approx, entropy, KL_entropy;
-    vector<vector<vector<vector<double> > > > infoContent;
+
+    vector<vector<vector<double> > > infoContent;
 
     vector<unsigned> axesDim;
 
@@ -32,7 +33,7 @@ struct results
     double d_nu, max_prob, factor;
     int steps;
 
-    int axes[6] = {0,0,0,0,0,0};
+    int axes[7] = {0,0,0,0,0,0,0};
 };
 
 
@@ -41,6 +42,7 @@ struct parameters
     unsigned Npop;
 	double tau_G, tau_A, tau_N, tau_M, J;
 	double eta, eps, n;
+    double zeta;
     double kappa;
     vector<double> rate, q, alpha_0;
 
@@ -78,7 +80,7 @@ class model
         vector<bool> trans_DM_found, trans_np_found;
         bool trans_imp_found, trans_inc_found;
 
-        vector< vector <double> > infoContent;
+        vector<double> infoContent;
 
         vector<bool> in_DM, in_np;
         bool in_imp, in_inc;
@@ -139,13 +141,13 @@ class simulation
 
         info_paras infoParas;
 
-        vector<double> n, alpha_0, tau_G, rateWnt, eps, eta;
+        vector<double> n, alpha_0, tau_G, rateWnt, eps, eta, zeta;
         unsigned nVar;
         vector<string> order; // contains the strings of parameters in the order that the iteration should walk through
 
-        unsigned n_iter, alpha_0_iter, tau_G_iter, rateWnt_iter, eps_iter, eta_iter;
+        // unsigned n_iter, alpha_0_iter, tau_G_iter, rateWnt_iter, eps_iter, eta_iter;
         int mode_calc, mode_stats;
-        size_t nSz, alpha_0Sz, tau_GSz, rateWntSz, epsSz, etaSz, orderSz, charSz, steps;
+        size_t nSz, alpha_0Sz, tau_GSz, rateWntSz, epsSz, etaSz, zetaSz, orderSz, charSz, steps;
 
         vector<bool> trans_DM_found, trans_np_found, trans_DM_found_approx, trans_np_found_approx;
         bool trans_imp_found, trans_inc_found, trans_imp_found_approx, trans_inc_found_approx;
@@ -196,5 +198,5 @@ struct parameters_int
 
 	double gamma_approx, delta_approx;
 
-    double nu0,zeta,c;
+    double zeta;
 };
