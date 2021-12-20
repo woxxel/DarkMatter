@@ -142,9 +142,9 @@ def set_simulation(fileSim,options,steps):
 
     sim.set_para('nu0',0.,options)       #
     sim.set_para('c',0.1,options)       #
-    sim.set_para('minZeta',-2.,options)       #
-    sim.set_para('maxZeta',2.,options)       #
-    sim.set_para('nZeta',10,options)       #
+    sim.set_para('minZeta',-3.,options)       #
+    sim.set_para('maxZeta',3.,options)       #
+    sim.set_para('nZeta',11,options)       #
 
     order = ['rateWnt','alpha_0','tau_G','n','eps','eta']
     sim.set_para('order',order,options)
@@ -197,7 +197,7 @@ def compile_code():
     ## prepare code by compiling, if needed
     modes = '-g -Wall -ansi'
 
-    libs = ' -lgsl -lgslcblas -lnetcdf -std=c++11'
+    libs = ' -lgsl -lgslcblas -lnetcdf -std=c++17' # or rather 11? (beta function requires 17)
     os.system('g++ %s -o ./theory/sharkfins ./theory/sharkfins.cpp %s' % (modes,libs))
 
     ## ---------------------------------------

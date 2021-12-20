@@ -411,7 +411,19 @@ double information_fct(double nu, double nu0, double zeta, double c)
 {
     // cout << "paras in info: nu=" << nu << ", nu0=" << nu0 << ", zeta=" << zeta << ", c=" << c << endl;
     // cout << "evaluating info: " << c*pow(nu - nu0,zeta) << endl;
-    return c*pow(nu - nu0,zeta);
+
+    if (nu > 0.9*nu0) return 0;
+
+    double base = 1.;
+    double a = zeta>0 ? zeta : base;
+    double b = zeta<0 ? -zeta : base;
+    double x = nu/nu0;
+    
+    // cout << "paras in info: nu=" << nu << "/" << nu0 << ", x=" << x << ", a=" << a << ", b=" << b << endl;
+
+    return std::beta(a,b) * pow(x,a-1) * pow(1-x,b-1);
+
+    // return c*pow(nu - nu0,zeta);
 }
 
 double int_information_distribution(double nu, void *params)
@@ -419,5 +431,5 @@ double int_information_distribution(double nu, void *params)
     struct parameters_int paras = *(struct parameters_int *) params;
 
     // cout << "p(nu)=" << rate_distribution(nu,paras.rate_max,paras.gamma,paras.delta) << "; I(nu)=" << information_fct(nu,paras.nu0,paras.zeta,paras.c) << endl;
-    return information_fct(nu,paras.nu0,paras.zeta,paras.c) * rate_distribution(nu,paras.rate_max,paras.gamma,paras.delta);
+    return information_fct(nu,paras.rate_max,paras.zeta,paras.c) * nu * rate_distribution(nu,paras.rate_max,paras.gamma,paras.delta);
 }

@@ -144,14 +144,14 @@ void model::get_delta()
 {
     for (unsigned p = 0; p < paras.Npop; p++)
     {
-        cout << "alpha="<<paras.alpha[p]<< ", sigma=" << paras.sigma_V[p] << endl;
-        cout << "nu="<<paras.rate[p]<< ", rate_max=" << paras.rate_max[p] << endl;
+        // cout << "alpha="<<paras.alpha[p]<< ", sigma=" << paras.sigma_V[p] << endl;
+        // cout << "nu="<<paras.rate[p]<< ", rate_max=" << paras.rate_max[p] << endl;
 
         double I_balance = sqrt( I_squared_nu(paras.alpha[p],paras.sigma_V[p],paras.rate[p],paras.rate_max[p]) );
         paras.I_balance[p] = I_balance;
         paras.delta[p] = I_balance/paras.alpha[p];
-        cout << "got I balance: " << I_balance << endl;
-        cout << "got delta: " << paras.delta[p] << endl;
+        // cout << "got I balance: " << I_balance << endl;
+        // cout << "got delta: " << paras.delta[p] << endl;
     }
 }
 
@@ -481,7 +481,7 @@ void model::integrate_information(info_paras infoParas)
 
         double dZeta = (infoParas.maxZeta - infoParas.minZeta)/infoParas.nZeta;
 
-        cout << "zeta: [" << infoParas.minZeta << "," << infoParas.maxZeta << "] , steps: " << infoParas.nZeta << endl;
+        // cout << "zeta: [" << infoParas.minZeta << "," << infoParas.maxZeta << "] , steps: " << infoParas.nZeta << endl;
         for (unsigned z=0; z<infoParas.nZeta; z++)
         {
             Pparas.zeta = infoParas.minZeta + z*dZeta;
@@ -499,7 +499,7 @@ void model::integrate_information(info_paras infoParas)
             gsl_integration_workspace_free (ww);
 
             infoContent[p][z] = res;
-            cout << "now integrating with zeta = " << Pparas.zeta << "; information content: " << res << endl;
+            // cout << "now integrating with zeta = " << Pparas.zeta << "; information content: " << res << endl;
         }
 
 //         cout << "result of integrating distribution over [" << lower << "," << upper << "]: " << res << endl;

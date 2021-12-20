@@ -414,8 +414,8 @@ void write_results(string fileOut, simulation *simP, model *modP, results *resP)
                 count[2] = 1;
                 for (unsigned rec1=0; rec1<steps; rec1++)
                 {
-                    cout << "start: " << start[0] << "," << start[1] << "," << start[2] << "," << start[3] << endl;
-                    cout << "count: " << count[0] << "," << count[1] << "," << count[2] << "," << count[3] << endl;
+                    // cout << "start: " << start[0] << "," << start[1] << "," << start[2] << "," << start[3] << endl;
+                    // cout << "count: " << count[0] << "," << count[1] << "," << count[2] << "," << count[3] << endl;
                     start[2] = rec1;
                     nc_put_vara(ncid, info_id, start, count, &resP->infoContent[p][rec][rec1][0]);
                 }
