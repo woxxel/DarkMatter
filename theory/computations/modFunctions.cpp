@@ -144,9 +144,10 @@ void model::get_delta()
 {
     for (unsigned p = 0; p < paras.Npop; p++)
     {
-        // cout << "alpha="<<paras.alpha[p]<< ", sigma=" << paras.sigma_V[p] << endl;
-        // cout << "nu="<<paras.rate[p]<< ", rate_max=" << paras.rate_max[p] << endl;
 
+        // cout << "nu="<<paras.rate[p]<< ", rate_max=" << paras.rate_max[p] << endl;
+        // cout << "alpha="<<paras.alpha[p]<< ", sigma=" << paras.sigma_V[p] << endl;
+        // cout << "I: " << I_squared_nu(paras.alpha[p],paras.sigma_V[p],paras.rate[p],paras.rate_max[p]) << endl;
         double I_balance = sqrt( I_squared_nu(paras.alpha[p],paras.sigma_V[p],paras.rate[p],paras.rate_max[p]) );
         paras.I_balance[p] = I_balance;
         paras.delta[p] = I_balance/paras.alpha[p];
@@ -463,47 +464,52 @@ void model::find_transitions(simulation *simP, results *resP)
 
 void model::integrate_information(info_paras infoParas)
 {
-    double lower = 0.0;
+    double lower = 1.0e-6;
     double upper = 0.9;
     // cout << "rate max: " << paras.rate_max[0] << ", gamma: " << paras.gamma[0] << ", delta: " << paras.delta[0] << endl;
     for (unsigned p = 0; p < paras.Npop; p++)
     {
-        struct parameters_int Pparas;
+        if (in_inc)
+            infoContent[p] = NAN;
+        else {
+            struct parameters_int Pparas;
 
-        Pparas.rate_max = paras.rate_max[p];
-        Pparas.gamma = paras.gamma[p];
-        Pparas.delta = paras.delta[p];
+            Pparas.rate_max = paras.rate_max[p];
+            Pparas.gamma = paras.gamma[p];
+            Pparas.delta = paras.delta[p];
 
-        // for now, hardcoded - but change!
-        // Pparas.nu0 = infoParas.nu0;
-        // Pparas.c = infoParas.c;
+            // for now, hardcoded - but change!
+            // Pparas.nu0 = infoParas.nu0;
+            // Pparas.c = infoParas.c;
 
-        // double dZeta = (infoParas.maxZeta - infoParas.minZeta)/infoParas.nZeta;
+            // double dZeta = (infoParas.maxZeta - infoParas.minZeta)/infoParas.nZeta;
 
-        // cout << "zeta: [" << infoParas.minZeta << "," << infoParas.maxZeta << "] , steps: " << infoParas.nZeta << endl;
-        // for (unsigned z=0; z<infoParas.nZeta; z++)
-        // {
+            // cout << "zeta: [" << infoParas.minZeta << "," << infoParas.maxZeta << "] , steps: " << infoParas.nZeta << endl;
+            // for (unsigned z=0; z<infoParas.nZeta; z++)
+            // {
             // Pparas.zeta = infoParas.minZeta + z*dZeta;
 
-        Pparas.zeta = paras.zeta;
+            Pparas.zeta = paras.zeta;
 
-        gsl_function p_integrate;
-        p_integrate.function = &int_information_distribution; //this should be changed to general function (can't be, as this function here needs to have special variables -> integration)
-        p_integrate.params = &Pparas;
-        // integration method, where function is divided into subintervals. at each iteration, intervall with highest error is split up -> good approximation of function
-        gsl_integration_workspace *ww = gsl_integration_workspace_alloc(10000);	//! workspace for storage of integration data (up to 1000 intervalls)
-        gsl_set_error_handler_off();
-        double res, err;
-        gsl_integration_qags(&p_integrate, lower*paras.rate_max[p], upper*paras.rate_max[p], 1e-7, 1e-7, 10000, ww, &res, &err);
-        gsl_integration_workspace_free (ww);
+            gsl_function p_integrate;
+            p_integrate.function = &int_information_distribution; //this should be changed to general function (can't be, as this function here needs to have special variables -> integration)
+            p_integrate.params = &Pparas;
+            // integration method, where function is divided into subintervals. at each iteration, intervall with highest error is split up -> good approximation of function
+            gsl_integration_workspace *ww = gsl_integration_workspace_alloc(10000);	//! workspace for storage of integration data (up to 1000 intervalls)
+            gsl_set_error_handler_off();
+            double res, err;
+            gsl_integration_qags(&p_integrate, lower*paras.rate_max[p], upper*paras.rate_max[p], 1e-7, 1e-7, 10000, ww, &res, &err);
+            gsl_integration_workspace_free (ww);
 
-        // infoContent[p][z] = res;
-        infoContent[p] = res;
-            // cout << "now integrating with zeta = " << Pparas.zeta << "; information content: " << res << endl;
-        // }
+            // infoContent[p][z] = res;
+            infoContent[p] = res;
+            // cout << "information content: " << res << endl;
+            // }
 
-        // cout << "result of integrating distribution over [" << lower << "," << upper << "]: " << res << endl;
-        // if (res > 0.1)
+            // cout << "result of integrating distribution over [" << lower << "," << upper << "]: " << res << endl;
+            // if (res > 0.1)
+
+        }
 
     }
     // return res;

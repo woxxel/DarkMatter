@@ -54,7 +54,7 @@ def phase_plots(steps=100,Npop=1,plot_ax3D=False,save=0,file_format='png',rerun=
         'order': ['tau_G','alpha_0','rateWnt','n','eta','eps'],
         'tau_G': [0,0.1],
         'alpha_0': [0,0.2],
-        'rateWnt': [2],
+        'rateWnt': [1.],
         'mode_stats': 0
     }
     results_2 = darkMatter(steps=steps,options=options,rerun=rerun,compile=compile)

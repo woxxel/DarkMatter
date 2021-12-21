@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 import math
 import scipy.stats as stats
 import matplotlib as mpl
@@ -39,23 +40,47 @@ def information(steps=100,
     plt.rc('text', usetex=True)
     plt.rc('font', family='sans-serif')
 
+    plt_para = {}
+    levs = 20
+    plt_para['bnw'] = mcolors.LinearSegmentedColormap.from_list(name='black_n_white',colors=[(0,(0,0,0)),(1,(1,1,1))],N=levs-1)
+    plt_para['heat'] = mcolors.LinearSegmentedColormap.from_list(name='heat',colors=[(0,'y'),(0.5,'r'),(1,(0.1,0.1,0.5))],N=levs-1)
+    plt_para['bnw_regions'] = mcolors.LinearSegmentedColormap.from_list(name='black_n_white_regions',colors=[(0,(1,1,1)),(1,(0.8,0.8,0.8))],N=3)
+
+
     fig = plt.figure(figsize=(8,6),dpi=300)
 
     ax = plt.axes([0.1,0.65,0.3,0.25])
-    for a in np.linspace(-3,3,5):
-        alpha = a if a>0 else 1
-        beta = -a if a<0 else 1
-        ax.plot(x,stats.beta.pdf(x,alpha,beta),label="a=%g"%a)
-    ax.legend();plt.show(block=False)
+    base  = 1.
+    # for a in np.linspace(-3,3,7):
+    #     alpha = a if a>0 else base
+    #     beta = -a if a<0 else base
+    #     x = np.linspace(stats.beta.ppf(0.01, alpha, beta),stats.beta.ppf(0.99, alpha, beta), 100)
+    #     ax.plot(x,stats.beta.pdf(x,alpha,beta),label="a=%g"%a)
+    # ax.legend();plt.show(block=False)
+    a = res['zeta'][0]
+    alpha = a if a>0 else base
+    beta = -a if a<0 else base
+    x = np.linspace(stats.beta.ppf(0.01, alpha, beta),stats.beta.ppf(0.99, alpha, beta), 100)
+    ax.plot(x,stats.beta.pdf(x,alpha,beta),label="a=%g"%a)
     ax.set_xlabel(r'$\displaystyle \nu / \nu_{max}$')
+
 
 
     ax = plt.axes([0.5,0.6,0.45,0.35],projection="3d")
     # X = np.linspace(-3,3,options['nZeta']) ## to be replaced by data from res
+    normalize = mcolors.Normalize(vmin=0, vmax=3)
+    s_map = cm.ScalarMappable(norm=normalize, cmap=plt_para['heat'])
+    col_chi = s_map.to_rgba(res['chi'][0,...])
+
+    normalize = mcolors.Normalize(vmin=0, vmax=2)
+    s_map = cm.ScalarMappable(norm=normalize, cmap=plt_para['bnw'])
+    col_gamma = s_map.to_rgba(res['gamma'][0,...])
+    print(col_chi.shape)
     Y = res[options['order'][0]][:]
     X = res[options['order'][1]][:]
     X,Y = np.meshgrid(X,Y)
-    ax.plot_surface(X,Y,res['infoContent'][0,...])
+    # ax.plot_surface(X,Y,res['infoContent'][0,...],facecolors=col_gamma,antialiased=False,shade=False)
+    ax.plot_surface(X,Y,res['infoContent'][0,...],facecolors=col_chi,antialiased=False,shade=False)
     plt.setp(ax,#zlim=[0,10],
         xlabel=r'$\displaystyle %s$'%options['order'][1],
         ylabel=r'$\displaystyle %s$'%options['order'][0],

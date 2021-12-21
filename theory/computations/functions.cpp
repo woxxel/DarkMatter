@@ -269,7 +269,7 @@ double rate_distribution(double nu, double rate_max, double gamma, double delta)
     double rate_ratio = nu/rate_max;
 
     // cout << "in rate distribution" << endl;
-    // cout << "distr paras: nu=" << nu << ", rate max=" << rate_max << ", rate_ratio=" << rate_ratio << ", gamma="<<gamma << ", delta=" << delta << endl;
+    // cout << "distr paras: nu=" << nu << ", rate max=" << rate_max << ", rate_ratio=" << rate_ratio << ", gamma="<< gamma << ", delta=" << delta << endl;
 
     if (nu == 0)
     {
@@ -321,9 +321,10 @@ double information_fct(double nu, double nu0, double zeta)
     double b = zeta<0 ? -zeta : base;
     double x = nu/nu0;
 
-    // cout << "paras in info: nu=" << nu << "/" << nu0 << ", x=" << x << ", a=" << a << ", b=" << b << endl;
+    // cout << "paras in info: x=" << x << ", a=" << a << ", b=" << b << ", beta(a,b) = " << std::beta(a,b) << ", beta_distr = " << (pow(x,a-1) * pow(1-x,b-1) / std::beta(a,b)) << endl;
 
-    return pow(std::beta(a,b),-1) * pow(x,a-1) * pow(1-x,b-1);
+
+    return pow(x,a-1) * pow(1-x,b-1) / std::beta(a,b);
 
     // return c*pow(nu - nu0,zeta);
 }
@@ -332,6 +333,7 @@ double int_information_distribution(double nu, void *params)
 {
     struct parameters_int paras = *(struct parameters_int *) params;
 
-    // cout << "p(nu)=" << rate_distribution(nu,paras.rate_max,paras.gamma,paras.delta) << "; I(nu)=" << information_fct(nu,paras.nu0,paras.zeta,paras.c) << endl;
+    // cout << "nu: " << nu/paras.rate_max << ", p(nu)=" << rate_distribution(nu,paras.rate_max,paras.gamma,paras.delta) << "; I(nu)=" << information_fct(nu,paras.rate_max,paras.zeta) << endl;
+
     return information_fct(nu,paras.rate_max,paras.zeta) * nu * rate_distribution(nu,paras.rate_max,paras.gamma,paras.delta);
 }
