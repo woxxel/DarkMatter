@@ -35,3 +35,15 @@ class network:
 
     def delta(self,nu,q):
         return self.I(nu,q)/self.alpha(q)
+
+    def gamma(self,nu,q):
+        return self.sigma_V(nu)/self.alpha(q)
+
+    def distribution(self,nu,q,steps=100):
+
+        # rate_arr = np.linspace(0,self.rate_max(),steps)
+        rate_ratio = np.linspace(0,1,steps)#rate_arr/self.rate_max()
+
+        distr = self.gamma(nu,q)/(self.rate_max()*np.sqrt(-np.pi*np.log(rate_ratio)))*np.exp(-self.delta(nu,q)**2/2)*rate_ratio**(self.gamma(nu,q)**2-1)*np.cosh(self.gamma(nu,q)*self.delta(nu,q)*np.sqrt(-2*np.log(rate_ratio)))
+
+        return rate_ratio, distr
