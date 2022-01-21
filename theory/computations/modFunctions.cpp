@@ -489,7 +489,8 @@ void model::integrate_information(info_paras infoParas)
             // {
             // Pparas.zeta = infoParas.minZeta + z*dZeta;
 
-            Pparas.zeta = paras.zeta;
+            Pparas.I_alpha = paras.I_alpha;
+            Pparas.I_beta = paras.I_beta;
 
             gsl_function p_integrate;
             p_integrate.function = &int_information_distribution; //this should be changed to general function (can't be, as this function here needs to have special variables -> integration)

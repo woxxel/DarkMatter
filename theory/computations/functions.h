@@ -11,7 +11,7 @@ double selfcon(double alpha, double sigma_V, double rateWnt, double q, double ra
 
 double int_distribution_exact(double nu, void *params);
 double int_information_distribution(double nu, void *params);
-double information_fct(double nu, double nu0, double zeta);
+double information_fct(double nu, parameters_int *paras);
 
 double pdf2hist(double lower, double upper, parameters paras);
 // double GR_implausible_test(double lower, double upper, model mod);

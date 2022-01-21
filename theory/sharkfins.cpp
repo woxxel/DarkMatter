@@ -68,7 +68,7 @@ int main(int argc, char** argv)
 		sim.store_results(modP,mod_approxP,resP);
 		// cout << "done" << endl;
 	};
-	// cout << "computation done!" << endl;
+	cout << "computation done!" << endl;
 
 	// if (sim.steps == 1)
 		// write_theory(fileOut,resP);

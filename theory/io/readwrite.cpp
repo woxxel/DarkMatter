@@ -85,7 +85,8 @@ void read_simulation(string fileSim, simulation *simP)
     get_from_ncid(ncid, "rateWntSz", &simP->rateWntSz);
     get_from_ncid(ncid, "epsSz", &simP->epsSz);
     get_from_ncid(ncid, "etaSz", &simP->etaSz);
-    get_from_ncid(ncid, "zetaSz", &simP->zetaSz);
+    get_from_ncid(ncid, "I_alphaSz", &simP->I_alphaSz);
+    get_from_ncid(ncid, "I_betaSz", &simP->I_betaSz);
     get_from_ncid(ncid, "orderSz", &simP->orderSz);
     get_from_ncid(ncid, "charSz", &simP->charSz);
 
@@ -100,7 +101,8 @@ void read_simulation(string fileSim, simulation *simP)
     simP->rateWnt.resize(simP->rateWntSz);
     simP->eps.resize(simP->epsSz);
     simP->eta.resize(simP->etaSz);
-    simP->zeta.resize(simP->zetaSz);
+    simP->I_alpha.resize(simP->I_alphaSz);
+    simP->I_beta.resize(simP->I_betaSz);
     simP->order.resize(simP->orderSz);
 
     // read variables from ncid
@@ -128,14 +130,8 @@ void read_simulation(string fileSim, simulation *simP)
     get_from_ncid(ncid, "rateWnt", &simP->rateWnt[0]);
     get_from_ncid(ncid, "eps", &simP->eps[0]);
     get_from_ncid(ncid, "eta", &simP->eta[0]);
-    get_from_ncid(ncid, "zeta", &simP->zeta[0]);
-    // cout << "zeta: " << simP->zeta[0] << endl;
-    // get_from_ncid(ncid, "nu0", &simP->infoParas.nu0);
-    // get_from_ncid(ncid, "c", &simP->infoParas.c);
-
-    // get_from_ncid(ncid, "minZeta", &simP->infoParas.minZeta);
-    // get_from_ncid(ncid, "maxZeta", &simP->infoParas.maxZeta);
-    // get_from_ncid(ncid, "nZeta", &simP->infoParas.nZeta);
+    get_from_ncid(ncid, "I_alpha", &simP->I_alpha[0]);
+    get_from_ncid(ncid, "I_beta", &simP->I_beta[0]);
 
     nc_close(ncid);
     // cout << "done!" << endl;
@@ -261,7 +257,6 @@ void write_results(string fileOut, simulation *simP, model *modP, results *resP)
     int ncid, dimids[3], steps_dim, steps_dim1, Npop_dim;//, info_dim;
     unsigned steps = simP->vars[0].steps;
     unsigned steps_1 = simP->vars[1].steps;
-    // unsigned steps_info = simP->infoParas.nZeta;
     // cout << "steps info: " << steps_info << endl;
 
     nc_create(fileOut.c_str(), NC_CLOBBER, &ncid);

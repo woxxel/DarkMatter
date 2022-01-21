@@ -73,6 +73,7 @@ class parameters:
             self.paras.append(key)
 
     def prepare_sim_paras(self,steps):   # only works in conjunction with "set_simulation"
+        print(self.order)
         for key in self.order:
             val = getattr(self,key)
             assert type(val) == list, 'Please specify all iteration parameters as lists!'
@@ -136,7 +137,8 @@ def set_simulation(fileSim,options,steps):
     sim.set_para('n',[0.],options)
     sim.set_para('eps',[0.],options)
     sim.set_para('eta',[0.],options)
-    sim.set_para('zeta',[-3],options)
+    sim.set_para('I_alpha',[1],options)
+    sim.set_para('I_beta',[1],options)
 
     sim.set_para('mode_calc',0,options)        # 0=exact, 1=approx
     sim.set_para('mode_stats',0,options)       # 0=general stats, 1=...
@@ -147,7 +149,7 @@ def set_simulation(fileSim,options,steps):
     # sim.set_para('maxZeta',3.,options)       #
     # sim.set_para('nZeta',11,options)       #
 
-    order = ['rateWnt','alpha_0','tau_G','n','eps','eta','zeta']
+    order = ['rateWnt','alpha_0','tau_G','n','eps','eta','I_alpha','I_beta']
     sim.set_para('order',order,options)
     sim.prepare_sim_paras(steps)
 

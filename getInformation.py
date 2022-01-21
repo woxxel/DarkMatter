@@ -14,8 +14,8 @@ from plotting.statistics import *
 from pythonCode.network import network
 
 def information(steps=100,
-    rateWnt=[0,20],alpha_0=[0],tau_G=[0.005],eps=[0.5],eta=[0.9],n=[0],zeta=[-3],
-    order=['rateWnt','alpha_0','tau_G','n','eta','eps','zeta'],
+    rateWnt=[0,20],alpha_0=[0],tau_G=[0.005],eps=[0.5],eta=[0.9],n=[0],I_alpha=[1.],I_beta=[1.],
+    order=['rateWnt','alpha_0','tau_G','n','eta','eps','I_alpha','I_beta'],
     J=-1.,Npop=1,drive=0,
     save=0,file_format='png',
     rerun=False,compile=False):
@@ -29,8 +29,8 @@ def information(steps=100,
         'eps':      eps,
         'eta':      eta,
         'n':        n,
-        'zeta':     zeta,
-        'zetaBase': 1,
+        'I_alpha':  I_alpha,
+        'I_beta':   I_beta,
         'drive':    drive,
         'mode_stats': 4,
         'J':        J,
@@ -55,13 +55,13 @@ def information(steps=100,
 
     ax = plt.axes([0.75,0.8,0.2,0.15])
     base  = 1.
-    a = res['zeta'][0]
+    a = res['I_alpha'][0]
     alpha = a if a>0 else base
     beta = -a if a<0 else base
     x = np.linspace(stats.beta.ppf(0.01, alpha, beta),stats.beta.ppf(0.99, alpha, beta), 100)
     ax.plot(x,stats.beta.pdf(x,alpha,beta),label="a=%g"%a)
     plt.setp(ax,xlabel=r'$\displaystyle \nu / \nu_{max}$',
-                ylabel='$\displaystyle Beta(x,\zeta,a)$')
+                ylabel=r'$\displaystyle \beta(x,\alpha,a)$')
 
 
 
@@ -93,15 +93,15 @@ def information(steps=100,
     y_arr = res[options['order'][1]][:]
     x_arr = res[options['order'][0]][:]
     X,Y = np.meshgrid(x_arr,y_arr)
-    ax.plot_surface(X,Y,res['infoContent'][0,...],facecolors=col,antialiased=False,shade=False)
+    ax.plot_surface(X,Y,res['infoContent'][0,...],facecolors=col,antialiased=False,shade=True)
 
     # ax.plot(res[options['order'][1]][idx_max1],res[options['order'][0]][range(steps)],res['infoContent'][0,range(steps),idx_max1]+0.1,'r',lw=3)
     # ax.plot(res[options['order'][1]][idx_max2],res[options['order'][0]][range(steps)],res['infoContent'][0,idx_max2,range(steps)]+0.001,'green',lw=3)
 
 
     plt.setp(ax,#zlim=[0,10],
-        xlabel=r'$\displaystyle \%s$'%options['order'][0],
-        ylabel=r'$\displaystyle \%s$'%options['order'][1],
+        xlabel=r'$\displaystyle %s$'%options['order'][0],
+        ylabel=r'$\displaystyle %s$'%options['order'][1],
         zlabel=r'$\displaystyle I_{\sum}$',
         zlim=[np.nanmin(res['infoContent']),np.nanmax(res['infoContent'])])
 
@@ -112,24 +112,24 @@ def information(steps=100,
     # for nu in [0.1,0.5,1,2,5]:
         # i = np.argmin(abs(nu_arr-nu))
         # print(nu,i)
-    ax.plot(x_arr,res['infoContent'][0,idx_max1,range(steps)],label=r'$\displaystyle I(\%s^{max})$'%(options['order'][0]))
-    ax.plot(y_arr,res['infoContent'][0,range(steps),idx_max2],label=r'$\displaystyle I(\%s^{max})$'%(options['order'][1]))
+    ax.plot(x_arr,res['infoContent'][0,idx_max1,range(steps)],label=r'$\displaystyle I(%s^{max})$'%(options['order'][0]))
+    ax.plot(y_arr,res['infoContent'][0,range(steps),idx_max2],label=r'$\displaystyle I(%s^{max})$'%(options['order'][1]))
     ax.legend()
     plt.setp(ax,xlim=[0,0.1],
-                xlabel='$\displaystyle \%s \; or \; \%s$'%(options['order'][0],options['order'][1]))
+                xlabel='$\displaystyle %s \; or \; %s$'%(options['order'][0],options['order'][1]))
     # plt.setp(ax,ylim=[0,10])
 
     ax = plt.axes([0.75,0.1,0.2,0.2])
     # for zeta in [-3,-1.5,0,1.5,3]:
         # i = np.argmin(abs(zeta_arr-zeta))
         # print(zeta,i)
-    ax.plot(x_arr,y_arr[idx_max1],label=r'$\displaystyle \%s(\%s^{max})$'%(options['order'][1],options['order'][0]))
+    ax.plot(x_arr,y_arr[idx_max1],label=r'$\displaystyle %s(%s^{max})$'%(options['order'][1],options['order'][0]))
     # ax.plot(x_arr[idx_max2],y_arr,label=r'$\displaystyle \%s(\%s^{max})$'%(options['order'][0],options['order'][1]))
     ax.legend()
     plt.setp(ax,xlim=[0,0.1],
-                xlabel='$\displaystyle \%s$'%(options['order'][0]))
+                xlabel='$\displaystyle %s$'%(options['order'][0]))
 
-    plt.suptitle('$\displaystyle \\bar{\\nu}=%.2fHz, \zeta = %.2f, a=%.2f$'%(res['rateWnt'][0],res['zeta'][0],base))
+    plt.suptitle('$\displaystyle \\bar{\\nu}=%.2fHz, \\alpha = %.2f, \\beta = %.2f  a=%.2f$'%(res['rateWnt'][0],res['I_alpha'][0],res['I_beta'][0],base))
     plt.show(block=False)
 
     # steps = 1000
@@ -138,16 +138,21 @@ def information(steps=100,
     y = 10
     rate_arr , distr = net.distribution(res['rateWnt'][0],res['q'][0,x,y],steps=1000)
 
+    return res
+
+
+
     fig,axes = plt.subplots(2,1,figsize=(8,12),sharex=True)
     # axes[0]
     base  = 1.
-    a = res['zeta'][0]
-    alpha = a if a>0 else base
-    beta = -a if a<0 else base
+    alpha = res['I_alpha'][0]
+    beta = res['I_beta'][0]
+    # alpha = a if a>0 else base
+    # beta = -a if a<0 else base
     # x = np.linspace(stats.beta.ppf(0.01, alpha, beta),stats.beta.ppf(0.99, alpha, beta), 100)
     axes[0].plot(rate_arr,stats.beta.pdf(rate_arr,alpha,beta),label="a=%g"%a)
     plt.setp(axes[0],xlabel=r'$\displaystyle \nu / \nu_{max}$',
-                ylabel='$\displaystyle Beta(x,\zeta,a)$')
+                ylabel='$\displaystyle \\beta(x,\\alpha,a)$')
 
 
 
@@ -156,7 +161,6 @@ def information(steps=100,
 
     p_I, = twinx.plot(rate_arr,rate_arr*distr*stats.beta.pdf(rate_arr/net.rate_max(),alpha,beta),'r-')
 
-    plt.setp(axes[0],xlim=[0,0.1])
 
     def update_slider(val):
         # print('update ',val)
@@ -168,21 +172,30 @@ def information(steps=100,
         # val = int(val)
         _ , distr = net.distribution(res['rateWnt'][0],res['q'][0, val_alpha,val_tau],steps=1000)
         p_distr.set_ydata(distr)
-        p_I.set_ydata(rate_arr*distr*stats.beta.pdf(rate_arr/net.rate_max(),alpha,beta))
+        I = rate_arr*distr*stats.beta.pdf(rate_arr/net.rate_max(),alpha,beta)
+        p_I.set_ydata(I)
+        print('####     distribution     ####')
+        print(net.rate_max())
+        print(np.nanmax(distr))
+        print(np.nanmax(I))
+        plt.setp(axes[1],ylim=[0,np.nanmax(distr)*1.1])
+        plt.setp(twinx,ylim=[0,np.nanmax(I)*1.1])
         fig.canvas.draw_idle()
 
     # print(steps)
     axamp_alpha = plt.axes([0.2, .03, 0.50, 0.02])
     axamp_tau = plt.axes([0.2, .06, 0.50, 0.02])
 
-    samp_alpha = Slider(axamp_alpha, r'$\displaystyle \alpha_0$', 0, res['alpha_0'][-1], valinit=0.0)
-    samp_tau = Slider(axamp_tau, r'$\displaystyle \tau_G$', 0, res['tau_G'][-1], valinit=0.005)
+    samp_alpha = Slider(axamp_alpha, r'$\displaystyle %s$'%options['order'][0], 0, res[options['order'][0]][-1], valinit=0.0)
+    samp_tau = Slider(axamp_tau, r'$\displaystyle %s$'%options['order'][1], 0, res[options['order'][1]][-1], valinit=0.005)
 
     update_slider(0)
 
     # call update function on slider value change
     samp_alpha.on_changed(update_slider)
     samp_tau.on_changed(update_slider)
+    plt.setp(axes[0],xlim=[0,0.2])
+    plt.setp(axes[1],xlim=[0,0.2])
 
     plt.show()
 

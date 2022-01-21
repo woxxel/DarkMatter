@@ -26,6 +26,8 @@ void simulation_variable::initialize(double *modVarP, unsigned modVarSz, double 
 bool simulation_variable::iterate() // return false if end is reached, true else
 {
     iter = (iter+1) % steps;
+    // cout << "here name:" << name << ", iter/steps: " << iter << "/" << steps << endl;
+    // cout << *(valP + iter) << endl;
     for (unsigned i=0;i<paraSz;i++)
         *(paraP+i) = *(valP + iter);
 
@@ -43,6 +45,7 @@ void simulation::print_simStatus()
 {
     for (unsigned i=0;i<nVar;i++)
     {
+        cout << vars[i].name << endl;
         vars[i].print_status();
     }
 }
@@ -60,6 +63,8 @@ void simulation::initialize(model *modP)
     nVar = order.size();
     vars.resize(nVar);
 
+    cout << nVar << " variables in input " << endl;
+
     for (unsigned i=0;i<nVar;i++)
     {
         if (order[i].compare(0,7,"alpha_0")==0)
@@ -74,8 +79,10 @@ void simulation::initialize(model *modP)
             vars[i].initialize(&modP->paras.eps, 1, &eps[0], epsSz, "eps");
         else if (order[i].compare(0,1,"n")==0)
             vars[i].initialize(&modP->paras.n, 1, &n[0], nSz, "n");
-        else if (order[i].compare(0,4,"zeta")==0)
-            vars[i].initialize(&modP->paras.zeta, 1, &zeta[0], zetaSz, "zeta");
+        else if (order[i].compare(0,7,"I_alpha")==0)
+            vars[i].initialize(&modP->paras.I_alpha, 1, &I_alpha[0], I_alphaSz, "I_alpha");
+        else if (order[i].compare(0,6,"I_beta")==0)
+            vars[i].initialize(&modP->paras.I_beta, 1, &I_beta[0], I_betaSz, "I_beta");
     }
     steps = vars[0].steps;
     reset_iteration();
@@ -87,6 +94,7 @@ bool simulation::run_iteration(model *modP)
     for (unsigned i=0;i<nVar;i++) {
         if (iter_status[i])
         {
+            // cout << "iterate: " << i << endl;
             iter_status[i] = vars[i].iterate();
             if (i>0)
                 iter_status[i-1] = true;

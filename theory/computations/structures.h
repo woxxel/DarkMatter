@@ -42,7 +42,7 @@ struct parameters
     unsigned Npop;
 	double tau_G, tau_A, tau_N, tau_M, J;
 	double eta, eps, n;
-    double zeta;
+    double I_alpha, I_beta;
     double kappa;
     vector<double> rate, q, alpha_0;
 
@@ -66,9 +66,6 @@ struct parameters
 struct info_paras
 {
     double nu0, c;
-
-    unsigned nZeta;
-    double minZeta, maxZeta;
 };
 
 class model
@@ -141,13 +138,13 @@ class simulation
 
         info_paras infoParas;
 
-        vector<double> n, alpha_0, tau_G, rateWnt, eps, eta, zeta;
+        vector<double> n, alpha_0, tau_G, rateWnt, eps, eta, I_alpha, I_beta;
         unsigned nVar;
         vector<string> order; // contains the strings of parameters in the order that the iteration should walk through
 
         // unsigned n_iter, alpha_0_iter, tau_G_iter, rateWnt_iter, eps_iter, eta_iter;
         int mode_calc, mode_stats;
-        size_t nSz, alpha_0Sz, tau_GSz, rateWntSz, epsSz, etaSz, zetaSz, orderSz, charSz, steps;
+        size_t nSz, alpha_0Sz, tau_GSz, rateWntSz, epsSz, etaSz, I_alphaSz, I_betaSz, orderSz, charSz, steps;
 
         vector<bool> trans_DM_found, trans_np_found, trans_DM_found_approx, trans_np_found_approx;
         bool trans_imp_found, trans_inc_found, trans_imp_found_approx, trans_inc_found_approx;
@@ -198,5 +195,5 @@ struct parameters_int
 
 	double gamma_approx, delta_approx;
 
-    double zeta;
+    double I_alpha, I_beta;
 };
