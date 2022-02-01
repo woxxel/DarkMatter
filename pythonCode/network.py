@@ -42,8 +42,11 @@ class network:
     def distribution(self,nu,q,steps=100):
 
         # rate_arr = np.linspace(0,self.rate_max(),steps)
-        rate_ratio = np.linspace(0,1,steps)#rate_arr/self.rate_max()
+        rate_ratio = np.linspace(1/steps,1,steps-1) #rate_arr/self.rate_max()
 
         distr = self.gamma(nu,q)/(self.rate_max()*np.sqrt(-np.pi*np.log(rate_ratio)))*np.exp(-self.delta(nu,q)**2/2)*rate_ratio**(self.gamma(nu,q)**2-1)*np.cosh(self.gamma(nu,q)*self.delta(nu,q)*np.sqrt(-2*np.log(rate_ratio)))
 
+        at_zero = 0 if self.gamma(nu,q) > 1 else np.inf
+        distr = np.insert(distr,0,at_zero)
+        rate_ratio = np.linspace(0,1,steps)
         return rate_ratio, distr

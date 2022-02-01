@@ -73,7 +73,7 @@ class parameters:
             self.paras.append(key)
 
     def prepare_sim_paras(self,steps):   # only works in conjunction with "set_simulation"
-        print(self.order)
+        # print(self.order)
         for key in self.order:
             val = getattr(self,key)
             assert type(val) == list, 'Please specify all iteration parameters as lists!'

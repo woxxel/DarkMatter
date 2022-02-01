@@ -1,7 +1,7 @@
 
 void simulation_variable::initialize(double *modVarP, unsigned modVarSz, double *varP, unsigned varSz, string varName)
 {
-    cout <<" initializing " << varName << " with " << varSz << " variables" << endl;
+    // cout <<" initializing " << varName << " with " << varSz << " variables" << endl;
     name = varName;
 
     iter = 0;
@@ -63,7 +63,7 @@ void simulation::initialize(model *modP)
     nVar = order.size();
     vars.resize(nVar);
 
-    cout << nVar << " variables in input " << endl;
+    // cout << nVar << " variables in input " << endl;
 
     for (unsigned i=0;i<nVar;i++)
     {

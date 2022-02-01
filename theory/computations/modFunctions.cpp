@@ -465,7 +465,7 @@ void model::find_transitions(simulation *simP, results *resP)
 void model::integrate_information(info_paras infoParas)
 {
     double lower = 0;
-    double upper = 0.99;
+    double upper = 0.9;
     // cout << "rate max: " << paras.rate_max[0] << ", gamma: " << paras.gamma[0] << ", delta: " << paras.delta[0] << endl;
     for (unsigned p = 0; p < paras.Npop; p++)
     {
