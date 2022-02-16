@@ -7,10 +7,11 @@ import scipy.stats as stats
 import matplotlib as mpl
 from matplotlib.widgets import Slider
 
-from netCDF4 import Dataset, stringtochar
-
 from darkMatter import darkMatter
-from plotting.statistics import *
+
+from general.plot_statistics import *
+from general.utils import set_plot_params
+
 from pythonCode.network import network
 
 class DM_information:
@@ -38,8 +39,7 @@ class DM_information:
         save=0,file_format='png',
         rerun=False,compile=False):
 
-        plt.rc('text', usetex=True)
-        plt.rc('font', family='sans-serif')
+        set_plot_params()
 
         levs = 20
         self.plt_para['bnw'] = mcolors.LinearSegmentedColormap.from_list(name='black_n_white',colors=[(0,(0,0,0)),(1,(1,1,1))],N=levs-1)
@@ -173,28 +173,55 @@ class DM_information:
         idx_alpha_0 = self.get_idx('alpha_0')
         idx_tau_G = self.get_idx('tau_G')
 
-        rate_arr, distr = self.net.distribution(self.rateWnt,self.q,steps=1000)
+        steps = 10000
+        rate_arr, distr = self.net.distribution(self.rateWnt,self.q,steps=steps)
 
+        # rate_mean = self.rateWnt/self.net.rate_max()
+
+        distr_norm = distr[:-1].sum()
+        rate_arr0 = np.linspace(0,self.net.rate_max(),len(rate_arr))
+
+        std_emp = np.sqrt(np.sum((distr/distr_norm * (rate_arr0 - self.rateWnt)**2)[:-1]))
+        distr_norm = distr[:-1].sum()*1/steps
+
+        # std = np.sqrt(self.q - self.rateWnt**2)
+
+        print(f"mean: {self.rateWnt}, std: {std_emp}")
+
+        distr_logn = 1./(rate_arr0*std_emp*np.sqrt(2*np.pi))*np.exp(-(np.log(rate_arr0)-self.rateWnt)**2 / (2*std_emp**2))
+        distr_logn_norm = distr_logn.sum()*1/steps
+        # print(np.nansum(distr_logn))
+
+        lower_x = 10**(-4)
         if ('distr' in self.handles):
             self.handles['distr'].set_ydata(distr)
+            self.handles['distr_logn'].set_ydata(distr_logn)
         else:
-            self.handles['distr'], = self.axes['distr'].plot(rate_arr,distr,'k-')
-        plt.setp(self.axes['distr'],xlim=[0.,0.2],ylim=[0,np.nanmax(distr)*1.1], ylabel=r'$\displaystyle \rho(\nu)$')
+            self.handles['distr'], = self.axes['distr'].plot(rate_arr,distr/distr_norm,'k-')
+            self.handles['distr_logn'], = self.axes['distr'].plot(rate_arr,distr_logn/distr_logn_norm,'k--')
+        plt.setp(self.axes['distr'],xlim=[lower_x,1.],ylim=[0,np.nanmax(distr)*1.1], ylabel=r'$\displaystyle \rho(\nu)$',xscale='log')
 
         y = rate_arr*distr*stats.beta.pdf(rate_arr/self.net.rate_max(),self.I_alpha,self.I_beta)
+        y_logn = rate_arr*distr_logn*stats.beta.pdf(rate_arr/self.net.rate_max(),self.I_alpha,self.I_beta)
         if ('I_distr' in self.handles):
             self.handles['I_distr'].set_ydata(y)
+            self.handles['I_distr_logn'].set_ydata(y_logn)
         else:
             self.handles['I_distr'], = self.axes['I_distr'].plot(rate_arr,y,'r-')
-        plt.setp(self.axes['I_distr'],xlim=[0.,0.5],ylim=[0,np.nanmax(y)*1.1], ylabel=r'$\displaystyle f(I(\nu))$')
+            self.handles['I_distr_logn'], = self.axes['I_distr'].plot(rate_arr,y_logn,'r--')
+        plt.setp(self.axes['I_distr'],xlim=[lower_x,1.],ylim=[0,np.nanmax(y)*1.1], ylabel=r'$\displaystyle f(I(\nu))$',xscale='log')
 
         y = np.nancumsum(y)
         y /= y[-2]
+        y_logn = np.nancumsum(y_logn)
+        y_logn /= y_logn[-2]
         if ('I_distr_cum' in self.handles):
             self.handles['I_distr_cum'].set_ydata(y)
+            self.handles['I_distr_cum_logn'].set_ydata(y_logn)
         else:
-            self.handles['I_distr_cum'], = self.axes['I_distr_cum'].plot(rate_arr,np.nancumsum(y),'r-')
-        plt.setp(self.axes['I_distr_cum'],xlim=[0.,0.5],ylim=[0,1],xlabel=r'$\displaystyle \nu / \nu_{max}$', ylabel=r'$\displaystyle F(I(\nu))$')
+            self.handles['I_distr_cum'], = self.axes['I_distr_cum'].plot(rate_arr,y,'r-')
+            self.handles['I_distr_cum_logn'], = self.axes['I_distr_cum'].plot(rate_arr,y_logn,'r--')
+        plt.setp(self.axes['I_distr_cum'],xlim=[lower_x,1.],ylim=[0,1],xlabel=r'$\displaystyle \nu / \nu_{max}$', ylabel=r'$\displaystyle F(I(\nu))$',xscale='log')
 
 
     def update_I(self,val):

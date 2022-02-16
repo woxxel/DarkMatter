@@ -6,10 +6,11 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import math
 
-from netCDF4 import Dataset, stringtochar
-
 from darkMatter import darkMatter
-from plotting.statistics import *
+
+from general.plot_statistics import *
+from general.utils import set_plot_params
+
 from pythonCode.network import network
 
 def approximations(steps=1000,rateWnt=[0,20],alpha_0=[0,0.02,0.04],tau_G=[0.005],eps=[0.5],eta=[0.9],n=[0],J=-1.,Npop=1,drive=0,save=0,file_format='png',rerun=False,compile=False):
@@ -45,17 +46,12 @@ def approximations(steps=1000,rateWnt=[0,20],alpha_0=[0,0.02,0.04],tau_G=[0.005]
         'mode_stats': 3,
         'J': J
     }
-    res_sharks = darkMatter(steps=500,options=options,rerun=rerun,compile=compile)
+    res_sharks = darkMatter(steps=steps//2,options=options,rerun=rerun,compile=compile)
 
 
     # absorb into plot_prep function
     # -----------------------------------------
-    plt.rc('text', usetex=True)
-    plt.rc('font', family='sans-serif')
-
-    mpl.rcParams['xtick.labelsize'] = 10
-    mpl.rcParams['ytick.labelsize'] = 10
-    mpl.rcParams['font.size'] = 10
+    set_plot_params()
 
     steps1 = res['gamma'].shape[1]
 

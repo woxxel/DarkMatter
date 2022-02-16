@@ -61,15 +61,16 @@ void model::set_weights()
         // watch out for indexing:
         // inhibitory population: index 0
         // excitatory population: index 1
-        paras.J_I[0] = paras.J * sqrt(1 - gsl_pow_2(paras.eps)) * paras.tau_M;				// J_II
+        paras.J_I[0] = paras.J * sqrt(1 - gsl_pow_2(paras.eps)) * paras.tau_M;  // J_II
         paras.J_I[1] = paras.J * sqrt(1 - gsl_pow_2(paras.eta * paras.eps)) * paras.tau_M;	// J_EI
 
-        paras.J_E[0] = paras.J * paras.eps * paras.tau_M;			                            // J_IE
-        paras.J_E[1] = paras.J * paras.eta * paras.eps * paras.tau_M;					        // J_EE
+        paras.J_E[0] = -paras.J * paras.eps * paras.tau_M;               // J_IE
+        paras.J_E[1] = -paras.J * paras.eta * paras.eps * paras.tau_M;   // J_EE
 
         //! for p=1, the excitatory population receives inhibition, but is decoupled, such that it gives no feedback
-//                 cout << "J_I: " << paras.J_I[0] << "," << paras.J_I[1] << endl;
-//                 cout << "J_E: " << paras.J_E[0] << "," << paras.J_E[1] << endl;
+        // cout << "eta: " << paras.eta << ", eps: " << paras.eps << endl;
+        // cout << "J_II: " << paras.J_I[0] << ", J_EI: " << paras.J_I[1] << endl;
+        // cout << "J_IE: " << paras.J_E[0] << ", J_EE: " << paras.J_E[1] << endl;
     }
     else
     {
@@ -84,7 +85,7 @@ void model::get_sigma_V()
 	for (unsigned p = 0; p < paras.Npop; p++)
 	{
 		// get sigma_V
-        // cout << "tau_G: " << paras.tau_G << ", tau_A: " << paras.tau_A << ", tau_N: " << paras.tau_N << ", tau_M: " << paras.tau_M << endl;
+        // cout << "tau_G: " << paras.tau_G << ", tau_A: " << paras.tau_A << ", tau_N: " << paras.tau_N << ", tau_M: " << paras.tau_M << ", n= " << paras.n << endl;
         // from excitatory AMPA synapses
         double var_V_A = gsl_pow_2(paras.J_E[p]) * paras.kappa * paras.rate[p] / (paras.tau_A + paras.tau_M) * ( gsl_pow_2(1-paras.n)/2 + (1-paras.n)*paras.n*paras.tau_A / (paras.tau_A + paras.tau_N) );
                 // from excitatory NMDA synapses
@@ -93,11 +94,11 @@ void model::get_sigma_V()
 		double var_V_G = gsl_pow_2(paras.J_I[p]) * paras.rate[p] * 0.5 / (paras.tau_G + paras.tau_M);
 
         // from external drive
-        // cout << "J_I = " << paras.J_I[p] << ", J_0 = " << paras.J_0 << endl;
+        // cout << "J_II = " << paras.J_I[0] << ", J_EI = " << paras.J_I[1] << endl;
+        // cout << "J_IE = " << paras.J_E[0] << ", J_EE = " << paras.J_E[1] << endl;
 
         // total
 		double var_V = var_V_A + var_V_N + var_V_G;
-//                 cout << "var total: " << var_V << ", from external sources: " << var_V_0 << endl;
 
 		double var_V_dot = var_V_A / (paras.tau_A * paras.tau_M) + var_V_N / (paras.tau_N * paras.tau_M) + var_V_G / (paras.tau_G * paras.tau_M);
 
@@ -109,6 +110,7 @@ void model::get_sigma_V()
         }
 		paras.sigma_V[p] = sqrt(var_V);
 
+        cout << "eps: " << paras.eps << ", var total: " << var_V << endl; //", from external sources: " << var_V_0 << endl;
 		// and the maximum firing rate response
 		paras.rate_max[p] = sqrt(var_V_dot / var_V) / (2 * M_PI);
 //                 cout << "sigma population " << p << ": " << paras.sigma_V[p] << endl;

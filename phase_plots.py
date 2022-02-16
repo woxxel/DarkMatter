@@ -2,13 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 
-from netCDF4 import Dataset, stringtochar
-
 from darkMatter import darkMatter
-from plotting.statistics import *
+from general.plot_statistics import *
+from general.utils import set_plot_params
 
-# def sharkfins(steps=10,rateWnt=None,alpha_0=None,tau_G=None,n=None,eps=None,eta=None,Npop=1,drive=0,tau_M=10.,tau_A=5.,kappa=1,mode_calc="exact",mode_stats=0,plot_ax3D=False,save=0,file_format='png',compile=True,rerun=False):
-def phase_plots(steps=100,Npop=1,plot_ax3D=False,save=0,file_format='png',rerun=False,compile=False):
+def phase_plots(steps=100,Npop=1,plot_ax3D=True,save=0,file_format='png',rerun=False,compile=False):
 
 ## stats:
 ####    0: sharkfins
@@ -20,14 +18,8 @@ def phase_plots(steps=100,Npop=1,plot_ax3D=False,save=0,file_format='png',rerun=
     steps = steps + 1       # correct for removal of first item
 
     ## general plot setup
-    # plot parameters
-    plt.rc('text', usetex=True)
-    plt.rc('font', family='sans-serif')
-    # plt.rcParams['font.family'] = ['Tahoma','Verdana']
-    plt.rcParams['font.size'] = 12        #### how to get proper and same fontsizes with no specified xticklabels and with specified ones?
-    plt.rcParams['xtick.labelsize'] = 12
-    plt.rcParams['ytick.labelsize'] = 12
-
+    set_plot_params()
+    
     title_offset = -0.0
     fig,ax = plt.subplots(2,2,figsize=(7.5,7.5),dpi=300)
     plt_para = {

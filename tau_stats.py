@@ -4,10 +4,9 @@ import matplotlib.pyplot as plt
 import math
 import matplotlib as mpl
 
-from netCDF4 import Dataset, stringtochar
-
 from darkMatter import darkMatter
-from plotting.statistics import *
+from general.plot_statistics import *
+from general.utils import set_plot_params
 
 def tau_stats(steps=1000,rateWnt=[2],alpha_0=[0,0.02,0.04],tau_G=[0,0.1],eps=[0.5],eta=[0.9],n=[0],J=-1.,Npop=1,drive=0,save=0,file_format='png',rerun=False,compile=False):
 
@@ -42,10 +41,7 @@ def tau_stats(steps=1000,rateWnt=[2],alpha_0=[0,0.02,0.04],tau_G=[0,0.1],eps=[0.
 
     currents = True
 
-    plt.rc('text', usetex=True)
-    plt.rc('font', family='serif')
-    plt.rcParams['xtick.labelsize'] = 10
-    plt.rcParams['ytick.labelsize'] = 10
+    set_plot_params()
     #mpl.rcParams['font.size'] = 12        #### how to get proper and same fontsizes with no specified xticklabels and with specified ones?
 
     plt_para = {

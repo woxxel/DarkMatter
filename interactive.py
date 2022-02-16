@@ -15,8 +15,6 @@ import matplotlib.colors as mcolors
 import matplotlib.cm as cm
 from pythonCode.network import network
 
-from netCDF4 import Dataset, stringtochar
-
 from darkMatter import darkMatter
 
 # def plot_interactive(

@@ -2,13 +2,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 
-from netCDF4 import Dataset, stringtochar
-
 from darkMatter import darkMatter
-from plotting.statistics import *
+
+from general.plot_statistics import *
+from general.utils import set_plot_params
 
 # def sharkfins(steps=10,rateWnt=None,alpha_0=None,tau_G=None,n=None,eps=None,eta=None,Npop=1,drive=0,tau_M=10.,tau_A=5.,kappa=1,mode_calc="exact",mode_stats=0,plot_ax3D=False,save=0,file_format='png',compile=True,rerun=False):
-def sharkfins(steps=10,Npop=1,plot_ax3D=False,save=0,file_format='png',rerun=False,compile=False):
+def sharkfins(steps=10,Npop=1,plot_ax3D=True,save=0,file_format='png',rerun=False,compile=False):
 
 ## stats:
 ####    0: sharkfins
@@ -18,6 +18,9 @@ def sharkfins(steps=10,Npop=1,plot_ax3D=False,save=0,file_format='png',rerun=Fal
 ####    3: KL-phase-space (costly!)
 
     steps = steps + 1       # correct for removal of first item
+
+    ## general plot setup
+    set_plot_params()
 
     inpara = {}
 
@@ -65,16 +68,6 @@ def sharkfins(steps=10,Npop=1,plot_ax3D=False,save=0,file_format='png',rerun=Fal
         else:
             assert sim_steps == len(inpara[key]), 'Make sure all parameters are specified as having the same length (%s has length %d / %d)' % (key,len(inpara[key]),sim_steps)
 
-    ## general plot setup
-    # plot parameters
-    plt.rc('text', usetex=True)
-    plt.rcParams['font.family'] = ['Tahoma','Verdana']
-    plt.rcParams['font.size'] = 12        #### how to get proper and same fontsizes with no specified xticklabels and with specified ones?
-    plt.rcParams['xtick.labelsize'] = 12
-    plt.rcParams['ytick.labelsize'] = 12
-    #mpl.rcParams['axes.labelsize'] = 'large'
-    # plt.rcParams['xtick.major.size'] = 2
-    # plt.rcParams['axes.labelsize'] = 12
 
     levs = range(20)
     plt_para = {

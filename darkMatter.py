@@ -88,6 +88,12 @@ class parameters:
         nChar = len(max(self.order,key=len))
         self.order = np.array(self.order,dtype='S'+str(nChar))
 
+    def print_parameter(self):
+
+        print(self.paras)
+        for key in self.paras:
+            print(key, getattr(self,key))
+
 def set_model(fileModel,options):
     # defining model constants
 
@@ -123,6 +129,8 @@ def set_model(fileModel,options):
         Var = ncid.createVariable(key,varType,('one',))
         Var[:] = val
     ncid.close()
+
+    # model.print_parameter()
 
     return model
 
@@ -192,6 +200,8 @@ def set_simulation(fileSim,options,steps):
             Var[:] = val
 
     ncid.close()
+
+    # sim.print_parameter()
 
     return sim, sv_str
 

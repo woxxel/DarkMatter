@@ -12,6 +12,7 @@
 
 void get_from_ncid(int ncid, const char *varName, void *varP)
 {
+    // function to obtain information on variable values
     int varid;
     nc_inq_varid(ncid, varName, &varid);
     nc_get_var(ncid, varid, varP);
@@ -19,6 +20,7 @@ void get_from_ncid(int ncid, const char *varName, void *varP)
 
 void get_from_ncid(int ncid, const char *varName, size_t *varP)
 {
+    // function to obtain information on variable dimension
     int varid;
     nc_inq_dimid(ncid, varName, &varid);
     nc_inq_dimlen(ncid, varid, varP);
