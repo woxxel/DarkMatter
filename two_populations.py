@@ -28,16 +28,24 @@ def two_populations(steps=100,plot_ax3D=True,save=0,file_format='png',rerun=Fals
 
     options = {
         'mode_stats': 0,
-        'order': ['tau_G','n','alpha_0','rateWnt','eta','eps'],
-        'eps': [1./np.sqrt(2)],
-        'alpha_0': [0.02],
-        'rateWnt': [1.],
-        'tau_G': [0.,0.1],
-        'tau_A': [0.005],
+        # 'order': ['tau_G','n','alpha_0','rateWnt','eta','eps'],
+        'eps': 1./np.sqrt(2),
+        'alpha_0': 0.02,
+        'rateWnt': 1.,
+        # 'tau_A': [0.005,
         'Npop': 2,
-        'eta': [0.9],
-        'n': [0.,1.],
+        'eta': 0.9,
+        'simulation': {
+            'n': [0.,1.],
+            'tau_I': [0.,0.1],
+            'sim_p': [1],       # when population parameters are iterated, specify population number(s) (empty = all)
+            'sim_tau': [0],     # when synaptic timeconstants are iterated, specify number within population
+        }
     }
+
+    order = list(options['simulation'].keys())
+
+    print(order)
 
 
     res = darkMatter(steps=steps,options=options,rerun=rerun,compile=compile)
@@ -70,17 +78,17 @@ def two_populations(steps=100,plot_ax3D=True,save=0,file_format='png',rerun=Fals
 
     # for i in range(res['gamma'].shape)
     for p in range(2):
-        plot_fins(ax[p,0],res[options['order'][0]],res[options['order'][1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
+        plot_fins(ax[p,0],res[order[0]],res[order[1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
 
     options['rateWnt'] = [2.]
     res = darkMatter(steps=steps,options=options,rerun=rerun,compile=compile)
     for p in range(2):
-        plot_fins(ax[p,1],res[options['order'][0]],res[options['order'][1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
+        plot_fins(ax[p,1],res[order[0]],res[order[1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
 
     options['rateWnt'] = [5.]
     res = darkMatter(steps=steps,options=options,rerun=rerun,compile=compile)
     for p in range(2):
-        plot_fins(ax[p,2],res[options['order'][0]],res[options['order'][1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
+        plot_fins(ax[p,2],res[order[0]],res[order[1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
 
 
     plt.show(block=False)

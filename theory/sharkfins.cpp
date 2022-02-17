@@ -2,6 +2,7 @@
 // #include "spdlog/spdlog.h"
 
 #include "./computations/structures.h"
+#include "./computations/functions.h"
 #include "./computations/functions.cpp"
 #include "./computations/modFunctions.cpp"
 #include "./computations/simFunctions.cpp"

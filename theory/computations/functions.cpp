@@ -130,7 +130,7 @@ int selfconsistency_f (const gsl_vector * q, void * paras, gsl_vector * f)
         double alpha_sq_0;
         if (paraP->drive == 2)
         {
-                // quenched variance from afferent, spiking drive (gauss distributed synapse numbers)
+            // quenched variance from afferent, spiking drive (gauss distributed synapse numbers)
             alpha_sq_0 = sqrt(1./paraP->K_0) * gsl_pow_2(paraP->J_I[p]) * gsl_pow_2(paraP->rate[p]);
         }
         else

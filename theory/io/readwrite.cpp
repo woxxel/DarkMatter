@@ -10,21 +10,40 @@
 #define ERRCODE 2
 #define ERR(e) {printf("Error: %s\n", nc_strerror(e)); exit(ERRCODE);}
 
-void get_from_ncid(int ncid, const char *varName, void *varP)
+bool get_from_ncid(int ncid, const char *varName, void *varP)
 {
     // function to obtain information on variable values
     int varid;
-    nc_inq_varid(ncid, varName, &varid);
+    int status = nc_inq_varid(ncid, varName, &varid);
+    if (status != NC_NOERR)
+    {
+        cout << "Variable "<<varName << " not found!" << endl;
+        return false;
+    }
     nc_get_var(ncid, varid, varP);
+    return true;
 };
 
-void get_from_ncid(int ncid, const char *varName, size_t *varP)
+bool get_from_ncid(int ncid, const char *varName, size_t *varP)
 {
     // function to obtain information on variable dimension
     int varid;
-    nc_inq_dimid(ncid, varName, &varid);
+    int status = nc_inq_dimid(ncid, varName, &varid);
+    if (status != NC_NOERR)
+    {
+        cout << "Dimension "<<varName << " not found!" << endl;
+        return false;
+    }
     nc_inq_dimlen(ncid, varid, varP);
+    return true;
 };
+
+void get_dim_and_read(int ncid, const char *varName, size_t *varSz, vector<void> *varP)
+{
+    status = get_from_ncid(ncid, strApp(varName,"Sz"), varSz);
+    if (status) varP.resize(varSz);
+    status = get_from_ncid(ncid, varName, varP);
+}
 
 void write_to_ncid(int ncid, const char *varName, nc_type varType, int dimSz, const int *dimids, double *varData)
 {
@@ -38,69 +57,140 @@ void read_model(string fileModel, model *modP)
     // spdlog::info("reading model parameters from {} ... ",fileModel);
     // cout << "reading model parameters from " << fileModel << "... ";
     int ncid;
+    int status = true;
 
     nc_open(fileModel.c_str(), NC_NOWRITE, &ncid);
 
-    get_from_ncid(ncid, "Npop", &modP->paras.Npop);
+    status = status && get_from_ncid(ncid, "Npop", &modP->paras.Npop);
     modP->resize();
 
+    vector<int> I_ext(modP->paras.Npop,0);
+    vector<double> J(modP->paras.Npop,0), rateWnt(modP->paras.Npop,0), alpha_0(modP->paras.Npop,0), kappa(modP->paras.Npop,0);
+    status = status && get_from_ncid(ncid, "I_ext", &I_ext[0]);
+    status = status && get_from_ncid(ncid, "J", &J[0]);
+    status = status && get_from_ncid(ncid, "rateWnt", &rateWnt[0]);
+    status = status && get_from_ncid(ncid, "alpha_0", &alpha_0[0]);
+    status = status && get_from_ncid(ncid, "kappa", &kappa[0]);
+
     // get the membrane constants
-    get_from_ncid(ncid, "tau_A", &modP->paras.tau_A);
-    get_from_ncid(ncid, "tau_N", &modP->paras.tau_N);
-    get_from_ncid(ncid, "tau_M", &modP->paras.tau_M);
-    get_from_ncid(ncid, "J", &modP->paras.J);
+    vector<unsigned> tau_order;
+    vector<double> tau_I, tau_n, tau_norm;
+    size_t tauSz;
+    status = status && get_from_ncid(ncid, "tau_orderSz", &tauSz);
+    tau_order.resize(tauSz);
+    tau_I.resize(tauSz);
+    tau_n.resize(tauSz);
+    tau_norm.resize(tauSz);
+
+    status = status && get_from_ncid(ncid, "tau_order", &tau_order[0]);
+    status = status && get_from_ncid(ncid, "tau_I", &tau_I[0]);
+    status = status && get_from_ncid(ncid, "tau_n", &tau_n[0]);
+    status = status && get_from_ncid(ncid, "tau_norm", &tau_norm[0]);
+
+    // int pspSz;
+    // PSP psp;
+
+    population pop;
+    for (unsigned p=0; p<modP->paras.Npop; p++)
+    {
+        vector<PSP> psp;
+        for (unsigned i=0; i<tauSz; i++)
+        {
+            if (tau_order[i] == p)
+            {
+                psp.push_back(PSP {tau_I[i],tau_norm[i],tau_n[i]});
+
+            }
+        }
+        pop = {psp, I_ext[p], rateWnt[p], alpha_0[p], kappa[p]};
+        modP->paras.pop.push_back(pop);
+        // pspSz = modP->paras.pop[p].psp.size();
+        // cout << "initialized a PSP at population "<< p << ": tau_I=" << modP->paras.pop[p].psp[pspSz-1].tau_I << ", tau_n=" << modP->paras.pop[p].psp[pspSz-1].tau_n << endl;
+    }
+
+
+    // for (unsigned i=0; i<tauSz; i++)
+    // {
+    //     psp = {tau_I[i],tau_norm[i],tau_n[i]};
+    //     modP->paras.pop[tau_order[i]].psp.push_back(psp);
+    //
+    //     cout << "initialized a PSP at population "<< tau_order[i] << ": tau_I=" << modP->paras.pop[tau_order[i]].psp[pspSz-1].tau_I << ", tau_n=" << modP->paras.pop[tau_order[i]].psp[pspSz-1].tau_n << endl;
+    // }
+    // get_from_ncid(ncid, "tau_A", &modP->paras.tau_A);
+    // get_from_ncid(ncid, "tau_N", &modP->paras.tau_N);
+    // get_from_ncid(ncid, "tau_M", &modP->paras.tau_M);
+
     // get_from_ncid(ncid, "tau_G", &modP->paras.tau_G);
 
 // get the interaction parameters of populations
-    get_from_ncid(ncid, "kappa", &modP->paras.kappa);
-    cout << "got kappa: " << modP->paras.kappa << endl;
+    // cout << "got kappa: " << modP->paras.kappa << endl;
 
 // get the drive parameters
-    get_from_ncid(ncid, "drive", &modP->paras.drive);
-
-    if (modP->paras.drive > 0)    // if afferent, spiking drive, else constant input current
-    {
-        get_from_ncid(ncid, "J_0", &modP->paras.J_0);
-        get_from_ncid(ncid, "K_0", &modP->paras.K_0);
-        get_from_ncid(ncid, "tau_0", &modP->paras.tau_0);
-    } else {
-        modP->paras.J_0 = 0;
-        modP->paras.K_0 = 1;
-        modP->paras.tau_0 = modP->paras.tau_A;
-    }
+    // get_from_ncid(ncid, "drive", &modP->paras.drive);
+    //
+    // if (modP->paras.drive > 0)    // if afferent, spiking drive, else constant input current
+    // {
+    //     get_from_ncid(ncid, "J_0", &modP->paras.J_0);
+    //     get_from_ncid(ncid, "K_0", &modP->paras.K_0);
+    //     get_from_ncid(ncid, "tau_0", &modP->paras.tau_0);
+    // } else {
+    //     modP->paras.J_0 = 0;
+    //     modP->paras.K_0 = 1;
+    //     modP->paras.tau_0 = modP->paras.tau_A;
+    // }
 
     nc_close(ncid);
-    // cout << "done!" << endl;
+    if (!status) throw;
+    cout << "done!" << endl;
 }
 
 void read_simulation(string fileSim, simulation *simP)
 {
-    // cout << "reading simulation parameters from " << fileSim << "... ";
-
+    cout << "reading simulation parameters from " << fileSim << "... ";
+    cout << endl;
     int ncid;
+    int status = true;
 
     nc_open(fileSim.c_str(), NC_NOWRITE, &ncid);
 
     // find size of dimensions
-    get_from_ncid(ncid, "nSz", &simP->nSz);
-    get_from_ncid(ncid, "alpha_0Sz", &simP->alpha_0Sz);
-    get_from_ncid(ncid, "tau_GSz", &simP->tau_GSz);
-    get_from_ncid(ncid, "rateWntSz", &simP->rateWntSz);
-    get_from_ncid(ncid, "epsSz", &simP->epsSz);
-    get_from_ncid(ncid, "etaSz", &simP->etaSz);
-    get_from_ncid(ncid, "I_alphaSz", &simP->I_alphaSz);
-    get_from_ncid(ncid, "I_betaSz", &simP->I_betaSz);
-    get_from_ncid(ncid, "orderSz", &simP->orderSz);
-    get_from_ncid(ncid, "charSz", &simP->charSz);
+
+    get_dim_and_read(ncid, "n", &simP->nSz, &simP->n[0]);
+    get_dim_and_read(ncid, "alpha_0", &simP->alpha_0Sz, &simP->alpha_0[0]);
+    get_dim_and_read(ncid, "tau_I", &simP->tau_ISz, &simP->tau_I[0]);
+
+
+    // status = status && get_from_ncid(ncid, "alpha_0Sz", &simP->alpha_0Sz);
+    // if (status) simP->alpha_0.resize(simP->alpha_0Sz);
+    //
+    // status = status && get_from_ncid(ncid, "tau_ISz", &simP->tau_GSz);
+    // if (status) simP->tau_G.resize(simP->tau_GSz);
+
+    status = status && get_from_ncid(ncid, "rateWntSz", &simP->rateWntSz);
+    if (status)
+
+    status = status && get_from_ncid(ncid, "epsSz", &simP->epsSz);
+    if (status)
+
+    status = status && get_from_ncid(ncid, "etaSz", &simP->etaSz);
+    if (status)
+
+    status = status && get_from_ncid(ncid, "I_alphaSz", &simP->I_alphaSz);
+    if (status)
+
+    status = status && get_from_ncid(ncid, "I_betaSz", &simP->I_betaSz);
+    if (status)
+
+    status = status && get_from_ncid(ncid, "orderSz", &simP->orderSz);
+    if (status)
+
+    status = status && get_from_ncid(ncid, "charSz", &simP->charSz);
 
     simP->steps = max(max(max(simP->nSz,simP->alpha_0Sz),simP->tau_GSz),simP->rateWntSz);
     // cout << "sizes - n: " << simP->nSz << ", alpha_0: " << simP->alpha_0Sz << ", tau_G: " << simP->tau_GSz << ", rate: " << simP->rateWntSz << endl;
     // cout << "steps: " << simP->steps << endl;
 
     // adjust sizes of simP accordingly
-    simP->n.resize(simP->nSz);
-    simP->alpha_0.resize(simP->alpha_0Sz);
-    simP->tau_G.resize(simP->tau_GSz);
     simP->rateWnt.resize(simP->rateWntSz);
     simP->eps.resize(simP->epsSz);
     simP->eta.resize(simP->etaSz);
@@ -109,13 +199,13 @@ void read_simulation(string fileSim, simulation *simP)
     simP->order.resize(simP->orderSz);
 
     // read variables from ncid
-    get_from_ncid(ncid, "mode_calc", &simP->mode_calc);
-    get_from_ncid(ncid, "mode_stats", &simP->mode_stats);
+    status = status && get_from_ncid(ncid, "mode_calc", &simP->mode_calc);
+    status = status && get_from_ncid(ncid, "mode_stats", &simP->mode_stats);
 
     // reading string... quite bulky - isn't there a better solution?
     vector<vector<char>> order(simP->orderSz, vector<char> (simP->charSz));
     int varid;
-    nc_inq_varid(ncid, "order", &varid);
+    status = status && nc_inq_varid(ncid, "order", &varid);
     size_t start[2] = {0,0}, count[2] = {1,simP->charSz};
 
     for (unsigned rec=0;rec<simP->orderSz;rec++)//
@@ -127,17 +217,16 @@ void read_simulation(string fileSim, simulation *simP)
             simP->order[rec] += order[rec][i];
     }
 
-    get_from_ncid(ncid, "n", &simP->n[0]);
-    get_from_ncid(ncid, "alpha_0", &simP->alpha_0[0]);
-    get_from_ncid(ncid, "tau_G", &simP->tau_G[0]);
-    get_from_ncid(ncid, "rateWnt", &simP->rateWnt[0]);
-    get_from_ncid(ncid, "eps", &simP->eps[0]);
-    get_from_ncid(ncid, "eta", &simP->eta[0]);
-    get_from_ncid(ncid, "I_alpha", &simP->I_alpha[0]);
-    get_from_ncid(ncid, "I_beta", &simP->I_beta[0]);
+    status = status && get_from_ncid(ncid, "alpha_0", &simP->alpha_0[0]);
+    status = status && get_from_ncid(ncid, "tau_G", &simP->tau_G[0]);
+    status = status && get_from_ncid(ncid, "rateWnt", &simP->rateWnt[0]);
+    status = status && get_from_ncid(ncid, "eps", &simP->eps[0]);
+    status = status && get_from_ncid(ncid, "eta", &simP->eta[0]);
+    status = status && get_from_ncid(ncid, "I_alpha", &simP->I_alpha[0]);
+    status = status && get_from_ncid(ncid, "I_beta", &simP->I_beta[0]);
 
     nc_close(ncid);
-    // cout << "done!" << endl;
+    cout << "done!" << endl;
 }
 
 void read_computation(string fileComp, computation *comP)

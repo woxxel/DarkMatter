@@ -1,6 +1,18 @@
 
 void simulation_variable::initialize(double *modVarP, unsigned modVarSz, double *varP, unsigned varSz, string varName)
 {
+    /*
+        modVarP (double*)
+            pointer to variable value in model
+        modVarSz (unsigned)
+            number of different variables within the network (=Npop)
+        varP (double*)
+            pointer to array containing iteration values of variable
+        varSz (unsigned)
+            number of iterations for this variable
+        varName (string)
+            Name of the variable
+    */
     // cout <<" initializing " << varName << " with " << varSz << " variables" << endl;
     name = varName;
 
@@ -71,8 +83,8 @@ void simulation::initialize(model *modP)
             vars[i].initialize(&modP->paras.alpha_0[0], modP->paras.Npop, &alpha_0[0], alpha_0Sz, "alpha_0");
         else if (order[i].compare(0,7,"rateWnt")==0)
             vars[i].initialize(&modP->paras.rate[0], modP->paras.Npop, &rateWnt[0], rateWntSz, "rateWnt");
-        else if (order[i].compare(0,5,"tau_G")==0)
-            vars[i].initialize(&modP->paras.tau_G, 1, &tau_G[0], tau_GSz, "tau_G");
+        else if (order[i].compare(0,5,"tau_I")==0)
+            vars[i].initialize(&modP->paras.tau_I, 1, &tau_I[0], tau_ISz, "tau_I");
         else if (order[i].compare(0,3,"eta")==0)
             vars[i].initialize(&modP->paras.eta, 1, &eta[0], etaSz, "eta");
         else if (order[i].compare(0,3,"eps")==0)

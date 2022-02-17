@@ -1,7 +1,8 @@
 using namespace std;
 
-void get_from_ncid(int ncid, const char *varName, void *varP);
-void get_from_ncid(int ncid, const char *varName, size_t *varP);
+bool get_from_ncid(int ncid, const char *varName, void *varP);
+bool get_from_ncid(int ncid, const char *varName, size_t *varP);
+void get_dim_and_read(int ncid, const char *varName, size_t *varSz, void *varP);
 
 void write_prep_paras(int ncid, int *dimID, simulation *simP);
 void write_paras(int ncid, int *dimID, simulation *simP);

@@ -7,14 +7,20 @@
 void model::resize()
 {
     // resize all to having p populations
-    paras.rate.resize(paras.Npop);
-    paras.alpha_0.resize(paras.Npop);
 
-	paras.q.resize(paras.Npop);
+    // paras.pop.resize(paras.Npop);
 
-	paras.J_E.resize(paras.Npop);
-	paras.J_I.resize(paras.Npop);
-//         paras.kappa.resize(paras.Npop);
+    // paras.rate.resize(paras.Npop);
+    // paras.alpha_0.resize(paras.Npop);
+    //
+	// paras.J_E.resize(paras.Npop);
+	// paras.J_I.resize(paras.Npop);
+    // paras.kappa.resize(paras.Npop);
+
+
+    // parameters to be calculated
+    // shouldnt this be in struct "results"?
+    paras.q.resize(paras.Npop);
 
     paras.alpha_raw.resize(paras.Npop);
 	paras.alpha.resize(paras.Npop);
@@ -41,6 +47,12 @@ void model::resize()
     in_DM.resize(paras.Npop);
     in_np.resize(paras.Npop);
 }
+
+// void model::add_PSP(int p, double tau_I, double tau_norm, double tau_n)
+// {
+//     PSP psp = {tau_I, tau_norm, tau_n};
+//     paras.pop[p].psp.push_back(psp);
+// }
 
 void model::set_weights()
 {

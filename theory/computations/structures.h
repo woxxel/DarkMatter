@@ -36,10 +36,77 @@ struct results
     int axes[7] = {0,0,0,0,0,0,0};
 };
 
+struct PSP
+{
+    /*
+        Definition of synaptic timeconstants
+            tau_I: values in secs
+            tau_norm: normalization
+                <0: abs(tau_norm) = value of peak height
+                >0: tau_norm = total current transported (integral)
+                =0: invalid
+            tau_n: mix-ratio - has to be normalized s.t. sum(tau_n) = 1
+    */
+    double tau_I, tau_norm, tau_n;
+};
+
+struct population
+{
+    // Defines parameters for each population of the network.
+    // Each excitatory population is accompanied by an inhibitory pair, whos interactions are specified by eta & eps
+
+    vector<PSP> psp;
+
+    /*
+        Interaction between inhibitory and excitatory population
+            *eps (double)
+                strength of excitatory-inhibitory feedback loop (0 < eps < 1/sqrt(2))
+            *eta (double)
+                inter-population excitatory coupling (0 < eta < 1)
+
+            J_pq (vector<double>)
+                specifies the strength of incoming synapses from populations q (all network)
+    */
+    // double eta, eps;
+    // vector<double> J_pq;
+
+    /*
+        External drive to populations
+            I_ext (vector<bool>)
+                true: introduces external drive to keep population firing rate at rate specified by rateWnt
+                false: no external drive - population is only activated by excitatory populations
+            rateWnt (vector<double>)
+                if I_ext[p], rateWnt defines the rate at which the population should be active - otherwise neglected
+
+            drive (vector<double>)
+                specifies (along with 2-3 other variables) spiking, external drive, introducing further heterogeneity into the network
+    */
+    int I_ext;
+    double rateWnt;
+    // int drive;
+    // double J_0; // synaptic strength with respect to recurrent weights J
+    // double K_0; // average incoming number of synapses as multiple of recurrent connections number K
+    // double tau_0;
+
+    /*
+        further parameters
+            alpha_0 (double)
+                heterogeneity of this population
+    */
+    double alpha_0;
+
+    double kappa;
+
+};
 
 struct parameters
 {
     unsigned Npop;
+
+    vector<population> pop; // holds all populations of the network
+
+    vector<int> tau_order;
+
 	double tau_G, tau_A, tau_N, tau_M, J;
 	double eta, eps, n;
     double I_alpha, I_beta;
@@ -82,6 +149,7 @@ class model
         vector<bool> in_DM, in_np;
         bool in_imp, in_inc;
 
+        // void add_PSP(int p, double tau_I, double tau_norm, double tau_n);
         void set_weights();
         void solve_selfcon(int mode_calc);
         void write_results(results * resP);
@@ -138,13 +206,13 @@ class simulation
 
         info_paras infoParas;
 
-        vector<double> n, alpha_0, tau_G, rateWnt, eps, eta, I_alpha, I_beta;
+        vector<double> n, alpha_0, tau_I, rateWnt, eps, eta, I_alpha, I_beta;
         unsigned nVar;
         vector<string> order; // contains the strings of parameters in the order that the iteration should walk through
 
         // unsigned n_iter, alpha_0_iter, tau_G_iter, rateWnt_iter, eps_iter, eta_iter;
         int mode_calc, mode_stats;
-        size_t nSz, alpha_0Sz, tau_GSz, rateWntSz, epsSz, etaSz, I_alphaSz, I_betaSz, orderSz, charSz, steps;
+        size_t nSz, alpha_0Sz, tau_ISz, rateWntSz, epsSz, etaSz, I_alphaSz, I_betaSz, orderSz, charSz, steps;
 
         vector<bool> trans_DM_found, trans_np_found, trans_DM_found_approx, trans_np_found_approx;
         bool trans_imp_found, trans_inc_found, trans_imp_found_approx, trans_inc_found_approx;

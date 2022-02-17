@@ -1,10 +1,12 @@
 using namespace std;
 
+void add_PSP(int p, double tau_I, double tau_norm, double tau_n);
+
 void initiate_results(model *modP, simulation *simP, results *resP);
 void compare_approx(model *modP, model *mod_approxP);
 // void find_transitions(model *modP, simulation *simP, results *resP);
 
-int selfconsistency_f (const gsl_vector * q, void * paras, gsl_vector * f);   // dummy function for integration
+// int selfconsistency_f (const gsl_vector * q, void * paras, gsl_vector * f);   // dummy function for integration
 double I_squared_nu(double alpha, double sigma_V, double rateWnt, double rate_max);
 double I_squared_q(double alpha, double sigma_V, double q, double rate_max);
 double selfcon(double alpha, double sigma_V, double rateWnt, double q, double rate_max);
@@ -40,7 +42,7 @@ void post_process(computation *comP, model *modP, model *mod_approxP, simulation
 // void fill_line(int value, double *gammaP, computation com, unsigned n_iter, unsigned alpha_iter, unsigned tau_G_iter, unsigned rate_iter, unsigned p);
 
 //! read/write stuff
-void print_state(size_t iter, gsl_multiroot_fsolver * s);
+// void print_state(size_t iter, gsl_multiroot_fsolver * s);
 
 double poisson_sample(int k, double lambda, double T);
 // int factorial(int n);
