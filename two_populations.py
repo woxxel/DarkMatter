@@ -28,33 +28,61 @@ def two_populations(steps=100,plot_ax3D=True,save=0,file_format='png',rerun=Fals
 
     options = {
         'mode_stats': 0,
-        'order': ['eps','alpha_0','rateWnt','tau_G','n','eta'],
-        'eps': [0,1./np.sqrt(2)],
-        'alpha_0': [0,0.1],
+        'order': ['tau_G','n','alpha_0','rateWnt','eta','eps'],
+        'eps': [1./np.sqrt(2)],
+        'alpha_0': [0.02],
         'rateWnt': [1.],
-        'tau_G': [0.03],
+        'tau_G': [0.,0.1],
         'tau_A': [0.005],
         'Npop': 2,
         'eta': [0.9],
-        'n': [0],
+        'n': [0.,1.],
     }
 
 
-    results = darkMatter(steps=steps,options=options,rerun=rerun,compile=compile)
-    for p in range(2):
-        plot_fins(ax[p,0],results[options['order'][0]],results[options['order'][1]],results['gamma'][p,...],results['chi'][p,...],results['regions'][p,...],plt_para)
-
-    # options['rateWnt'] = [2.]
-    # results = darkMatter(steps=steps,options=options,rerun=rerun,compile=compile)
-    # for p in range(2):
-    #     plot_fins(ax[p,1],results[options['order'][0]],results[options['order'][1]],results['gamma'][p,...],results['chi'][p,...],results['regions'][p,...],plt_para)
+    res = darkMatter(steps=steps,options=options,rerun=rerun,compile=compile)
+    # steps1 = res['gamma'].shape[1]
     #
-    # options['rateWnt'] = [5.]
-    # results = darkMatter(steps=steps,options=options,rerun=rerun,compile=compile)
-    # for p in range(2):
-    #     plot_fins(ax[p,2],results[options['order'][0]],results[options['order'][1]],results['gamma'][p,...],results['chi'][p,...],results['regions'][p,...],plt_para)
+    # x_key = options['order'][0]
+    #
+    # fig, ax = plt.subplots(2,3,figsize=(7.5,4),dpi=300)
+    #
+    # ## define dictionary with transition point indices
+    # trans_idx = {}
+    # for key in ['inc','imp','DM','np']:
+    #     trans_idx[key] = np.zeros(steps1,'int')
+    #     for a in range(steps1):
+    #         idx = np.where(res[x_key]==res[key+'_trans'][0,a])[0]
+    #         trans_idx[key][a] = idx[0] if len(idx) else -1
+    #
+    # x_lim = res['inc_trans'][0,0]
+    # plot_q(ax[0,0],res,x_key,trans_idx,plt_para,x_lim,order=0)
+    #
+    # plot_currents(ax[0,1],res,x_key,trans_idx,plt_para,x_lim,order=0)
+    #
+    # plot_gamma(ax[1,0],res,x_key,trans_idx,plt_para,x_lim,order=0)
+    # plot_chi(ax[1,1],res,x_key,trans_idx,plt_para,x_lim,order=0)
+    #
+    # plt.setp(ax[0,0],xlim=options[x_key],ylim=[0,10])
+    # plt.setp(ax[0,1],xlim=options[x_key],ylim=[-0.2,0.1])
+    # plt.setp(ax[1,0],xlim=options[x_key])
+    # plt.setp(ax[1,1],xlim=options[x_key],ylim=[0,10])
+
+    # for i in range(res['gamma'].shape)
+    for p in range(2):
+        plot_fins(ax[p,0],res[options['order'][0]],res[options['order'][1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
+
+    options['rateWnt'] = [2.]
+    res = darkMatter(steps=steps,options=options,rerun=rerun,compile=compile)
+    for p in range(2):
+        plot_fins(ax[p,1],res[options['order'][0]],res[options['order'][1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
+
+    options['rateWnt'] = [5.]
+    res = darkMatter(steps=steps,options=options,rerun=rerun,compile=compile)
+    for p in range(2):
+        plot_fins(ax[p,2],res[options['order'][0]],res[options['order'][1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
 
 
     plt.show(block=False)
 
-    return results
+    return res

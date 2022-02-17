@@ -90,7 +90,6 @@ class parameters:
 
     def print_parameter(self):
 
-        print(self.paras)
         for key in self.paras:
             print(key, getattr(self,key))
 
@@ -103,9 +102,9 @@ def set_model(fileModel,options):
     model.set_para('tau_M',0.010,options)        # membrane timeconstant in sec
     model.set_para('tau_A',0.005,options)        # GABAergic timeconstant in sec
     model.set_para('tau_N',0.2,options)          # NMDA timeconstant in sec
-    model.set_para('J',-1.,options)          # NMDA timeconstant in sec
+    model.set_para('J',-1.,options)              # synaptic strength
 
-    model.set_para('kappa',1,options)            # connectivity ratio (should have dim=Npop)
+    model.set_para('kappa',1.,options)            # connectivity ratio (should have dim=Npop)
     model.set_para('drive',0,options)            # external drive (1=on, 0=off)
 
     if (model.drive > 0):

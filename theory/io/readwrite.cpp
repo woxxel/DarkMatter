@@ -53,6 +53,7 @@ void read_model(string fileModel, model *modP)
 
 // get the interaction parameters of populations
     get_from_ncid(ncid, "kappa", &modP->paras.kappa);
+    cout << "got kappa: " << modP->paras.kappa << endl;
 
 // get the drive parameters
     get_from_ncid(ncid, "drive", &modP->paras.drive);
