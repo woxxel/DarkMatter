@@ -10,67 +10,72 @@
 #include "functions.h"
 
 // define classes
-void initiate_results(model *modP, simulation *simP, results *resP)
+void Population_Results::initiate(unsigned sim_steps_1, unsigned sim_steps_2, unsigned sim_mode)
 {
-    simP->trans_DM_found.resize(modP->paras.Npop,false);
-    simP->trans_np_found.resize(modP->paras.Npop,false);
+    trans_DM.resize(sim_steps_1);
+    trans_np.resize(sim_steps_1);
+    trans_inc.resize(sim_steps_1);
+    trans_imp.resize(sim_steps_1);
+
+    rate.resize(sim_steps_2,vector<double>(sim_steps_1));
+    q.resize(sim_steps_2,vector<double>(sim_steps_1));
+    gamma.resize(sim_steps_2,vector<double>(sim_steps_1));
+    chi.resize(sim_steps_2,vector<double>(sim_steps_1));
+    delta.resize(sim_steps_2,vector<double>(sim_steps_1));
+    I_balance.resize(sim_steps_2,vector<double>(sim_steps_1));
+
+    if ((sim_mode == 0) || (sim_mode == 3))
+    {
+        regions.resize(sim_steps_2,vector<double>(sim_steps_1));
+        if (sim_mode == 3)
+            regions_approx.resize(sim_steps_2,vector<double>(sim_steps_1));
+    }
+
+
+    if (sim_mode == 1)
+    {
+        // cout << "start q size : " << resP->q.size() << endl;
+        alpha_raw.resize(sim_steps_2,vector<double>(sim_steps_1));
+        alpha.resize(sim_steps_2,vector<double>(sim_steps_1));
+        sigma_V.resize(sim_steps_2,vector<double>(sim_steps_1));
+    }
+
+    if ((sim_mode == 2) || (sim_mode == 3))
+    {
+        q_approx.resize(sim_steps_2,vector<double>(sim_steps_1));
+        gamma_approx.resize(sim_steps_2,vector<double>(sim_steps_1));
+        chi_approx.resize(sim_steps_2,vector<double>(sim_steps_1));
+
+        KL_entropy.resize(sim_steps_2,vector<double>(sim_steps_1));
+        entropy.resize(sim_steps_2,vector<double>(sim_steps_1));
+
+        trans_DM_approx.resize(sim_steps_1);
+        trans_np_approx.resize(sim_steps_1);
+        trans_imp_approx.resize(sim_steps_1);
+        trans_inc_approx.resize(sim_steps_1);
+    }
+
+    if (sim_mode == 4)
+    {
+        // modP->infoContent.resize();
+        infoContent.resize(sim_steps_2,vector<double>(sim_steps_1));
+    }
+}
+
+
+void initiate_results(model *modP, simulation *simP)
+{
+
     simP->trans_imp_found = false;
     simP->trans_inc_found = false;
 
-    simP->trans_DM_found_approx.resize(modP->paras.Npop,false);
-    simP->trans_np_found_approx.resize(modP->paras.Npop,false);
     simP->trans_imp_found_approx = false;
     simP->trans_inc_found_approx = false;
 
-    // now: size of border vectors
-    resP->trans_DM.resize(modP->paras.Npop,vector<double>(simP->vars[0].steps));
-    resP->trans_np.resize(modP->paras.Npop,vector<double>(simP->vars[0].steps));
-    resP->trans_inc.resize(modP->paras.Npop,vector<double>(simP->vars[0].steps));
-    resP->trans_imp.resize(modP->paras.Npop,vector<double>(simP->vars[0].steps));
-
-
-    resP->rate.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
-    resP->q.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
-    resP->gamma.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
-    resP->chi.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
-    resP->delta.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
-    resP->I_balance.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
-
-    if ((simP->mode_stats == 0) || (simP->mode_stats == 3))
-    {
-        resP->regions.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
-        if (simP->mode_stats == 3)
-            resP->regions_approx.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
-    }
-
-
-    if (simP->mode_stats == 1)
-    {
-        // cout << "start q size : " << resP->q.size() << endl;
-        resP->alpha_raw.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
-        resP->alpha.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
-        resP->sigma_V.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
-    }
-
-    if ((simP->mode_stats == 2) || (simP->mode_stats == 3))
-    {
-        resP->q_approx.resize(modP->paras.Npop,vector<vector<double> >(simP->steps,vector<double>(simP->steps)));
-        resP->gamma_approx.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
-        resP->chi_approx.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
-
-        resP->KL_entropy.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
-        resP->entropy.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
-
-        resP->trans_DM_approx.resize(modP->paras.Npop,vector<double>(simP->vars[0].steps));
-        resP->trans_np_approx.resize(modP->paras.Npop,vector<double>(simP->vars[0].steps));
-        resP->trans_imp_approx.resize(modP->paras.Npop,vector<double>(simP->vars[0].steps));
-        resP->trans_inc_approx.resize(modP->paras.Npop,vector<double>(simP->vars[0].steps));
-    }
-
-    if (simP->mode_stats == 4)
-    {
-        modP->infoContent.resize(modP->paras.Npop);
-        resP->infoContent.resize(modP->paras.Npop,vector<vector<double> >(simP->vars[1].steps,vector<double>(simP->vars[0].steps)));
+    for (unsigned l=0; l<modP->L; l++) {
+        for (unsigned p=0; p<modP->layer[l].nPop; p++) {
+            modP->layer[l].population[p].results.initiate(simP->vars[0].steps,simP->vars[1].steps,simP->mode_stats);
+        }
     }
 }
 
@@ -110,36 +115,35 @@ void compare_approx(model *modP, model *mod_approxP)
 }
 
 
-int selfconsistency_f (const gsl_vector * q, void * paras, gsl_vector * f)
+int selfconsistency_f (const gsl_vector * q, void * params, gsl_vector * f)
 {
-	parameters * paraP = (parameters *) paras;
+	model * modP = (model *) params;
 
-	vector<double> q_search(paraP->Npop);
+	vector<vector<double> > alpha, q_search;
 
-	for (unsigned p = 0; p < paraP->Npop; p++)
-        q_search[p] = gsl_vector_get(q,p);
-
-	for (unsigned p = 0; p < paraP->Npop; p++)
-	{
-		// get alpha
-        double alpha_sq = gsl_pow_2(paraP->J_I[p]) * q_search[0];
-
-        if (paraP->Npop > 1)
-            alpha_sq += gsl_pow_2(paraP->J_E[p]) * paraP->kappa * q_search[1];
-
-        double alpha_sq_0;
-        if (paraP->drive == 2)
-        {
-            // quenched variance from afferent, spiking drive (gauss distributed synapse numbers)
-            alpha_sq_0 = sqrt(1./paraP->K_0) * gsl_pow_2(paraP->J_I[p]) * gsl_pow_2(paraP->rate[p]);
+    unsigned p_idx = 0;
+    q_search.resize(modP->L);
+    alpha.resize(modP->L);
+    for (unsigned l = 0; l < modP->L; l++) {
+        q_search[l].resize(modP->layer[l].nPop);
+        alpha[l].resize(modP->layer[l].nPop);
+        for (unsigned p = 0; p < modP->layer[l].nPop; p++) {
+            q_search[l][p] = gsl_vector_get(q,p_idx);
+            p_idx++;
         }
-        else
-            alpha_sq_0 = 0;
+    }
 
-        paraP->alpha[p] = sqrt( alpha_sq + alpha_sq_0 + gsl_pow_2(paraP->alpha_0[p]) );
-		// set the function
-		gsl_vector_set (f, p, selfcon(paraP->alpha[p],paraP->sigma_V[p],paraP->rate[p],q_search[p],paraP->rate_max[p]));
-	}
+    alpha = modP->calc_alpha(q_search);
+
+    // compute and set the results
+    p_idx = 0;
+    for (unsigned l = 0; l < modP->L; l++) {
+        for (unsigned p = 0; p < modP->layer[l].nPop; p++) {
+            gsl_vector_set (f, p_idx, selfcon(alpha[l][p],modP->layer[l].population[p].simulation.sigma_V,modP->layer[l].population[p].rateWnt,q_search[l][p],modP->layer[l].population[p].simulation.rate_max));
+            p_idx++;
+        }
+    }
+
 	return GSL_SUCCESS;
 }
 

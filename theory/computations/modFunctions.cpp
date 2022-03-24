@@ -4,6 +4,42 @@
 
 #include "functions.h"
 
+void PSP::print_PSP()
+{
+    cout << "\t\t ### Synapse " << s << " properties ###" << endl;
+    cout << "\t\t - tau_I: " << tau_I << endl;
+    cout << "\t\t - tau_norm: " << tau_norm << endl;
+}
+
+void Population::print_population()
+{
+    cout << "\t ### Population " << p << " properties ###" << endl;
+    cout << "\t - I_ext: " << I_ext << endl;
+    cout << "\t - rateWnt: " << rateWnt << endl;
+    cout << "\t - alpha_0: " << alpha_0 << endl;
+    cout << "\t - tau_M: " << tau_M << endl;
+    cout << "\t - tau_n: " << tau_n << endl;
+    cout << "\t - J_0: " << J_0 << endl;
+    for (unsigned s=0; s<nPSP; s++) {
+        psp[s].print_PSP();
+    }
+}
+
+void Layer::print_layer()
+{
+    cout << "### Layer " << l << " properties ###" << endl;
+    cout << " - eps: " << eps << endl;
+    cout << " - eta: " << eta << endl;
+    cout << " - J_l: ";
+    for (unsigned l=0; l<J_l.size(); l++)
+        cout << J_l[l] << ",";
+    cout << endl;
+    cout << " - kappa: " << kappa << endl;
+    for (unsigned p=0; p<nPop; p++) {
+        population[p].print_population();
+    }
+}
+
 void model::resize()
 {
     // resize all to having p populations
@@ -57,104 +93,165 @@ void model::resize()
 void model::set_weights()
 {
     // implement setter, calling set_weights only when according variables are changed
-    if (paras.drive == 2)
-        paras.J_0 = paras.J * paras.tau_M;
+    for (unsigned l=0; l<L; l++) {
+        // if (paras.drive == 2)
+        //     paras.J_0 = paras.J * layer[l].population[p].tau_M;
 
-    if (paras.Npop == 1)
-    {
-        paras.J_I[0] = paras.J * paras.tau_M;		   // J_II
-        paras.J_I[1] = paras.J * paras.tau_M;		   // J_EI
+        if (layer[l].nPop == 1)
+        {
+            layer[l].population[0].J[0] = layer[l].population[0].J_0 * layer[l].population[0].tau_M;		   // J_II
+            layer[l].population[0].J[1] = layer[l].population[0].J_0 * layer[l].population[0].tau_M;		   // J_EI
 
-        paras.J_E[0] = 0;			       // J_IE
-        paras.J_E[1] = 0;				   // J_EE
-    }
-    else if (paras.Npop == 2)
-    {
-        // watch out for indexing:
-        // inhibitory population: index 0
-        // excitatory population: index 1
-        paras.J_I[0] = paras.J * sqrt(1 - gsl_pow_2(paras.eps)) * paras.tau_M;  // J_II
-        paras.J_I[1] = paras.J * sqrt(1 - gsl_pow_2(paras.eta * paras.eps)) * paras.tau_M;	// J_EI
+            layer[l].population[1].J[0] = 0;			       // J_IE
+            layer[l].population[1].J[1] = 0;				   // J_EE
+        }
+        else if (layer[l].nPop == 2)
+        {
+            // watch out for indexing:
+            // inhibitory population: index 0
+            // excitatory population: index 1
+            layer[l].population[0].J[0] = layer[l].population[0].J_0 * sqrt(1 - gsl_pow_2(layer[l].eps)) * layer[l].population[0].tau_M;  // J_II
 
-        paras.J_E[0] = paras.J * paras.eps * paras.tau_M;               // J_IE
-        paras.J_E[1] = paras.J * paras.eta * paras.eps * paras.tau_M;   // J_EE
+            layer[l].population[0].J[1] = layer[l].population[0].J_0 * sqrt(1 - gsl_pow_2(layer[l].eta * layer[l].eps)) * layer[l].population[0].tau_M;	// J_EI
 
-        //! for p=1, the excitatory population receives inhibition, but is decoupled, such that it gives no feedback
-        // cout << "eta: " << paras.eta << ", eps: " << paras.eps << endl;
-        // cout << "J_II: " << paras.J_I[0] << ", J_EI: " << paras.J_I[1] << endl;
-        // cout << "J_IE: " << paras.J_E[0] << ", J_EE: " << paras.J_E[1] << endl;
-    }
-    else
-    {
-        cout << "There is no algorithm set yet to assign weights for more than 2 populations. Please fix that before you continue!" << endl;
-        exit(0);
+            layer[l].population[1].J[0] = layer[l].population[1].J_0 * layer[l].eps * layer[l].population[1].tau_M;               // J_IE
+
+            layer[l].population[1].J[1] = layer[l].population[1].J_0 * layer[l].eta * layer[l].eps * layer[l].population[1].tau_M;   // J_EE
+
+            //! for p=1, the excitatory population receives inhibition, but is decoupled, such that it gives no feedback
+            // cout << "eta: " << layer[l].eta << ", eps: " << layer[l].eps << endl;
+            // cout << "J_II: " << layer[l].population[0].J[0] << ", J_EI: " << layer[l].population[0].J[1] << endl;
+            // cout << "J_IE: " << layer[l].population[1].J[0] << ", J_EE: " << layer[l].population[1].J[1] << endl;
+        }
+        else
+        {
+            cout << "There is no algorithm set yet to assign weights for more than 2 populations. Please fix that before you continue!" << endl;
+            exit(0);
+        }
     }
 }
 
 void model::get_sigma_V()
 {
+    // get sigma_V
+
 	// iterate over both populations
-	for (unsigned p = 0; p < paras.Npop; p++)
-	{
-        // from external drive
-        // cout << "J_II = " << paras.J_I[0] << ", J_EI = " << paras.J_I[1] << endl;
-        // cout << "J_IE = " << paras.J_E[0] << ", J_EE = " << paras.J_E[1] << endl;
+    double prefactor, J;
+    double var_V, var_V_dot, tmp_var_V;
+    for (unsigned l=0; l<L; l++) {          // receiving layer
+    	for (unsigned p = 0; p < layer[l].nPop; p++) {          // receiving population
+            var_V = var_V_dot = 0;  // reset values
+            for (unsigned ll=0; ll<L; ll++) {   // projecting layer
+            	for (unsigned pp = 0; pp < layer[ll].nPop; pp++) {   // projecting population
+                    if (ll!=l && (p==0 || pp==0)) continue;     // inter-layer impact only between excitatory populations
 
-        // get sigma_V
-        // cout << "tau_G: " << paras.tau_G << ", tau_A: " << paras.tau_A << ", tau_N: " << paras.tau_N << ", tau_M: " << paras.tau_M << ", n= " << paras.n << ", kappa:" << paras.kappa << endl;
+                    // cout << "tau_G: " << paras.tau_G << ", tau_A: " << paras.tau_A << ", tau_N: " << paras.tau_N << ", tau_M: " << paras.tau_M << ", n= " << paras.n << ", kappa:" << paras.kappa << endl;
 
-        // from excitatory AMPA synapses
-        double var_V_A = gsl_pow_2(paras.J_E[p]) * paras.kappa * paras.rate[p] / (paras.tau_A + paras.tau_M) * ( gsl_pow_2(1-paras.n)/2 + (1-paras.n)*paras.n*paras.tau_A / (paras.tau_A + paras.tau_N) );
-                // from excitatory NMDA synapses
-		double var_V_N = gsl_pow_2(paras.J_E[p]) * paras.kappa * paras.rate[p] / (paras.tau_N + paras.tau_M) * ( paras.n*paras.n/2 + (1-paras.n)*paras.n*paras.tau_N / (paras.tau_A + paras.tau_N) );
-                // from inhibitory GABA synapses
-		double var_V_G = gsl_pow_2(paras.J_I[p]) * paras.rate[p] * 0.5 / (paras.tau_G + paras.tau_M);
+                    if (layer[ll].population[pp].nPSP>2) {
+                        cout << "Please specify 1 or 2 types of synapses per population. More are not yet implemented" << endl;
+                        throw;
+                    }
 
+                    // switch betweeen definitions for inter-layer and intra-layer coupling strengths
+                    if (l==ll)  J = layer[ll].population[pp].J[p];
+                    else        J = layer[ll].J_l[l];
 
-        // total
-		double var_V = var_V_A + var_V_N + var_V_G;
+                    for (unsigned s=0; s<layer[ll].population[pp].nPSP; s++) {
 
-        // cout << "eps=" << paras.eps << ", p=" << p << ", sigma_V_G=" << var_V_G << ", sigma_V_A=" << var_V_A << ", sigma_V_N=" << var_V_N << endl;
+                        // define common prefactor for temporal variance
+                        prefactor = gsl_pow_2(J) * layer[ll].population[pp].rateWnt / (layer[ll].population[pp].psp[s].tau_I + layer[l].population[p].tau_M);
+                        if (pp==0) prefactor *= layer[ll].kappa;
 
-		double var_V_dot = var_V_A / (paras.tau_A * paras.tau_M) + var_V_N / (paras.tau_N * paras.tau_M) + var_V_G / (paras.tau_G * paras.tau_M);
+                        // multiply by factor, specified by populations synaptic transmissions
+                        if (layer[ll].population[pp].nPSP==1) tmp_var_V = prefactor * 0.5;
+                        else if (layer[ll].population[pp].nPSP==2) {
 
-        if (paras.drive == 2)
-        {
-            double var_V_0 = sqrt(1/paras.K_0) * paras.J_0 * paras.J_I[p] * paras.rate[p] * 0.5 / (paras.tau_0 + paras.tau_M);
-            var_V += var_V_0;
-            var_V_dot += var_V_0 / (paras.tau_0 * paras.tau_M);
+                            tmp_var_V = prefactor * ( gsl_pow_2(1-layer[ll].population[pp].tau_n)/2 + (1-layer[ll].population[pp].tau_n)*layer[ll].population[pp].tau_n*layer[ll].population[pp].psp[s].tau_I / (layer[ll].population[pp].psp[0].tau_I + layer[ll].population[pp].psp[1].tau_I) );
+                        }
+                        var_V += tmp_var_V;
+                        var_V_dot += tmp_var_V/(layer[ll].population[pp].psp[s].tau_I * layer[l].population[p].tau_M);
+                    }
+                }
+            }
+            // if (paras.drive == 2)
+            // {
+            //     double var_V_0 = sqrt(1/paras.K_0) * paras.J_0 * paras.J_I[p] * paras.rate[p] * 0.5 / (paras.tau_0 + paras.tau_M);
+            //     var_V += var_V_0;
+            //     var_V_dot += var_V_0 / (paras.tau_0 * paras.tau_M);
+            // }
+            layer[l].population[p].simulation.sigma_V = sqrt(var_V);
+
+            // and the maximum firing rate response
+            layer[l].population[p].simulation.rate_max = sqrt(var_V_dot / var_V) / (2 * M_PI);
+            cout << "(" << l << "," << p << ") ";
+            cout << "eps: " << layer[l].eps << ", var total: " << var_V << ", var_V_dot total: " << var_V_dot << ", rate max: " << layer[l].population[p].simulation.rate_max << endl; //", from external sources: " << var_V_0 << endl;
+            //                 cout << "sigma population " << p << ": " << paras.sigma_V[p] << endl;
+    	}
+    }
+    cout << "calc sigma: done" << endl;
+}
+
+vector< vector<double> > model::calc_alpha(vector<vector<double>> q)
+{
+    double J;
+    double alpha_sq, alpha_sq_0, tmp_alpha_sq;
+    vector< vector<double> > alpha;
+    // cout << "calculating alpha" << endl;
+
+    alpha.resize(L);
+    for (unsigned l = 0; l < L; l++) {        // receiving layer
+        alpha[l].resize(layer[l].nPop);
+        for (unsigned p = 0; p < layer[l].nPop; p++) {   // receiving population
+            alpha_sq = 0;
+            for (unsigned ll = 0; ll < L; ll++) {     // projecting layer
+            	for (unsigned pp = 0; pp < layer[ll].nPop; pp++) {   // projecting population
+                    if (ll!=l && (p==0 || pp==0)) continue;
+
+                    if (l==ll)  J = layer[ll].population[pp].J[p];
+                    else        J = layer[ll].J_l[l];
+                    // get alpha
+                    tmp_alpha_sq = gsl_pow_2(J) * q[ll][pp];
+                    if (pp==0) tmp_alpha_sq *= layer[ll].kappa;
+
+                    alpha_sq += tmp_alpha_sq;
+                }
+            }
+
+            alpha_sq_0 = 0;
+            // if (paraP->drive == 2) {
+            //     // quenched variance from afferent, spiking drive (gauss distributed synapse numbers)
+            //     alpha_sq_0 = sqrt(1./paraP->K_0) * gsl_pow_2(paraP->J_I[p]) * gsl_pow_2(paraP->rate[p]);
+            // }
+
+            // cout << "interresults: "<< alpha_sq << ", " << alpha_sq_0 << ", " << gsl_pow_2(layer[l].population[p].alpha_0) << endl;
+
+            alpha[l][p] = sqrt( alpha_sq + alpha_sq_0 + gsl_pow_2(layer[l].population[p].alpha_0) );
+            // cout << "total: " << alpha[l][p] << endl;
         }
-		paras.sigma_V[p] = sqrt(var_V);
-
-        // cout << "eps: " << paras.eps << ", var total: " << var_V << endl; //", from external sources: " << var_V_0 << endl;
-		// and the maximum firing rate response
-		paras.rate_max[p] = sqrt(var_V_dot / var_V) / (2 * M_PI);
-//                 cout << "sigma population " << p << ": " << paras.sigma_V[p] << endl;
-	}
+    }
+    // cout << "calculating alpha done!" << endl;
+    return alpha;
 }
 
 void model::get_alpha()
 {
-    for (unsigned p = 0; p < paras.Npop; p++)
-    {
-        double alpha_sq = gsl_pow_2(paras.J_I[p]) * paras.q[0];
+    vector<vector<double> > alpha, q;
 
-        if (paras.Npop > 1)
-            alpha_sq += gsl_pow_2(paras.J_E[p]) * paras.kappa * paras.q[1];
-
-        double alpha_sq_0;
-        if (paras.drive == 2)
-        {
-            // quenched variance from afferent, spiking drive (gauss distributed synapse numbers)
-            // after substitution of v_0 = nu_I * J/J_0 * sqrt(K/K_0)
-            alpha_sq_0 = 1/paras.K_0 * gsl_pow_2(paras.J_I[p]) * gsl_pow_2(paras.rate[p]);
+    q.resize(L);
+    for (unsigned l = 0; l < L; l++) {
+        q[l].resize(layer[l].nPop);
+        for (unsigned p = 0; p < layer[l].nPop; p++) {
+            q[l][p] = layer[l].population[p].simulation.q;
         }
-        else
-            alpha_sq_0 = 0;
+    }
 
-        paras.alpha_raw[p] = sqrt( alpha_sq + alpha_sq_0);
-        paras.alpha[p] = sqrt( alpha_sq + alpha_sq_0 + gsl_pow_2(paras.alpha_0[p]));
-//                 cout << "alpha total: " << gsl_pow_2(paras.alpha[p]) << ", from external sources: " << alpha_sq_0 << endl;
+    alpha = calc_alpha(q);
+
+    for (unsigned l = 0; l < L; l++) {
+        for (unsigned p = 0; p < layer[l].nPop; p++) {
+            cout << "alpha total: " << gsl_pow_2(alpha[l][p]) << endl;
+            layer[l].population[p].simulation.alpha = alpha[l][p];
+        }
     }
 }
 
@@ -209,71 +306,84 @@ void model::solve_selfcon(int mode_calc)
 {
         // initiate variables
 //         set_weights();                             // set parameters
+        layer[0].print_layer();
+        layer[1].print_layer();
 
         get_sigma_V();
 
-//         cout << "solving the selfconsistency equations with the " << mode_calc << " mode." << endl;
+        cout << "solving the selfconsistency equations with the " << mode_calc << " mode." << endl;
 
         //! solving selfconsistency equations(s)
         if (mode_calc == 0) // exact solution
         {
-                // numeric root finding to get exact solution
-                // set solver parameter
-                gsl_vector *q_guess = gsl_vector_alloc (paras.Npop);
-                gsl_multiroot_function F;
+            // numeric root finding to get exact solution
+            // set solver parameter
+            gsl_vector *q_guess = gsl_vector_alloc (nPop);
+            gsl_multiroot_function F;
 
 //                 int f_tmp = this->selfconsistency_f;
 //                 F.f = &f_tmp;
-                F.f = &selfconsistency_f;
-                F.n = paras.Npop;
-                F.params = &paras;
-                for (unsigned p = 0; p < paras.Npop; p++)
-                {
-                        gsl_vector_set(q_guess, p, gsl_pow_2(paras.rate[p]));	         // first guess
-//                         cout << "q guess (p=" << p << "): " << gsl_pow_2(paras.rate[p]) << endl;
+            F.f = &selfconsistency_f;
+            F.n = nPop;
+            F.params = this;
+            cout << "this: " << this->layer[0].population[0].J[0] << endl;
+            unsigned pp = 0;
+            for (unsigned l = 0; l < L; l++) {
+                for (unsigned p = 0; p < layer[l].nPop; p++) {
+                    gsl_vector_set(q_guess, pp, gsl_pow_2(layer[l].population[p].rateWnt));	         // first guess
+                    pp++;
                 }
-                // initiate the solver (dnewton)
-                int status;
-                const gsl_multiroot_fsolver_type *Tsolv = gsl_multiroot_fsolver_dnewton;
-                gsl_multiroot_fsolver *s = gsl_multiroot_fsolver_alloc (Tsolv, paras.Npop);
-                gsl_multiroot_fsolver_set (s, &F, q_guess);
-                // iterate the solver
-                size_t iter = 0;
-                do
-                {
-                        iter++;
-                        status = gsl_multiroot_fsolver_iterate (s);
+            }
+            cout << "initiating" << endl;
+            // initiate the solver (dnewton)
+            int status;
+            const gsl_multiroot_fsolver_type *Tsolv = gsl_multiroot_fsolver_dnewton;
+            gsl_multiroot_fsolver *s = gsl_multiroot_fsolver_alloc (Tsolv, nPop);
+            gsl_multiroot_fsolver_set (s, &F, q_guess);
 
-                        if (status) break;	// check if solver is stuck
+            cout << "Iterate..." << endl;
+            // iterate the solver
+            size_t iter = 0;
+            do
+            {
+                    iter++;
+                    status = gsl_multiroot_fsolver_iterate (s);
 
-                        status = gsl_multiroot_test_residual (s->f, 1e-7);
+                    if (status) break;	// check if solver is stuck
+
+                    status = gsl_multiroot_test_residual (s->f, 1e-7);
+            }
+            while (status == GSL_CONTINUE && iter < 100);
+
+            //! post processing
+            cout << "post..." << endl;
+            pp = 0;
+            for (unsigned l = 0; l < L; l++) {
+                for (unsigned p = 0; p < nPop; p++) {
+                    layer[l].population[p].simulation.q = gsl_vector_get(s->x,pp);
+                    cout << "rate " << layer[l].population[p].rateWnt << " q(" << pp << ",exact)=" << layer[l].population[p].simulation.q << endl;
+                    p++;
                 }
-                while (status == GSL_CONTINUE && iter < 100);
-
-                //! post processing
-                for (unsigned p = 0; p < paras.Npop; p++)
-                {
-                    paras.q[p] = gsl_vector_get(s->x,p);
-//                     cout << "q(" << p << ",exact)=" << paras.q[p] << endl;
-                }
-                gsl_multiroot_fsolver_free(s);
+            }
+            gsl_multiroot_fsolver_free(s);
         }
         if (mode_calc == 1) // analytic approximation
         {
 //                 cout << "apply approximation" << endl;
-                // apply "xyz"-approximation to obtain selfconsistent second moment
-                for (unsigned p = 0; p < paras.Npop; ++p)
-                {
-                    double tau_q = 2*(paras.tau_M + paras.tau_G);
+            // apply "xyz"-approximation to obtain selfconsistent second moment
+            for (unsigned p = 0; p < paras.Npop; ++p)
+            {
+                double tau_q = 2*(paras.tau_M + paras.tau_G);
 //                     cout << "tau_M=" << paras.tau_M << ", tau_G=" << paras.tau_G << endl;
-                    double q0 = gsl_pow_2(paras.alpha_0[p])/gsl_pow_2(paras.J_I[p]);
-                    double potent = tau_q*(gsl_pow_2(paras.rate[p]) + q0)/(paras.rate[p] + 2*tau_q*(gsl_pow_2(paras.rate[p]) + q0));
+                double q0 = gsl_pow_2(paras.alpha_0[p])/gsl_pow_2(paras.J_I[p]);
+                double potent = tau_q*(gsl_pow_2(paras.rate[p]) + q0)/(paras.rate[p] + 2*tau_q*(gsl_pow_2(paras.rate[p]) + q0));
 
 
-                    paras.q[p] = 1./sqrt(1+2*tau_q*(paras.rate[p] + q0/paras.rate[p]))*pow(1+tau_q*(paras.rate[p] + q0/paras.rate[p]),1-potent)*pow(paras.rate_max[p],2*potent)*pow(paras.rate[p],2-2*potent);
+                paras.q[p] = 1./sqrt(1+2*tau_q*(paras.rate[p] + q0/paras.rate[p]))*pow(1+tau_q*(paras.rate[p] + q0/paras.rate[p]),1-potent)*pow(paras.rate_max[p],2*potent)*pow(paras.rate[p],2-2*potent);
 //                     cout << "q(" << p << ",approx)=" << paras.q[p] << endl;
-                }
+            }
         }
+        cout << "got selfcon solutions" << endl;
 
         get_alpha();
         get_delta();
@@ -361,120 +471,127 @@ bool model::DM_border(unsigned p)
     return in_DM[p]!=old_in_DM;
 }
 
-void model::find_transitions(simulation *simP, results *resP)
+void model::find_transitions(simulation *simP)
 {
 
     // cout << "check DM border & no peak" << endl;
-    for (unsigned p = 0; p < paras.Npop; p++)
-    {
-        trans_DM_found[p] = false;
-        trans_np_found[p] = false;
-        if (DM_border(p) && (simP->vars[0].iter>0)) {
-            // if (!trans_DM_found[p]) {
-                // cout << " found DM transition for p=" << p << " and iter #" << simP->vars[1].iter << ", @ rate=" << modP->paras.rate[p] << endl;
-                // resP->trans_DM[p][simP->vars[1].iter] = paras.rate[p];      // doesnt work in cases, when there is a second DM transition at high nu
-            // cout << "DM transition @ " << *simP->vars[0].paraP << endl;
-            trans_DM[p] = *simP->vars[0].paraP;
-            // trans_DM[p] = paras.rate[p];
-            trans_DM_found[p] = true;
-            // }
-        } else {
-            trans_DM_found[p] = false;
-        }
 
-        if (no_peak(p) && (simP->vars[0].iter>0)) {
-            // if (!trans_np_found[p]) {
-                // cout << " found no peak transition for p=" << p << " and iter #" << simP->y_iter << ", @ rate=" << modP->paras.rate[p] << endl;
-                // resP->trans_np[p][simP->vars[1].iter] = paras.rate[p];
-            trans_np[p] = *simP->vars[0].paraP;
-            trans_np_found[p] = true;
-            // }
-        } else {
-        // trans_np_found[p] = false;
+    for (unsigned l = 0; l < L; l++) {
+        for (unsigned p = 0; p < layer[l].nPop; p++) {
+            layer[l].population[p].simulation.trans_DM_found = false;
+            layer[l].population[p].simulation.trans_np_found = false;
+            if (DM_border(p) && (simP->vars[0].iter>0)) {
+                // if (!trans_DM_found[p]) {
+                    // cout << " found DM transition for p=" << p << " and iter #" << simP->vars[1].iter << ", @ rate=" << modP->paras.rate[p] << endl;
+                    // resP->trans_DM[p][simP->vars[1].iter] = paras.rate[p];      // doesnt work in cases, when there is a second DM transition at high nu
+                // cout << "DM transition @ " << *simP->vars[0].paraP << endl;
+                layer[l].population[p].results.trans_DM[simP->vars[1].iter] = *simP->vars[0].paraP;
+                // trans_DM[p] = paras.rate[p];
+                layer[l].population[p].simulation.trans_DM_found = true;
+                // }
+            } else {
+                layer[l].population[p].simulation.trans_DM_found = false;
+            }
+
+            if (no_peak(p) && (simP->vars[0].iter>0)) {
+                // if (!trans_np_found[p]) {
+                    // cout << " found no peak transition for p=" << p << " and iter #" << simP->y_iter << ", @ rate=" << modP->paras.rate[p] << endl;
+                    // resP->trans_np[p][simP->vars[1].iter] = paras.rate[p];
+                layer[l].population[p].results.trans_np[simP->vars[1].iter] = *simP->vars[0].paraP;
+                layer[l].population[p].simulation.trans_np_found = true;
+                // }
+            } else {
+            // trans_np_found[p] = false;
+            }
         }
     }
 
     // cout << "check implausible" << endl;
 	// starting to find boundaries
-    trans_imp_found = false;
+    simP->trans_imp_found = false;
 	if (implausible() && (simP->vars[0].iter>0)) {
 		// if (!trans_imp_found) {
-		for (unsigned p = 0; p < paras.Npop; p++)
-            // resP->trans_imp[p][simP->vars[1].iter] = paras.rate[p];
-            trans_imp[p] = *simP->vars[0].paraP;
-		trans_imp_found = true;
+        for (unsigned l = 0; l < L; l++) {
+            for (unsigned p = 0; p < layer[l].nPop; p++)
+                // resP->trans_imp[p][simP->vars[1].iter] = paras.rate[p];
+                layer[l].population[p].results.trans_imp[simP->vars[1].iter] = *simP->vars[0].paraP;
+        }
+		simP->trans_imp_found = true;
 		// }
 	} else {
         // trans_imp_found = false;
 	}
 
     // cout << "check inconsistent" << endl;
-    trans_inc_found = false;
+    simP->trans_inc_found = false;
 	if (inconsistent() && (simP->vars[0].iter>0)) {
 		// if (!trans_inc_found) {
-		trans_inc_found = true;
-		for (unsigned p = 0; p < paras.Npop; p++)
-		{
-            // resP->trans_inc[p][simP->vars[1].iter] = paras.rate[p];
-			trans_inc[p] = *simP->vars[0].paraP;
+		simP->trans_inc_found = true;
+        for (unsigned l = 0; l < L; l++) {
+            for (unsigned p = 0; p < layer[l].nPop; p++) {
+                // resP->trans_inc[p][simP->vars[1].iter] = paras.rate[p];
+    			layer[l].population[p].results.trans_inc[simP->vars[1].iter] = *simP->vars[0].paraP;
 
-			// if (!trans_DM_found[p]) {
-			trans_DM[p] = NAN;
-			trans_DM_found[p] = true;
-			// }
+    			// if (!trans_DM_found[p]) {
+    			layer[l].population[p].results.trans_DM[simP->vars[1].iter] = NAN;
+    			layer[l].population[p].simulation.trans_DM_found = true;
+    			// }
 
-			// if (!trans_np_found[p]) {
-				// cout << "forcing np end @ rate = " << modP->paras.rate[p] << endl;
-				// cout << "previous value: " << resP->trans_np[p][simP->vars[1].iter]<< endl;
-				// resP->trans_np[p][simP->vars[1].iter] = NAN;
-			trans_np[p] = NAN;
-			trans_np_found[p] = true;
-			// }
+    			// if (!trans_np_found[p]) {
+    				// cout << "forcing np end @ rate = " << modP->paras.rate[p] << endl;
+    				// cout << "previous value: " << resP->trans_np[p][simP->vars[1].iter]<< endl;
+    				// resP->trans_np[p][simP->vars[1].iter] = NAN;
+    			layer[l].population[p].results.trans_np[simP->vars[1].iter] = NAN;
+    			layer[l].population[p].simulation.trans_np_found = true;
+    			// }
 
-			// if (!trans_imp_found) {
-			trans_imp[p] = NAN;
-			trans_imp_found = true;
-			// }
-		}
+    			// if (!trans_imp_found) {
+    			layer[l].population[p].results.trans_imp[simP->vars[1].iter] = NAN;
+    			simP->trans_imp_found = true;
+    			// }
+    		}
+        }
 		// }
 	} else
-		trans_inc_found = false;
+		simP->trans_inc_found = false;
 
-	if (trans_inc_found && simP->mode_stats==3)
-		for (unsigned p = 0; p < paras.Npop; p++)
-			resP->KL_entropy[p][simP->vars[1].iter][simP->vars[0].iter] = NAN;
+	// if (trans_inc_found && simP->mode_stats==3)
+	// 	for (unsigned p = 0; p < paras.Npop; p++)
+	// 		resP->KL_entropy[p][simP->vars[1].iter][simP->vars[0].iter] = NAN;
 
     // cout << "assign region" << endl;
 	if ((simP->mode_stats == 0) || (simP->mode_stats == 3))
 	{
         int val;
-		for (unsigned p = 0; p < paras.Npop; ++p)
-		{
-			if (in_inc) val = 3;
-			else if (in_np[p]) val = 2;
-			else if (in_imp) val = 1;
-			else val = 0;
+        for (unsigned l = 0; l < L; l++) {
+            for (unsigned p = 0; p < layer[l].nPop; p++) {
+    			if (in_inc) val = 3;
+    			else if (in_np[p]) val = 2;
+    			else if (in_imp) val = 1;
+    			else val = 0;
 
-			paras.regions[p] = val;
-            // regions[simP->n_iter][simP->alpha_0_iter][simP->tau_G_iter][simP->rateWnt_iter][p] = val;
-		}
+    			layer[l].population[p].results.regions[simP->vars[1].iter][simP->vars[0].iter] = val;
+                // regions[simP->n_iter][simP->alpha_0_iter][simP->tau_G_iter][simP->rateWnt_iter][p] = val;
+    		}
+        }
 	}
 
     // cout << "final check" << endl;
 	// check if this is the last iteration along x-axis
 	if (simP->vars[0].iter==simP->vars[0].steps-1 || in_inc)// && (simP->mode_stats==2))
 	{
-		for (unsigned p = 0; p < paras.Npop; ++p)
-		{
-			if (!simP->trans_DM_found[p])
-				trans_DM[p] = NAN;
-			if (!simP->trans_np_found[p])
-				trans_np[p] = NAN;
-			if (!simP->trans_imp_found)
-				trans_imp[p] = NAN;
-			if (!in_inc && !simP->trans_inc_found)
-				trans_inc[p] = NAN;
-		}
+        for (unsigned l = 0; l < L; l++) {
+            for (unsigned p = 0; p < layer[l].nPop; p++) {
+    			if (!layer[l].population[p].simulation.trans_DM_found)
+    				layer[l].population[p].results.trans_DM[simP->vars[1].iter] = NAN;
+    			if (!layer[l].population[p].simulation.trans_np_found)
+    				layer[l].population[p].results.trans_np[simP->vars[1].iter] = NAN;
+    			if (!simP->trans_imp_found)
+    				layer[l].population[p].results.trans_imp[simP->vars[1].iter] = NAN;
+    			if (!in_inc && !simP->trans_inc_found)
+    				layer[l].population[p].results.trans_inc[simP->vars[1].iter] = NAN;
+    		}
+        }
 	}
 };
 

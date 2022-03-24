@@ -6,34 +6,45 @@ using namespace std;
 class simulation;
 class model;
 
-struct results
+struct Population_Results
 {
-    vector<vector<vector<double> > > rate, q, q_approx, alpha_raw, alpha, sigma_V, gamma, gamma_approx, chi, chi_approx, delta, I_balance, regions, regions_approx, entropy, KL_entropy;
+    vector<vector<double> > rate, q, q_approx, alpha_raw, alpha, sigma_V, gamma, gamma_approx, chi, chi_approx, delta, I_balance, regions, regions_approx, entropy, KL_entropy;
 
-    vector<vector<vector<double> > > infoContent;
 
-    vector<unsigned> axesDim;
+    vector<vector<double> > infoContent;
 
-    vector<vector<double> > KS;
+    // vector<unsigned> axesDim;
+
+    // vector<vector<double> > KS;
     // vector<double> KL_entropy;
 
-    vector<vector<vector<double> > > rate_T;
-    vector<vector<vector<int> > > N_AP;
-    vector<vector<double> > rate_inf;
+    // vector<vector<vector<double> > > rate_T;
+    // vector<vector<vector<int> > > N_AP;
+    // vector<vector<double> > rate_inf;
     // vector<double> p_est_inf, p_est_T;
-    vector<vector<vector<double> > > p_bayes_est;
-    vector<double> p_bayes_est_measures;
-    vector<double> cdf_theory;
+    // vector<vector<vector<double> > > p_bayes_est;
+    // vector<double> p_bayes_est_measures;
+    // vector<double> cdf_theory;
     // vector<double> p_k;
-    vector<int> p_hist;
+    // vector<int> p_hist;
 
-    vector<vector<double> > trans_DM, trans_np, trans_inc, trans_imp;
-    vector<vector<double> > trans_DM_approx, trans_np_approx, trans_inc_approx, trans_imp_approx;
 
-    double d_nu, max_prob, factor;
-    int steps;
+    vector<double> trans_DM, trans_np, trans_inc, trans_imp;
+    vector<double> trans_DM_approx, trans_np_approx, trans_inc_approx, trans_imp_approx;
+
+    // double d_nu, max_prob, factor;
+    // int steps;
 
     int axes[7] = {0,0,0,0,0,0,0};
+
+    void initiate(unsigned sim_steps_1, unsigned sim_steps_2, unsigned sim_mode);
+};
+
+struct Population_Simulation
+{
+    bool trans_DM_found = false, trans_np_found = false, trans_DM_found_approx = false, trans_np_found_approx = false;
+
+    double q, rate_max, sigma_V, alpha;
 };
 
 struct PSP
@@ -47,28 +58,22 @@ struct PSP
                 =0: invalid
             tau_n: mix-ratio - has to be normalized s.t. sum(tau_n) = 1
     */
-    double tau_I, tau_norm, tau_n;
+    unsigned s; // PSP ID
+    double tau_I, tau_norm;
+    void print_PSP();
 };
 
-struct population
+struct Population
 {
     // Defines parameters for each population of the network.
     // Each excitatory population is accompanied by an inhibitory pair, whos interactions are specified by eta & eps
 
+    unsigned p; // population ID
     vector<PSP> psp;
+    unsigned nPSP;
 
-    /*
-        Interaction between inhibitory and excitatory population
-            *eps (double)
-                strength of excitatory-inhibitory feedback loop (0 < eps < 1/sqrt(2))
-            *eta (double)
-                inter-population excitatory coupling (0 < eta < 1)
-
-            J_pq (vector<double>)
-                specifies the strength of incoming synapses from populations q (all network)
-    */
-    // double eta, eps;
-    // vector<double> J_pq;
+    Population_Results results;
+    Population_Simulation simulation;
 
     /*
         External drive to populations
@@ -83,8 +88,10 @@ struct population
     */
     int I_ext;
     double rateWnt;
+    double tau_n;
+    double J_0; // synaptic strength base value
+
     // int drive;
-    // double J_0; // synaptic strength with respect to recurrent weights J
     // double K_0; // average incoming number of synapses as multiple of recurrent connections number K
     // double tau_0;
 
@@ -95,17 +102,48 @@ struct population
     */
     double alpha_0;
 
+    double tau_M;
+    vector<double> J;
+
+    void print_population();
+
+};
+
+struct Layer
+{
+    // Defines parameters for each layer of the network.
+    // Each layer is composed of an excitatory and an inhibitory population, whos interactions are specified by eta & eps
+    vector<Population> population;
+    unsigned nPop = 2;
+    unsigned l; // layer ID
+
+
+    /*
+        Interaction between inhibitory and excitatory population
+            eps (vector<double>)
+                strength of excitatory-inhibitory feedback loop (0 < eps < 1/sqrt(2))
+            eta (vector<double>)
+                inter-population excitatory coupling (0 < eta < 1)
+
+            J_l (vector<double>)
+                specifies the strength of incoming synapses from layer l (only to excitatory for now)
+            kappa (vector<double>)
+                specifies the relative number of inhibitory neurons to excitatory ones
+    */
+    double eta, eps;
+    vector<double> J_l;
     double kappa;
 
+    void print_layer();
 };
 
 struct parameters
 {
     unsigned Npop;
 
-    vector<population> pop; // holds all populations of the network
+    // vector<population> pop; // holds all populations of the network
 
-    vector<int> tau_order;
+    // vector<int> tau_order;
 
 	double tau_G, tau_A, tau_N, tau_M, J;
 	double eta, eps, n;
@@ -138,6 +176,11 @@ struct info_paras
 class model
 {
 	public:
+        unsigned L;
+        vector <Layer> layer;
+
+        unsigned nPop;
+
         parameters paras;
 
         vector<double> trans_DM, trans_np, trans_inc, trans_imp;
@@ -152,7 +195,7 @@ class model
         // void add_PSP(int p, double tau_I, double tau_norm, double tau_n);
         void set_weights();
         void solve_selfcon(int mode_calc);
-        void write_results(results * resP);
+        void write_results();
         double distribution_exact(double nu, int p);
         bool q_border1(unsigned p);
         bool q_border2(unsigned p);
@@ -164,11 +207,12 @@ class model
 
         void integrate_information(info_paras infoParas);
 
-        void find_transitions(simulation *simP, results *resP);
-        void store_update(results *resP);
+        void find_transitions(simulation *simP);
+        void store_update();
 
 
 // 		model();
+        vector< vector<double> > calc_alpha(vector< vector<double> > q);
         void resize();
 
     private:
@@ -206,15 +250,17 @@ class simulation
 
         info_paras infoParas;
 
-        vector<double> n, alpha_0, tau_I, rateWnt, eps, eta, I_alpha, I_beta;
+        vector<double> eps, eta, alpha_0, rateWnt, I_alpha, I_beta, tau_I, tau_n;
+        vector<vector<int> > sim_pointer;
+
         unsigned nVar;
         vector<string> order; // contains the strings of parameters in the order that the iteration should walk through
 
         // unsigned n_iter, alpha_0_iter, tau_G_iter, rateWnt_iter, eps_iter, eta_iter;
         int mode_calc, mode_stats;
-        size_t nSz, alpha_0Sz, tau_ISz, rateWntSz, epsSz, etaSz, I_alphaSz, I_betaSz, orderSz, charSz, steps;
+        size_t tau_nSz, alpha_0Sz, tau_ISz, rateWntSz, epsSz, etaSz, I_alphaSz, I_betaSz, orderSz, charSz, steps, sim_primSz, sim_secSz;
 
-        vector<bool> trans_DM_found, trans_np_found, trans_DM_found_approx, trans_np_found_approx;
+        // vector<bool> trans_DM_found, trans_np_found, trans_DM_found_approx, trans_np_found_approx;
         bool trans_imp_found, trans_inc_found, trans_imp_found_approx, trans_inc_found_approx;
 
         double y_val();
@@ -228,7 +274,7 @@ class simulation
         void print_simStatus();
 
         void initiate_y_axis(model *modP);
-        void store_results(model *modP, model *mod_approxP, results *resP);
+        void store_results(model *modP, model *mod_approxP);
 };
 
 struct computation

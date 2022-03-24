@@ -6,7 +6,7 @@ from darkMatter import darkMatter
 from general.plot_statistics import *
 from general.utils import set_plot_params
 
-def two_populations(steps=100,plot_ax3D=True,save=0,file_format='png',rerun=False,compile=False):
+def two_populations(L=1,S=[1,2],steps=100,plot_ax3D=True,save=0,file_format='png',rerun=False,compile=False):
 
 ## stats:
 ####    0: sharkfins
@@ -26,20 +26,44 @@ def two_populations(steps=100,plot_ax3D=True,save=0,file_format='png',rerun=Fals
         'const_label': []
     }
 
+    J_l = np.ones((L,L))
+    np.fill_diagonal(J_l,0)
     options = {
-        'mode_stats': 0,
-        # 'order': ['tau_G','n','alpha_0','rateWnt','eta','eps'],
-        'eps': 1./np.sqrt(2),
-        'alpha_0': 0.02,
-        'rateWnt': 1.,
-        # 'tau_A': [0.005,
-        'Npop': 2,
+
+
+        # count of layers, populations, PSPs
+        'L': L,
+        'S': S,     # contains number of synapses for each population
+
+        # layer level parameters
+        'eps': [1./np.sqrt(2),0.3],
         'eta': 0.9,
+        'J_l': J_l,
+        'kappa': 1.,
+
+        # population level parameters
+        'I_ext': 1,
+        'rateWnt': 1.,
+        'alpha_0': 0.02,
+        'tau_M': 0.01,
+        'J_0': [-1.,1.,-1.,1.],
+
+        # psp level parameters
+        'tau_I': [0.03,0.005,0.2,0.03,0.005,0.2],
+        'tau_n': 0.1,
+        'tau_norm': 1.,
+
+        # 'order': ['tau_G','n','alpha_0','rateWnt','eta','eps'],
+        'mode_stats': 0,
+        'mode_calc': 0,
         'simulation': {
-            'n': [0.,1.],
+            # for each iteration parameter, specify (layer,population,psp)-tuple
+            # specify -1 if a level of hierarchy is non-applicable
+            # specify 'None' if should be applied to all candidates
+            'tau_n': [0.,1.],
+            'sim_prim': [0,1,0],       # when population parameters are iterated, specify population number(s) (empty = all)
             'tau_I': [0.,0.1],
-            'sim_p': [1],       # when population parameters are iterated, specify population number(s) (empty = all)
-            'sim_tau': [0],     # when synaptic timeconstants are iterated, specify number within population
+            'sim_sec': [0,1,0],     # when synaptic timeconstants are iterated, specify number within population
         }
     }
 

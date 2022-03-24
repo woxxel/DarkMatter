@@ -62,12 +62,16 @@ class parameters:
         # print('Building %s class'%name)
         self.paras = []
 
-    def set_para(self,key,default,option,register=True,sz=None):
+    def set_para(self,key,default,option=None,register=True,sz=None):
 
-        val = option[key] if key in option.keys() else default
+        if option:
+            val = option[key] if key in option.keys() else default
+        else:
+            val = default
         if sz:
-            if not type(val)==list:
-                val *= np.ones(sz)
+            if not (type(val)==list or type(val)==np.ndarray):
+                val = np.full(sz,val)
+                # val *= np.ones(sz)
             else:
                 assert len(val)==sz, f'Please provide values for {key} of dimension 1 or {sz}'
 
@@ -80,7 +84,7 @@ class parameters:
             self.paras.append(key)
 
     def prepare_sim_paras(self,steps):   # only works in conjunction with "set_simulation"
-        for key in self.order:
+        for key in self.paras:
             val = getattr(self,key)
             assert type(val) == list, 'Please specify all iteration parameters as lists!'
             if len(val) == 2:
@@ -91,8 +95,8 @@ class parameters:
                 val = np.array(val).astype('float')
             setattr(self,key,val)
 
-        nChar = len(max(self.order,key=len))
-        self.order = np.array(self.order,dtype='S'+str(nChar))
+        nChar = len(max(self.paras,key=len))
+        self.order = np.array(self.paras,dtype='S'+str(nChar))
 
     def print_parameter(self):
 
@@ -105,36 +109,75 @@ def set_model(fileModel,options):
     model = parameters('model')
 
     ## global parameters
-    model.set_para('Npop',2,options)
-    Npop = getattr(model,'Npop')
-    assert not (Npop % 2), f'Number of populations must be an even number, Npop={Npop} given'
+    model.set_para('L',1,options)
+    L = getattr(model,'L')
+    assert not (L == len(options['S'])), f'Number of populations must be twice the number of layers ({L}), Npop={len(options["S"])} given'
+    P = 2       # populations per layer
+    nP = 2*L    # total number of populations
 
-    model.set_para('tau_M',0.010,options)        # membrane timeconstant in sec
+    model.set_para('S',[1,2],options)
+    S = getattr(model,'S')
+    layer_L_idx = []
+    pop_L_idx = []
+    pop_P_idx = []
+    psp_L_idx = []
+    psp_P_idx = []
+    psp_S_idx = []
 
-    ## set arbitrary number of synaptic timeconstants
-    model.set_para('tau_order',[0,0,1],options)
-    model.set_para('tau_I',[0.005,0.2,0.03],options)
-    model.set_para('tau_n',[1.,0.,1.],options)
-    model.set_para('tau_norm',[1.,1.,1.],options)
+    for l in range(L):
+        layer_L_idx.append(l)
+        for p in range(P):
+            pop_L_idx.append(l)
+            pop_P_idx.append(p)
+            for s in range(S[p+2*l]):
+                psp_L_idx.append(l)
+                psp_P_idx.append(p)
+                psp_S_idx.append(s)
 
-    assert not len(set(range(Npop)) - set(getattr(model,'tau_order'))), 'Please make sure there are synaptic timeconstant parameters defined for each population'
+    nS = sum(S)
+    print('nS:',nS)
+    # print('indices')
+    # print(layer_L_idx)
+    # print(pop_L_idx)
+    # print(pop_P_idx)
+    # print(psp_L_idx)
+    # print(psp_P_idx)
+    # print(psp_S_idx)
 
-    for tau_para in ['tau_I','tau_n','tau_norm']:
-        assert len(getattr(model,tau_para)) == len(getattr(model,'tau_order')), 'Make sure to provide the same number of parameters for each variable of synaptic timeconstants'
-        assert len(getattr(model,tau_para)) >= Npop, 'Number of defined synaptic timeconstants needs to be at least as large as the number of populations'
-    # model.set_para('tau_A',0.005,options)        # GABAergic timeconstant in sec
-    # model.set_para('tau_N',0.2,options)          # NMDA timeconstant in sec
 
-    # print(Npop)
-    ### parameters for pairs of populations
-    model.set_para('eps',0.,options,sz=Npop//2)
-    model.set_para('eta',0.,options,sz=Npop//2)
+    ### parameters for layers
+    model.set_para('layer_L_idx',layer_L_idx)
+
+    model.set_para('eps',0.,options,sz=L)
+    model.set_para('eta',0.,options,sz=L)
+    model.set_para('J_l',1.,options,sz=L)              # synaptic strength of inter-layer interactions
+    model.set_para('kappa',1.,options,sz=L)            # connectivity ratio (should have dim=Npop)
 
     ### parameters for each population
-    model.set_para('J',-1.,options,sz=Npop)              # synaptic strength
-    model.set_para('I_ext',1,options,sz=Npop)           # external, constant drive
-    model.set_para('kappa',1.,options,sz=Npop)            # connectivity ratio (should have dim=Npop)
-    model.set_para('drive',0,options,sz=Npop)            # external drive (1=on, 0=off)
+    model.set_para('pop_L_idx',pop_L_idx)
+    model.set_para('pop_P_idx',pop_P_idx)
+
+    model.set_para('I_ext',1,options,sz=nP)           # external, constant drive
+    model.set_para('rateWnt',1.,options,sz=nP)           # external, constant drive
+    model.set_para('alpha_0',0.,options,sz=nP)           # external, constant drive
+    model.set_para('tau_M',0.01,options,sz=nP)        # membrane timeconstant in sec
+    model.set_para('tau_n',0.,options,sz=nP)
+    model.set_para('J_0',-1.,options,sz=nP)             # base synaptic strength
+
+    model.set_para('drive',0,options,sz=L)            # external drive (1=on, 0=off)
+
+    ### parameters for each synapse set
+    model.set_para('psp_L_idx',psp_L_idx)
+    model.set_para('psp_P_idx',psp_P_idx)
+    model.set_para('psp_S_idx',psp_S_idx)
+
+    model.set_para('tau_I',[0.005,0.2,0.03],options,sz=nS)
+    model.set_para('tau_norm',1.,options,sz=nS)
+
+    for tau_para in ['tau_I','tau_norm']:
+        assert len(getattr(model,tau_para)) == nS, 'Make sure to provide the same number of parameters for each variable of synaptic timeconstants'
+        assert len(getattr(model,tau_para)) >= nP, 'Number of defined synaptic timeconstants needs to be at least as large as the number of populations'
+
     # for p in range(Npop):
     #     if (model.drive[p] > 0):
     #         model.set_para('tau_0',1.,options,sz=Npop)         # external timeconstant
@@ -155,11 +198,6 @@ def set_model(fileModel,options):
 
         val = getattr(model,key)
         varType,varDim = prepare_ncid_var(ncid,model,key,val)
-        # if type(val)==int:
-        #     varType = np.dtype('int32').char
-        # else:
-        #     varType = np.dtype('float64').char
-
         Var = ncid.createVariable(key,varType,varDim)
         Var[:] = val
     ncid.close()
@@ -174,10 +212,12 @@ def set_simulation(fileSim,options,steps):
     sim = parameters('simulation')
 
     for key in options['simulation']:
-        if not (key in ['sim_p','sim_tau']):
+        if key in ['sim_prim','sim_sec']:
+            sim.set_para(key,[],options['simulation'],register=False)
+        else:
             sim.set_para(key,[],options['simulation'])
 
-    sim.set_para('order',sim.paras,{},register=False)
+    # sim.set_para('order',sim.paras,{},register=False)
 
     # sim.set_para('rateWnt',[0.,20.],options['simulation'])
     # sim.set_para('alpha_0',[0.,0.16],options['simulation'])
@@ -210,15 +250,17 @@ def set_simulation(fileSim,options,steps):
     #write simulation parameters to netcdf file
     ncid = Dataset(fileSim, "w")
     ncid.createDimension('one',1)
+
+    sim.paras.extend(['mode_calc','mode_stats','sim_prim','sim_sec','order'])
+    # print(sim.__dict__)
     for key in sim.paras:
 
         val = getattr(sim,key)
         varType,varDim = prepare_ncid_var(ncid,sim,key,val)
-
         if varType=='S':        ## somewhat complicated passing over readable strings to netcdf
             nChar = len(max(val,key=len))
             ncid.createDimension('charSz',nChar)
-            Var = ncid.createVariable(key,'%s1'%(varType),varDim+'charSz')
+            Var = ncid.createVariable(key,'%s1'%(varType),varDim+('charSz',))
             Var._Encoding = 'ascii'
             Var[:] = stringtochar(val)
         else:
@@ -228,29 +270,40 @@ def set_simulation(fileSim,options,steps):
     ncid.close()
 
     # sim.print_parameter()
-    # print(sim.paras)
 
     return sim, sv_str
 
+def get_type(val):
+    if type(val)==np.int_ or type(val)==int:
+        varType = np.dtype('int32').char #'i' #
+    elif type(val)==np.bytes_ or type(val)==bytes:
+        varType='S'
+    else:
+        varType = np.dtype('float64').char
+    return varType
+
 def prepare_ncid_var(ncid,sim,key,val):
 
-    if type(val) == np.ndarray or type(val) == list:
-        varDim = key + 'Sz'
-        ncid.createDimension(varDim,len(val))
+    if type(val) == np.ndarray and len(val.shape)>1:
+        varDim = ()
+        for i,l in enumerate(val.shape):
+            varDim_tmp = key + 'Sz' + str(i)
+            varDim += (varDim_tmp,)
+            ncid.createDimension(varDim_tmp,l)
+        varType = get_type(val.flatten()[0])
 
-        if type(val[0])==int:
-            varType = np.dtype('int32').char #'i' #
-        else:
-            varType = np.dtype('float64').char
+    elif type(val) == np.ndarray or type(val) == list:
+        varDim_tmp = key + 'Sz'
+        varDim = (varDim_tmp,)
+        ncid.createDimension(varDim_tmp,len(val))
+        varType = get_type(val[0])
         # varType = val[0].dtype.char
-    else:
-        varDim = 'one'
-        if type(val)==int:
-            varType = np.dtype('int32').char #'i' #
-        else:
-            varType = np.dtype('float64').char #'f8' #
 
-    return varType, (varDim,)
+    else:
+        varDim = ('one',)
+        varType = get_type(val)
+
+    return varType, varDim
 
 
 def compile_code():
