@@ -28,6 +28,7 @@ def two_populations(L=1,S=[1,2],steps=100,plot_ax3D=True,save=0,file_format='png
 
     J_l = np.ones((L,L))
     np.fill_diagonal(J_l,0)
+    print(J_l)
     options = {
 
 
@@ -36,9 +37,9 @@ def two_populations(L=1,S=[1,2],steps=100,plot_ax3D=True,save=0,file_format='png
         'S': S,     # contains number of synapses for each population
 
         # layer level parameters
-        'eps': [1./np.sqrt(2),0.3],
+        'eps': 1./np.sqrt(2),
         'eta': 0.9,
-        'J_l': J_l,
+        'J0_l': J_l,
         'kappa': 1.,
 
         # population level parameters
@@ -46,11 +47,11 @@ def two_populations(L=1,S=[1,2],steps=100,plot_ax3D=True,save=0,file_format='png
         'rateWnt': 1.,
         'alpha_0': 0.02,
         'tau_M': 0.01,
-        'J_0': [-1.,1.,-1.,1.],
+        'J0': 1.,
 
         # psp level parameters
-        'tau_I': [0.03,0.005,0.2,0.03,0.005,0.2],
-        'tau_n': 0.1,
+        'tau_I': [0.005,0.005,0.2,0.005,0.005,0.2,0.005,0.005,0.2,0.005,0.005,0.2],
+        'tau_n': 0.,
         'tau_norm': 1.,
 
         # 'order': ['tau_G','n','alpha_0','rateWnt','eta','eps'],
@@ -60,10 +61,11 @@ def two_populations(L=1,S=[1,2],steps=100,plot_ax3D=True,save=0,file_format='png
             # for each iteration parameter, specify (layer,population,psp)-tuple
             # specify -1 if a level of hierarchy is non-applicable
             # specify 'None' if should be applied to all candidates
-            'tau_n': [0.,1.],
-            'sim_prim': [0,1,0],       # when population parameters are iterated, specify population number(s) (empty = all)
-            'tau_I': [0.,0.1],
-            'sim_sec': [0,1,0],     # when synaptic timeconstants are iterated, specify number within population
+            'rateWnt': [0.,20.],
+            'alpha_0': [0.,0.2],
+
+            'sim_prim': [0,-1,0],       # when population parameters are iterated, specify population number(s) (empty = all)
+            'sim_sec': [0,-1,0],     # when synaptic timeconstants are iterated, specify number within population
         }
     }
 
@@ -104,13 +106,13 @@ def two_populations(L=1,S=[1,2],steps=100,plot_ax3D=True,save=0,file_format='png
     for p in range(2):
         plot_fins(ax[p,0],res[order[0]],res[order[1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
 
-    options['rateWnt'] = [2.]
-    res = darkMatter(steps=steps,options=options,rerun=rerun,compile=compile)
+    options['tau_I'] = [0.03,0.005,0.2,0.03,0.005,0.2,0.03,0.005,0.2,0.03,0.005,0.2]
+    res = darkMatter(steps=steps,options=options,rerun=rerun,compile=False)
     for p in range(2):
         plot_fins(ax[p,1],res[order[0]],res[order[1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
 
-    options['rateWnt'] = [5.]
-    res = darkMatter(steps=steps,options=options,rerun=rerun,compile=compile)
+    options['tau_I'] = [0.06,0.005,0.2,0.03,0.005,0.2,0.03,0.005,0.2,0.03,0.005,0.2]
+    res = darkMatter(steps=steps,options=options,rerun=rerun,compile=False)
     for p in range(2):
         plot_fins(ax[p,2],res[order[0]],res[order[1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
 

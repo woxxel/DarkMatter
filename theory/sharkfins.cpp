@@ -27,54 +27,59 @@ int main(int argc, char** argv)
     string fileSim = argv[2];
 	string fileOut = argv[3];
 
-    simulation sim, *simP = &sim;
-    model mod, *modP = &mod;
-    // results res, *resP = &res;
+    Simulation sim, *simP = &sim;
+    Model mod, *modP = &mod;
+	Model mod_approx, *modP_approx = &mod_approx;
+    // Results res, *resP = &res;
 
     read_model(fileModel,modP);
+    read_model(fileModel,modP_approx);
+
     read_simulation(fileSim,simP);
 
 	sim.initialize(modP);
+	sim.initialize(modP_approx);
 
     initiate_results(modP,simP);
+    initiate_results(modP_approx,simP);
 
-	// model mod_approx, *mod_approxP = &mod_approx;
+	// Model *modP_approx = new Model(modP);
 	// mod_approx = mod;
-	//
+
 	cout << "calculate solutions for mode stats = " << sim.mode_stats << endl;
 
-	while (sim.run_iteration(modP))
+	while (sim.run_iteration(modP,modP_approx))
 	{
-		cout << "start iteration... " << endl;
+		// cout << "start iteration... " << endl;
 		mod.solve_selfcon(sim.mode_calc);
-		// mod.find_transitions(simP);
+		mod.find_transitions(simP);
 	//
-	// 	// cout << "solving approx... " << endl;
-	// 	if ((sim.mode_stats == 2) || (sim.mode_stats == 3))
-	// 	{
-	// 		mod_approx = mod;
-	// 		mod_approx.solve_selfcon(1);
-	// 		mod_approx.find_transitions(simP);
-	//
-	// 		compare_approx(modP,mod_approxP);
-	// 	}
-	// 	// cout << "done" << endl;
-	//
-	// 	if (sim.mode_stats == 4)
-	// 	{
-	// 		mod.integrate_information(sim.infoParas);
-	// 	}
-	//
-	// 	// cout << "storing ...";
-	// 	sim.store_results(modP,mod_approxP);
-	// 	// cout << "done" << endl;
+		// cout << "solving approx... " << endl;
+		if ((sim.mode_stats == 2) || (sim.mode_stats == 3))
+		{
+			// mod_approx = mod;
+			mod_approx.solve_selfcon(1);
+			mod_approx.find_transitions(simP);
+
+			compare_approx(modP,modP_approx);
+		}
+		// cout << "done" << endl;
+
+		if (sim.mode_stats == 4 && !modP->simulation.in_inc)
+		{
+			mod.integrate_information();
+		}
+
+		// cout << "storing ...";
+		sim.store_results(modP,modP_approx);
+		// cout << "done" << endl;
 	};
-	// // cout << "computation done!" << endl;
+	cout << "computation done!" << endl;
 	//
 	// // if (sim.steps == 1)
 	// 	// write_theory(fileOut);
 	// // else {
-    // write_results(fileOut,simP,modP);
+    write_results(fileOut,simP,modP,modP_approx);
     // // }
 	return 0;
 }

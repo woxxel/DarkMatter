@@ -10,12 +10,19 @@
 #include "functions.h"
 
 // define classes
+
+void Model_Results::initiate(unsigned sim_steps_1, unsigned sim_steps_2, unsigned sim_mode)
+{
+    trans_inc.resize(sim_steps_1);
+    trans_imp.resize(sim_steps_1);
+}
+
 void Population_Results::initiate(unsigned sim_steps_1, unsigned sim_steps_2, unsigned sim_mode)
 {
     trans_DM.resize(sim_steps_1);
     trans_np.resize(sim_steps_1);
-    trans_inc.resize(sim_steps_1);
-    trans_imp.resize(sim_steps_1);
+    // trans_inc.resize(sim_steps_1);
+    // trans_imp.resize(sim_steps_1);
 
     rate.resize(sim_steps_2,vector<double>(sim_steps_1));
     q.resize(sim_steps_2,vector<double>(sim_steps_1));
@@ -27,8 +34,8 @@ void Population_Results::initiate(unsigned sim_steps_1, unsigned sim_steps_2, un
     if ((sim_mode == 0) || (sim_mode == 3))
     {
         regions.resize(sim_steps_2,vector<double>(sim_steps_1));
-        if (sim_mode == 3)
-            regions_approx.resize(sim_steps_2,vector<double>(sim_steps_1));
+        // if (sim_mode == 3)
+            // regions_approx.resize(sim_steps_2,vector<double>(sim_steps_1));
     }
 
 
@@ -42,17 +49,17 @@ void Population_Results::initiate(unsigned sim_steps_1, unsigned sim_steps_2, un
 
     if ((sim_mode == 2) || (sim_mode == 3))
     {
-        q_approx.resize(sim_steps_2,vector<double>(sim_steps_1));
-        gamma_approx.resize(sim_steps_2,vector<double>(sim_steps_1));
-        chi_approx.resize(sim_steps_2,vector<double>(sim_steps_1));
+        // q_approx.resize(sim_steps_2,vector<double>(sim_steps_1));
+        // gamma_approx.resize(sim_steps_2,vector<double>(sim_steps_1));
+        // chi_approx.resize(sim_steps_2,vector<double>(sim_steps_1));
 
         KL_entropy.resize(sim_steps_2,vector<double>(sim_steps_1));
         entropy.resize(sim_steps_2,vector<double>(sim_steps_1));
 
-        trans_DM_approx.resize(sim_steps_1);
-        trans_np_approx.resize(sim_steps_1);
-        trans_imp_approx.resize(sim_steps_1);
-        trans_inc_approx.resize(sim_steps_1);
+        // trans_DM_approx.resize(sim_steps_1);
+        // trans_np_approx.resize(sim_steps_1);
+        // trans_imp_approx.resize(sim_steps_1);
+        // trans_inc_approx.resize(sim_steps_1);
     }
 
     if (sim_mode == 4)
@@ -63,7 +70,7 @@ void Population_Results::initiate(unsigned sim_steps_1, unsigned sim_steps_2, un
 }
 
 
-void initiate_results(model *modP, simulation *simP)
+void initiate_results(Model *modP, Simulation *simP)
 {
 
     simP->trans_imp_found = false;
@@ -72,6 +79,8 @@ void initiate_results(model *modP, simulation *simP)
     simP->trans_imp_found_approx = false;
     simP->trans_inc_found_approx = false;
 
+    modP->results.initiate(simP->vars[0].steps,simP->vars[1].steps,simP->mode_stats);
+
     for (unsigned l=0; l<modP->L; l++) {
         for (unsigned p=0; p<modP->layer[l].nPop; p++) {
             modP->layer[l].population[p].results.initiate(simP->vars[0].steps,simP->vars[1].steps,simP->mode_stats);
@@ -79,7 +88,7 @@ void initiate_results(model *modP, simulation *simP)
     }
 }
 
-// void get_distribution(model *modP, simulation *simP, results *resP)
+// void get_distribution(Model *modP, Simulation *simP, results *resP)
 // {
 //     for (unsigned p = 0; p < modP->paras.Npop; p++)
 //     {
@@ -97,7 +106,7 @@ void initiate_results(model *modP, simulation *simP)
 //     }
 // }
 
-void compare_approx(model *modP, model *mod_approxP)
+void compare_approx(Model *modP, Model *mod_approxP)
 {
     for (unsigned p = 0; p < modP->paras.Npop; p++)
     {
@@ -117,7 +126,7 @@ void compare_approx(model *modP, model *mod_approxP)
 
 int selfconsistency_f (const gsl_vector * q, void * params, gsl_vector * f)
 {
-	model * modP = (model *) params;
+	Model * modP = (Model *) params;
 
 	vector<vector<double> > alpha, q_search;
 
@@ -162,7 +171,7 @@ double I_squared_q(double alpha, double sigma_V, double q, double rate_max)
 	return -( gsl_pow_2(alpha) + 0.5*gsl_pow_2(sigma_V) ) * log( (gsl_pow_2(q)/gsl_pow_4(rate_max) ) * (1 + 2*gsl_pow_2(alpha / sigma_V)) );
 }
 
-// void simulation::store_results_approx(simulation *simP, model *modP, results * resP)
+// void simulation::store_results_approx(Simulation *simP, Model *modP, results * resP)
 // {
 // //         unsigned a = resP->gamma_approx.size() - 1;
 // //

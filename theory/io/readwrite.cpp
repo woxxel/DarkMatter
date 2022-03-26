@@ -55,10 +55,10 @@ void write_to_ncid(int ncid, const char *varName, nc_type varType, int dimSz, co
     nc_put_var(ncid, varid, varData);
 };
 
-void read_model(string fileModel, model *modP)
+void read_model(string fileModel, Model *modP)
 {
     // spdlog::info("reading model parameters from {} ... ",fileModel);
-    // cout << "reading model parameters from " << fileModel << "... ";
+    cout << "reading model parameters from " << fileModel << "... " << endl;
     int ncid;
     int status = true;
 
@@ -71,33 +71,28 @@ void read_model(string fileModel, model *modP)
     size_t nP;
     get_dim_and_read(ncid, "S", &nP, &S);
 
-    // cout << "nPop: " << nP << endl;
     unsigned nS = 0;
     for (unsigned p=0; p<nP; p++)
         nS += S[p];
     modP->nPop = nP;
-    // cout << "nS: " << nS << endl;
 
-    double eps[modP->L], eta[modP->L], J_l[modP->L][modP->L], kappa[modP->L];
+    status = status && get_from_ncid(ncid, "I_alpha", &modP->I_alpha);
+    status = status && get_from_ncid(ncid, "I_beta", &modP->I_beta);
+
+    double eps[modP->L], eta[modP->L], J0_l[modP->L][modP->L], kappa[modP->L];
     status = status && get_from_ncid(ncid, "eps", &eps[0]);
     status = status && get_from_ncid(ncid, "eta", &eta[0]);
-    status = status && get_from_ncid(ncid, "J_l", &J_l[0]);
+    status = status && get_from_ncid(ncid, "J0_l", &J0_l[0]);
     status = status && get_from_ncid(ncid, "kappa", &kappa[0]);
 
-    // cout << "Jl:" << endl;
-    // cout << J_l[0][0] << endl;
-    // cout << J_l[0][1] << endl;
-    // cout << J_l[1][0] << endl;
-    // cout << J_l[1][1] << endl;
-
     int I_ext[nP];
-    double rateWnt[nP], alpha_0[nP], tau_M[nP], tau_n[nP], J_0[nP];
+    double rateWnt[nP], alpha_0[nP], tau_M[nP], tau_n[nP], J0[nP];
     status = status && get_from_ncid(ncid, "I_ext", &I_ext[0]);
     status = status && get_from_ncid(ncid, "rateWnt", &rateWnt[0]);
     status = status && get_from_ncid(ncid, "alpha_0", &alpha_0[0]);
     status = status && get_from_ncid(ncid, "tau_M", &tau_M[0]);
     status = status && get_from_ncid(ncid, "tau_n", &tau_n[0]);
-    status = status && get_from_ncid(ncid, "J_0", &J_0[0]);
+    status = status && get_from_ncid(ncid, "J0", &J0[0]);
 
     double tau_I[nS], tau_norm[nS];
     status = status && get_from_ncid(ncid, "tau_I", &tau_I[0]);
@@ -110,15 +105,14 @@ void read_model(string fileModel, model *modP)
 
         modP->layer[l].eps = eps[l];
         modP->layer[l].eta = eta[l];
-        modP->layer[l].J_l.resize(modP->L);
+        modP->layer[l].J0_l.resize(modP->L);
         for (unsigned ll=0; ll<modP->L; ll++)
-            modP->layer[l].J_l[ll] = J_l[l][ll];    // check again, whether indices are in right order
+            modP->layer[l].J0_l[ll] = J0_l[l][ll];    // check again, whether indices are in right order
         modP->layer[l].kappa = kappa[l];
         // modP->layer[l].setWeights();
 
         for (unsigned p=0; p<modP->layer[l].nPop; p++)
         {
-            // cout << "adding some PSP (" << S[p_idx] << ")" << endl;
             modP->layer[l].population[p].p = p;
             modP->layer[l].population[p].psp.resize(S[p_idx]);
             modP->layer[l].population[p].J.resize(modP->layer[l].nPop);
@@ -130,7 +124,7 @@ void read_model(string fileModel, model *modP)
             modP->layer[l].population[p].alpha_0 = alpha_0[p_idx];
             modP->layer[l].population[p].tau_M = tau_M[p_idx];
             modP->layer[l].population[p].tau_n = tau_n[p_idx];
-            modP->layer[l].population[p].J_0 = J_0[p_idx];
+            modP->layer[l].population[p].J0 = J0[p_idx];
 
             for (unsigned s=0; s<S[p_idx]; s++) {
                 modP->layer[l].population[p].psp[s].s = s;
@@ -163,7 +157,7 @@ void read_model(string fileModel, model *modP)
     cout << "done!" << endl;
 }
 
-void read_simulation(string fileSim, simulation *simP)
+void read_simulation(string fileSim, Simulation *simP)
 {
     cout << "reading simulation parameters from " << fileSim << "... " << endl;
     int ncid;
@@ -259,7 +253,7 @@ void read_simulation(string fileSim, simulation *simP)
     cout << "done!" << endl;
 }
 
-void read_computation(string fileComp, computation *comP)
+void read_computation(string fileComp, Computation *comP)
 {
     // cout << "reading computation parameters from " << fileComp << "... " ;
 
@@ -301,7 +295,7 @@ void read_computation(string fileComp, computation *comP)
 
 
 
-void read_measures(string fileMeasures, measures *mesP)
+void read_measures(string fileMeasures, Measures *mesP)
 {
     // cout << "reading measurement data from " << fileMeasures << "... ";
 
@@ -371,10 +365,10 @@ void read_measures(string fileMeasures, measures *mesP)
 // }
 
 
-void write_results(string fileOut, simulation *simP, model *modP)
+void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_approx)
 {
 	// spdlog::info("writing shark data to file '{}'...",fileOut);
-	// cout << "writing result data to file " << fileOut << "...";
+	cout << "writing result data to file " << fileOut << "..." << endl;
 
     int ncid, dimids[3], steps_dim, steps_dim1, Npop_dim;//, info_dim;
     unsigned steps = simP->vars[0].steps;
@@ -383,7 +377,7 @@ void write_results(string fileOut, simulation *simP, model *modP)
 
     nc_create(fileOut.c_str(), NC_CLOBBER, &ncid);
 
-    nc_def_dim(ncid, "Npop", modP->paras.Npop, &Npop_dim);
+    nc_def_dim(ncid, "Npop", modP->nPop, &Npop_dim);
     nc_def_dim(ncid, "steps_dim", steps, &steps_dim);
     nc_def_dim(ncid, "steps_dim1", steps_1, &steps_dim1);
     // nc_def_dim(ncid, "info_dim", steps_info, &info_dim);
@@ -392,14 +386,6 @@ void write_results(string fileOut, simulation *simP, model *modP)
     dimids[1] = steps_dim1;
     dimids[2] = steps_dim;
     // dimids[3] = info_dim;
-
-    // size_t start[3], count[3];
-    // start[2] = 0;
-    // start[3] = 0;
-
-    // count[0] = 1;
-    // count[2] = steps;
-    // count[3] = steps_info;
 
     int para_dimID[7];
     write_prep_paras(ncid,&para_dimID[0],simP);
@@ -419,10 +405,10 @@ void write_results(string fileOut, simulation *simP, model *modP)
         if (simP->mode_stats == 3)
             nc_def_var(ncid, "regions_approx", NC_DOUBLE, 3, &dimids[0], &regions_approx_id);
     }
+    nc_def_var(ncid, "inc_trans", NC_DOUBLE, 1, &dimids[1], &inc_id);
+    nc_def_var(ncid, "imp_trans", NC_DOUBLE, 1, &dimids[1], &imp_id);
     nc_def_var(ncid, "DM_trans", NC_DOUBLE, 2, &dimids[0], &DM_id);
     nc_def_var(ncid, "np_trans", NC_DOUBLE, 2, &dimids[0], &np_id);
-    nc_def_var(ncid, "inc_trans", NC_DOUBLE, 2, &dimids[0], &inc_id);
-    nc_def_var(ncid, "imp_trans", NC_DOUBLE, 2, &dimids[0], &imp_id);
 
     int alpha_raw_id, alpha_id, sigma_V_id;
     if (simP->mode_stats == 1)
@@ -441,10 +427,10 @@ void write_results(string fileOut, simulation *simP, model *modP)
         nc_def_var(ncid, "entropy", NC_DOUBLE, 3, &dimids[0], &entropy_id);
         nc_def_var(ncid, "KL_entropy", NC_DOUBLE, 3, &dimids[0], &KL_entropy_id);
 
+        nc_def_var(ncid, "inc_trans_approx", NC_DOUBLE, 1, &dimids[1], &inc_approx_id);
+        nc_def_var(ncid, "imp_trans_approx", NC_DOUBLE, 1, &dimids[1], &imp_approx_id);
         nc_def_var(ncid, "DM_trans_approx", NC_DOUBLE, 2, &dimids[0], &DM_approx_id);
         nc_def_var(ncid, "np_trans_approx", NC_DOUBLE, 2, &dimids[0], &np_approx_id);
-        nc_def_var(ncid, "inc_trans_approx", NC_DOUBLE, 2, &dimids[0], &inc_approx_id);
-        nc_def_var(ncid, "imp_trans_approx", NC_DOUBLE, 2, &dimids[0], &imp_approx_id);
     }
 
     if (simP->mode_stats == 4)
@@ -473,73 +459,87 @@ void write_results(string fileOut, simulation *simP, model *modP)
 
     write_paras(ncid, para_dimID, simP);
 
-    // for (unsigned p=0; p<modP->paras.Npop; p++)
-    // {
-    //     start[0] = p;
-    //
-    //     start[1] = 0;
-    //     count[1] = steps_1;
-    //     nc_put_vara(ncid, DM_id, start, count, &resP->trans_DM[p][0]);
-    //     nc_put_vara(ncid, np_id, start, count, &resP->trans_np[p][0]);
-    //     nc_put_vara(ncid, inc_id, start, count, &resP->trans_inc[p][0]);
-    //     nc_put_vara(ncid, imp_id, start, count, &resP->trans_imp[p][0]);
-    //
-    //     if ((simP->mode_stats == 2) || (simP->mode_stats == 3))
-    //     {
-    //         nc_put_vara(ncid, DM_approx_id, start, count, &resP->trans_DM_approx[p][0]);
-    //         nc_put_vara(ncid, np_approx_id, start, count, &resP->trans_np_approx[p][0]);
-    //         nc_put_vara(ncid, inc_approx_id, start, count, &resP->trans_inc_approx[p][0]);
-    //         nc_put_vara(ncid, imp_approx_id, start, count, &resP->trans_imp_approx[p][0]);
-    //     }
-    //
-    //     count[1] = 1;
-    //
-    //     for (unsigned rec=0; rec<steps_1; rec++)
-    //     {
-    //         start[1] = rec;
-    //
-    //         start[2] = 0;
-    //         // count[2] = steps;
-    //         nc_put_vara(ncid, q_id, start, count, &resP->q[p][rec][0]);
-    //         nc_put_vara(ncid, gamma_id, start, count, &resP->gamma[p][rec][0]);
-    //         nc_put_vara(ncid, chi_id, start, count, &resP->chi[p][rec][0]);
-    //         nc_put_vara(ncid, delta_id, start, count, &resP->delta[p][rec][0]);
-    //         nc_put_vara(ncid, I_balance_id, start, count, &resP->I_balance[p][rec][0]);
-    //
-    //         if ((simP->mode_stats == 0) || (simP->mode_stats == 3))
-    //         {
-    //             nc_put_vara(ncid, regions_id, start, count, &resP->regions[p][rec][0]);
-    //             if (simP->mode_stats == 3)
-    //                 nc_put_vara(ncid, regions_approx_id, start, count, &resP->regions_approx[p][rec][0]);
-    //
-    //         }
-    //         if (simP->mode_stats == 1)
-    //         {
-    //             nc_put_vara(ncid, alpha_raw_id, start, count, &resP->alpha_raw[p][rec][0]);
-    //             nc_put_vara(ncid, alpha_id, start, count, &resP->alpha[p][rec][0]);
-    //             nc_put_vara(ncid, sigma_V_id, start, count, &resP->sigma_V[p][rec][0]);
-    //         }
-    //         if ((simP->mode_stats == 2) || (simP->mode_stats == 3))
-    //         {
-    //             nc_put_vara(ncid, q_approx_id, start, count, &resP->q_approx[p][rec][0]);
-    //             nc_put_vara(ncid, gamma_approx_id, start, count, &resP->gamma_approx[p][rec][0]);
-    //             nc_put_vara(ncid, chi_approx_id, start, count, &resP->chi_approx[p][rec][0]);
-    //             nc_put_vara(ncid, entropy_id, start, count, &resP->entropy[p][rec][0]);
-    //             nc_put_vara(ncid, KL_entropy_id, start, count, &resP->KL_entropy[p][rec][0]);
-    //         }
-    //         if (simP->mode_stats == 4)
-    //         {
-    //
-    //             // count[2] = 1;
-    //             nc_put_vara(ncid, info_id, start, count, &resP->infoContent[p][rec][0]);
-    //             // for (unsigned rec1=0; rec1<steps; rec1++)
-    //             // {
-    //             //     // cout << "start: " << start[0] << "," << start[1] << "," << start[2] << "," << start[3] << endl;
-    //             //     // cout << "count: " << count[0] << "," << count[1] << "," << count[2] << "," << count[3] << endl;
-    //             //     start[2] = rec1;
-    //             //     nc_put_vara(ncid, info_id, start, count, &resP->infoContent[p][rec][rec1][0]);
-    //             // }
-    //         }
+    size_t start[] = {0,0,0}, count[] = {1, steps_1, steps};
+
+    cout << "trans_inc: " << modP->results.trans_inc[0][0] << endl;
+
+    Population_Results *popResP, *popResP_approx;
+    nc_put_vara(ncid, inc_id, start, count, &modP->results.trans_inc[0]);
+    nc_put_vara(ncid, imp_id, start, count, &modP->results.trans_imp[0]);
+
+    if ((simP->mode_stats == 2) || (simP->mode_stats == 3))
+    {
+        nc_put_vara(ncid, inc_approx_id, start, count, &modP_approx->results.trans_inc[0]);
+        nc_put_vara(ncid, imp_approx_id, start, count, &modP_approx->results.trans_imp[0]);
+    }
+
+    cout << "written first stuff " << endl;
+
+    unsigned p_idx = 0;
+    for (unsigned l = 0; l < modP->L; l++) {
+        for (unsigned p = 0; p < modP->layer[l].nPop; p++) {
+
+            popResP = &modP->layer[l].population[p].results;
+            popResP_approx = &modP_approx->layer[l].population[p].results;
+
+            start[0] = p_idx;
+
+            start[1] = 0;
+            count[1] = steps_1;
+            nc_put_vara(ncid, DM_id, start, count, &popResP->trans_DM[0]);
+            nc_put_vara(ncid, np_id, start, count, &popResP->trans_np[0]);
+
+            if ((simP->mode_stats == 2) || (simP->mode_stats == 3))
+            {
+                nc_put_vara(ncid, DM_approx_id, start, count, &popResP_approx->trans_DM[0]);
+                nc_put_vara(ncid, np_approx_id, start, count, &popResP_approx->trans_np[0]);
+            }
+
+            count[1] = 1;
+
+            for (unsigned rec=0; rec<steps_1; rec++) {
+                start[1] = rec;
+                start[2] = 0;
+                // count[2] = steps;
+                nc_put_vara(ncid, q_id, start, count, &popResP->q[rec][0]);
+                nc_put_vara(ncid, gamma_id, start, count, &popResP->gamma[rec][0]);
+                nc_put_vara(ncid, chi_id, start, count, &popResP->chi[rec][0]);
+                nc_put_vara(ncid, delta_id, start, count, &popResP->delta[rec][0]);
+                nc_put_vara(ncid, I_balance_id, start, count, &popResP->I_balance[rec][0]);
+
+                if ((simP->mode_stats == 0) || (simP->mode_stats == 3))
+                {
+                    nc_put_vara(ncid, regions_id, start, count, &popResP->regions[rec][0]);
+                    if (simP->mode_stats == 3)
+                        nc_put_vara(ncid, regions_approx_id, start, count, &popResP_approx->regions[rec][0]);
+                }
+                if (simP->mode_stats == 1)
+                {
+                    nc_put_vara(ncid, alpha_raw_id, start, count, &popResP->alpha_raw[rec][0]);
+                    nc_put_vara(ncid, alpha_id, start, count, &popResP->alpha[rec][0]);
+                    nc_put_vara(ncid, sigma_V_id, start, count, &popResP->sigma_V[rec][0]);
+                }
+                if ((simP->mode_stats == 2) || (simP->mode_stats == 3))
+                {
+                    nc_put_vara(ncid, q_approx_id, start, count, &popResP_approx->q[rec][0]);
+                    nc_put_vara(ncid, gamma_approx_id, start, count, &popResP_approx->gamma[rec][0]);
+                    nc_put_vara(ncid, chi_approx_id, start, count, &popResP_approx->chi[rec][0]);
+                    nc_put_vara(ncid, entropy_id, start, count, &popResP->entropy[rec][0]);
+                    nc_put_vara(ncid, KL_entropy_id, start, count, &popResP->KL_entropy[rec][0]);
+                }
+                if (simP->mode_stats == 4)
+                {
+
+                    // count[2] = 1;
+                    nc_put_vara(ncid, info_id, start, count, &popResP->infoContent[rec][0]);
+                    // for (unsigned rec1=0; rec1<steps; rec1++)
+                    // {
+                    //     // cout << "start: " << start[0] << "," << start[1] << "," << start[2] << "," << start[3] << endl;
+                    //     // cout << "count: " << count[0] << "," << count[1] << "," << count[2] << "," << count[3] << endl;
+                    //     start[2] = rec1;
+                    //     nc_put_vara(ncid, info_id, start, count, &resP->infoContent[p][rec][rec1][0]);
+                    // }
+                }
     //         // if (simP->mode_stats == 3)
     //         // {
     //         //     for (unsigned rec1=0; rec1<steps; rec1++)
@@ -549,15 +549,16 @@ void write_results(string fileOut, simulation *simP, model *modP)
     //         //         nc_put_vara(ncid, p_approx_id, start, count, &resP->p_approx[p][rec][rec1][0]);
     //         //         nc_put_vara(ncid, cdf_theory_id, start, count, &resP->cdf_theory[p][rec][rec1][0]);
     //         //     }
-    //         // }
-    //     }
-    // }
+            }
+            p_idx++;
+        }
+    }
 
     nc_close(ncid);
-    // cout << "done!" << endl;
+    cout << "done!" << endl;
 }
 
-void write_prep_paras(int ncid, int *dimID, simulation *simP)
+void write_prep_paras(int ncid, int *dimID, Simulation *simP)
 {
     int dim;
     for (unsigned i=0;i<simP->nVar;i++)
@@ -568,7 +569,7 @@ void write_prep_paras(int ncid, int *dimID, simulation *simP)
     }
 }
 
-void write_paras(int ncid, int *dimID, simulation *simP)
+void write_paras(int ncid, int *dimID, Simulation *simP)
 {
     for (unsigned i=0;i<simP->nVar;i++)
     {

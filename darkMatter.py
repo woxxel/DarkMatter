@@ -135,7 +135,7 @@ def set_model(fileModel,options):
                 psp_S_idx.append(s)
 
     nS = sum(S)
-    print('nS:',nS)
+    # print('nS:',nS)
     # print('indices')
     # print(layer_L_idx)
     # print(pop_L_idx)
@@ -150,7 +150,7 @@ def set_model(fileModel,options):
 
     model.set_para('eps',0.,options,sz=L)
     model.set_para('eta',0.,options,sz=L)
-    model.set_para('J_l',1.,options,sz=L)              # synaptic strength of inter-layer interactions
+    model.set_para('J0_l',1.,options,sz=L)              # synaptic strength of inter-layer interactions
     model.set_para('kappa',1.,options,sz=L)            # connectivity ratio (should have dim=Npop)
 
     ### parameters for each population
@@ -162,7 +162,7 @@ def set_model(fileModel,options):
     model.set_para('alpha_0',0.,options,sz=nP)           # external, constant drive
     model.set_para('tau_M',0.01,options,sz=nP)        # membrane timeconstant in sec
     model.set_para('tau_n',0.,options,sz=nP)
-    model.set_para('J_0',-1.,options,sz=nP)             # base synaptic strength
+    model.set_para('J0',-1.,options,sz=nP)             # base synaptic strength
 
     model.set_para('drive',0,options,sz=L)            # external drive (1=on, 0=off)
 
@@ -202,7 +202,7 @@ def set_model(fileModel,options):
         Var[:] = val
     ncid.close()
 
-    model.print_parameter()
+    # model.print_parameter()
 
     return model
 
