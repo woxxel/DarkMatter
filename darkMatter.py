@@ -73,6 +73,11 @@ class parameters:
                 val = np.full(sz,val)
                 # val *= np.ones(sz)
             else:
+                if len(val)==1:
+                    val = np.full(sz,val[0])
+                else:
+                    f = sz//len(val)
+                    val = np.array(list(val)*f)
                 assert len(val)==sz, f'Please provide values for {key} of dimension 1 or {sz}'
 
         setattr(self,key,val)
@@ -111,42 +116,17 @@ def set_model(fileModel,options):
     ## global parameters
     model.set_para('L',1,options)
     L = getattr(model,'L')
-    assert not (L == len(options['S'])), f'Number of populations must be twice the number of layers ({L}), Npop={len(options["S"])} given'
-    P = 2       # populations per layer
-    nP = 2*L    # total number of populations
+    
+    model.set_para('P',2,options,sz=L)
+    P = getattr(model,'P')       # populations per layer
+    nP = sum(P)    # total number of populations
 
-    model.set_para('S',[1,2],options)
+    model.set_para('S',[1,2],options,sz=nP)
     S = getattr(model,'S')
-    layer_L_idx = []
-    pop_L_idx = []
-    pop_P_idx = []
-    psp_L_idx = []
-    psp_P_idx = []
-    psp_S_idx = []
-
-    for l in range(L):
-        layer_L_idx.append(l)
-        for p in range(P):
-            pop_L_idx.append(l)
-            pop_P_idx.append(p)
-            for s in range(S[p+2*l]):
-                psp_L_idx.append(l)
-                psp_P_idx.append(p)
-                psp_S_idx.append(s)
-
     nS = sum(S)
-    # print('nS:',nS)
-    # print('indices')
-    # print(layer_L_idx)
-    # print(pop_L_idx)
-    # print(pop_P_idx)
-    # print(psp_L_idx)
-    # print(psp_P_idx)
-    # print(psp_S_idx)
-
 
     ### parameters for layers
-    model.set_para('layer_L_idx',layer_L_idx)
+    # model.set_para('layer_L_idx',layer_L_idx)
 
     model.set_para('eps',0.,options,sz=L)
     model.set_para('eta',0.,options,sz=L)
@@ -154,8 +134,8 @@ def set_model(fileModel,options):
     model.set_para('kappa',1.,options,sz=L)            # connectivity ratio (should have dim=Npop)
 
     ### parameters for each population
-    model.set_para('pop_L_idx',pop_L_idx)
-    model.set_para('pop_P_idx',pop_P_idx)
+    # model.set_para('pop_L_idx',pop_L_idx)
+    # model.set_para('pop_P_idx',pop_P_idx)
 
     model.set_para('I_ext',1,options,sz=nP)           # external, constant drive
     model.set_para('rateWnt',1.,options,sz=nP)           # external, constant drive
@@ -167,9 +147,9 @@ def set_model(fileModel,options):
     model.set_para('drive',0,options,sz=L)            # external drive (1=on, 0=off)
 
     ### parameters for each synapse set
-    model.set_para('psp_L_idx',psp_L_idx)
-    model.set_para('psp_P_idx',psp_P_idx)
-    model.set_para('psp_S_idx',psp_S_idx)
+    # model.set_para('psp_L_idx',psp_L_idx)
+    # model.set_para('psp_P_idx',psp_P_idx)
+    # model.set_para('psp_S_idx',psp_S_idx)
 
     model.set_para('tau_I',[0.005,0.2,0.03],options,sz=nS)
     model.set_para('tau_norm',1.,options,sz=nS)
@@ -202,7 +182,7 @@ def set_model(fileModel,options):
         Var[:] = val
     ncid.close()
 
-    # model.print_parameter()
+    model.print_parameter()
 
     return model
 

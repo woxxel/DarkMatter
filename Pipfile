@@ -12,6 +12,7 @@ ipython = "*"
 ipykernel = "*"
 dash = "*"
 pandas = "*"
+pysimplegui = "*"
 
 [dev-packages]
 
