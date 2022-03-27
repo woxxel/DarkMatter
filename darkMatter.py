@@ -116,7 +116,7 @@ def set_model(fileModel,options):
     ## global parameters
     model.set_para('L',1,options)
     L = getattr(model,'L')
-    
+
     model.set_para('P',2,options,sz=L)
     P = getattr(model,'P')       # populations per layer
     nP = sum(P)    # total number of populations
@@ -213,7 +213,7 @@ def set_simulation(fileSim,options,steps):
     # order = ['rateWnt','alpha_0','tau_G','n','eps','eta','I_alpha','I_beta']
     # sim.set_para('order',order,options)
     sim.prepare_sim_paras(steps)
-
+    
     sv_str = 'mode=%d_steps=%d' % (sim.mode_stats,steps)
     sv_str += '_iter'
     for key in sim.paras:
