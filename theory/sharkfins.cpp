@@ -46,7 +46,7 @@ int main(int argc, char** argv)
 	// Model *modP_approx = new Model(modP);
 	// mod_approx = mod;
 
-	cout << "calculate solutions for mode stats = " << sim.mode_stats << endl;
+	// cout << "calculate solutions for mode stats = " << sim.mode_stats << endl;
 
 	while (sim.run_iteration(modP,modP_approx))
 	{
@@ -74,7 +74,7 @@ int main(int argc, char** argv)
 		sim.store_results(modP,modP_approx);
 		// cout << "done" << endl;
 	};
-	cout << "computation done!" << endl;
+	// cout << "computation done!" << endl;
 	//
 	// // if (sim.steps == 1)
 	// 	// write_theory(fileOut);

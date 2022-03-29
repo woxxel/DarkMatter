@@ -174,7 +174,9 @@ bool Simulation::run_iteration(Model *modP, Model *modP_approx)
     }
     // print_simStatus();
     modP->set_weights(); // could rather be implemented via setter to according variables
+    modP->set_mixture();
     modP_approx->set_weights(); // could rather be implemented via setter to according variables
+    modP_approx->set_mixture();
     return loops!=nVar;
 };
 

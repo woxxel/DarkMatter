@@ -137,6 +137,20 @@ void Model::set_weights()
     }
 }
 
+void Model::set_mixture()
+{
+    for (unsigned l=0; l<L; l++) {
+        for (unsigned p = 0; p < layer[l].nPop; p++) {
+            if (layer[l].population[p].nPSP==1)
+                layer[l].population[p].psp[0].tau_n = 1.;
+            else {
+                layer[l].population[p].psp[0].tau_n = 1.-layer[l].population[p].tau_n;
+                layer[l].population[p].psp[1].tau_n = layer[l].population[p].tau_n;
+            }
+        }
+    }
+}
+
 void Model::get_sigma_V()
 {
     // get sigma_V
@@ -167,10 +181,10 @@ void Model::get_sigma_V()
                         if (pp==0) prefactor *= layer[ll].kappa;
 
                         // multiply by factor, specified by populations synaptic transmissions
-                        if (layer[ll].population[pp].nPSP==1) tmp_var_V = prefactor * 0.5;
+                        if (layer[ll].population[pp].nPSP==1) tmp_var_V = prefactor / 2.;
                         else if (layer[ll].population[pp].nPSP==2) {
 
-                            tmp_var_V = prefactor * ( gsl_pow_2(1-layer[ll].population[pp].tau_n)/2 + (1-layer[ll].population[pp].tau_n)*layer[ll].population[pp].tau_n*layer[ll].population[pp].psp[s].tau_I / (layer[ll].population[pp].psp[0].tau_I + layer[ll].population[pp].psp[1].tau_I) );
+                            tmp_var_V = prefactor * ( gsl_pow_2(layer[ll].population[pp].psp[s].tau_n)/2 + (1-layer[ll].population[pp].psp[s].tau_n)*layer[ll].population[pp].psp[s].tau_n*layer[ll].population[pp].psp[s].tau_I / (layer[ll].population[pp].psp[0].tau_I + layer[ll].population[pp].psp[1].tau_I) );
                         }
                         var_V += tmp_var_V;
                         var_V_dot += tmp_var_V/(layer[ll].population[pp].psp[s].tau_I * layer[l].population[p].tau_M);
@@ -188,7 +202,7 @@ void Model::get_sigma_V()
             // and the maximum firing rate response
             layer[l].population[p].simulation.rate_max = sqrt(var_V_dot / var_V) / (2 * M_PI);
             // cout << "(" << l << "," << p << ") ";
-            // cout << "eps: " << layer[l].eps << ", var total: " << var_V << ", var_V_dot total: " << var_V_dot << ", rate max: " << layer[l].population[p].simulation.rate_max << endl; //", from external sources: " << var_V_0 << endl;
+            // cout << "eps: " << layer[l].eps << ", mixture: " << layer[l].population[p].psp[0].tau_n << ", var total: " << sqrt(var_V) << ", rate max: " << layer[l].population[p].simulation.rate_max << endl; //", from external sources: " << var_V_0 << endl;
             //                 cout << "sigma population " << p << ": " << paras.sigma_V[p] << endl;
     	}
     }

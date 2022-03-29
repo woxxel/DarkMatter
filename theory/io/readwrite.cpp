@@ -58,7 +58,7 @@ void write_to_ncid(int ncid, const char *varName, nc_type varType, int dimSz, co
 void read_model(string fileModel, Model *modP)
 {
     // spdlog::info("reading model parameters from {} ... ",fileModel);
-    cout << "reading model parameters from " << fileModel << "... " << endl;
+    cout << "reading model parameters from " << fileModel << "... ";
     int ncid;
     int status = true;
 
@@ -159,7 +159,7 @@ void read_model(string fileModel, Model *modP)
 
 void read_simulation(string fileSim, Simulation *simP)
 {
-    cout << "reading simulation parameters from " << fileSim << "... " << endl;
+    cout << "reading simulation parameters from " << fileSim << "... ";
     int ncid;
     int status = true;
 
@@ -180,15 +180,15 @@ void read_simulation(string fileSim, Simulation *simP)
     get_dim_and_read(ncid, "sim_prim", &simP->sim_primSz, &simP->sim_pointer[0]);
     get_dim_and_read(ncid, "sim_sec", &simP->sim_secSz, &simP->sim_pointer[1]);
 
-    for (unsigned i=0; i<simP->sim_primSz; i++) {
-        cout << simP->sim_pointer[0][i] << ", ";
-    }
-    cout << endl;
-
-    for (unsigned i=0; i<simP->sim_secSz; i++) {
-        cout << simP->sim_pointer[1][i] << ", ";
-    }
-    cout << endl;
+    // for (unsigned i=0; i<simP->sim_primSz; i++) {
+    //     cout << simP->sim_pointer[0][i] << ", ";
+    // }
+    // cout << endl;
+    //
+    // for (unsigned i=0; i<simP->sim_secSz; i++) {
+    //     cout << simP->sim_pointer[1][i] << ", ";
+    // }
+    // cout << endl;
 
     // status = status && get_from_ncid(ncid, "alpha_0Sz", &simP->alpha_0Sz);
     // // if (status) simP->alpha_0.resize(simP->alpha_0Sz);
@@ -368,7 +368,7 @@ void read_measures(string fileMeasures, Measures *mesP)
 void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_approx)
 {
 	// spdlog::info("writing shark data to file '{}'...",fileOut);
-	cout << "writing result data to file " << fileOut << "..." << endl;
+	cout << "writing result data to file " << fileOut << "...";
 
     int ncid, dimids[3], steps_dim, steps_dim1, Npop_dim;//, info_dim;
     unsigned steps = simP->vars[0].steps;
@@ -461,7 +461,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
 
     size_t start[] = {0,0,0}, count[] = {1, steps_1, steps};
 
-    cout << "trans_inc: " << modP->results.trans_inc[0][0] << endl;
+    // cout << "trans_inc: " << modP->results.trans_inc[0][0] << endl;
 
     Population_Results *popResP, *popResP_approx;
     nc_put_vara(ncid, inc_id, start, count, &modP->results.trans_inc[0]);
@@ -473,7 +473,6 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
         nc_put_vara(ncid, imp_approx_id, start, count, &modP_approx->results.trans_imp[0]);
     }
 
-    cout << "written first stuff " << endl;
 
     unsigned p_idx = 0;
     for (unsigned l = 0; l < modP->L; l++) {

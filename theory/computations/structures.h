@@ -82,7 +82,7 @@ struct PSP
             tau_n: mix-ratio - has to be normalized s.t. sum(tau_n) = 1
     */
     unsigned s; // PSP ID
-    double tau_I, tau_norm;
+    double tau_I, tau_norm, tau_n;
     void print_PSP();
 };
 
@@ -214,6 +214,7 @@ class Model
 
         // void add_PSP(int p, double tau_I, double tau_norm, double tau_n);
         void set_weights();
+        void set_mixture();
         void solve_selfcon(int mode_calc);
         void write_results();
         double distribution_exact(double nu, int p);
