@@ -24,23 +24,32 @@ from netCDF4 import Dataset, stringtochar
         when changes to the code are made)
 """
 
-def darkMatter(steps=100,options={},rerun=False,compile=False):
+def darkMatter(steps=100,mode=0,options={},rerun=False,compile=False):
 
     # set model parameters
     fileModel = './data/modPara.nc'
-    fileSim = './data/simPara.nc'
 
     model = set_model(fileModel,options)
-    sim, sv_str = set_simulation(fileSim,options,steps)
+    if mode==0:
+        filePara = './data/simPara.nc'
+        sim, sv_str = set_simulation(filePara,options,steps)
+    elif mode==1:
+        filePara = './data/comPara.nc'
+        com, sv_str = set_computation(filePara,options)
 
     # fileResults = './data/results.nc'
     fileResults = './data/results_%s.nc' % (sv_str)
 
     if not os.path.exists(fileResults) or rerun:
-        if (compile):
-            compile_code()
+        if mode==0:
+            program = './theory/sharkfins'
+        elif mode==1:
+            program = './theory/generate_measures'
 
-        run_str = './theory/sharkfins ' + fileModel + ' ' + fileSim + ' ' + fileResults
+        if (compile):
+            compile_code(program)
+
+        run_str = f'{program} {fileModel} {filePara} {fileResults}'
         os.system(run_str)
 
     # obtain data from simulation
@@ -115,15 +124,15 @@ def set_model(fileModel,options):
 
     ## global parameters
     model.set_para('L',1,options)
-    L = sum(getattr(model,'L'))
+    L = np.sum(getattr(model,'L'))
 
     model.set_para('P',2,options,sz=L)
     P = getattr(model,'P')       # populations per layer
-    nP = sum(P)    # total number of populations
+    nP = np.sum(P)    # total number of populations
 
     model.set_para('S',[1,2],options,sz=nP)
     S = getattr(model,'S')
-    nS = sum(S)
+    nS = np.sum(S)
 
     ### parameters for layers
     # model.set_para('layer_L_idx',layer_L_idx)
@@ -207,6 +216,7 @@ def set_simulation(fileSim,options,steps):
     # sim.set_para('I_alpha',[1],options)
     # sim.set_para('I_beta',[1],options)
 
+    sim.set_para('mode',0,options,register=False)             # 0=phase plots, 1=data simulation
     sim.set_para('mode_calc',0,options,register=False)        # 0=exact, 1=approx
     sim.set_para('mode_stats',0,options,register=False)       # 0=general stats, 1=...
 
@@ -214,7 +224,7 @@ def set_simulation(fileSim,options,steps):
     # sim.set_para('order',order,options)
     sim.prepare_sim_paras(steps)
 
-    sv_str = 'mode=%d_steps=%d' % (sim.mode_stats,steps)
+    sv_str = 'mode=%d_stats=%d_approx=%d_steps=%d' % (sim.mode,sim.mode_stats,sim.mode_calc,steps)
     sv_str += '_iter'
     for key in sim.paras:
         val = getattr(sim,key)
@@ -254,6 +264,41 @@ def set_simulation(fileSim,options,steps):
 
     return sim, sv_str
 
+def set_computation(fileComputation,options):
+
+    # defining model constants (all of them!)
+    com = parameters('computation')
+
+    ### parameters for layers
+    # model.set_para('layer_L_idx',layer_L_idx)
+
+    com.set_para('N',20,options)
+    com.set_para('T',600.,options)
+    com.set_para('draw_from_theory',10,options)
+    com.set_para('draw_finite_time',10,options)
+    com.set_para('seed_time',np.random.randint(0,10000,getattr(com,'draw_from_theory')),options)
+    com.set_para('seed_theory',np.random.randint(0,10000,getattr(com,'draw_finite_time')),options)
+
+    sv_str = 'computation'
+    for key in com.paras:
+        val = getattr(com,key)
+        if (type(val)!=list and type(val)!=np.ndarray):
+            sv_str += '_%s=%g' % (key,val)
+
+    ncid = Dataset(fileComputation, "w");#, format="NETCDF4")
+    ncid.createDimension('one',1)
+    for key in com.paras:
+
+        val = getattr(com,key)
+        varType,varDim = prepare_ncid_var(ncid,com,key,val)
+        Var = ncid.createVariable(key,varType,varDim)
+        Var[:] = val
+    ncid.close()
+
+    com.print_parameter()
+
+    return com, sv_str
+
 def get_type(val):
     if type(val)==np.int_ or type(val)==int:
         varType = np.dtype('int32').char #'i' #
@@ -287,12 +332,14 @@ def prepare_ncid_var(ncid,sim,key,val):
     return varType, varDim
 
 
-def compile_code():
+def compile_code(program):
     ## prepare code by compiling, if needed
     modes = '-g -Wall -ansi'
-
     libs = ' -lgsl -lgslcblas -lnetcdf -std=c++17' # or rather 11? (beta function requires 17)
-    os.system('g++ %s -o ./theory/sharkfins ./theory/sharkfins.cpp %s' % (modes,libs))
+
+    print(f"g++ {modes} -o {program} {program}.cpp {libs}")
+
+    os.system(f"g++ {modes} -o {program} {program}.cpp {libs}")
 
     ## ---------------------------------------
     ## this is left just as an example of how to set paths (as I always forget...)

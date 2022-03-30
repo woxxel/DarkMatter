@@ -107,7 +107,7 @@ void read_model(string fileModel, Model *modP)
         modP->layer[l].eta = eta[l];
         modP->layer[l].J0_l.resize(modP->L);
         for (unsigned ll=0; ll<modP->L; ll++)
-            modP->layer[l].J0_l[ll] = J0_l[l][ll];    // check again, whether indices are in right order
+            modP->layer[l].J0_l[ll] = J0_l[ll][l];    // check again, whether indices are in right order
         modP->layer[l].kappa = kappa[l];
         // modP->layer[l].setWeights();
 
@@ -165,8 +165,6 @@ void read_simulation(string fileSim, Simulation *simP)
 
     nc_open(fileSim.c_str(), NC_NOWRITE, &ncid);
 
-    // find size of dimensions
-
     get_dim_and_read(ncid, "eps", &simP->epsSz, &simP->eps);
     get_dim_and_read(ncid, "eta", &simP->etaSz, &simP->eta);
     get_dim_and_read(ncid, "alpha_0", &simP->alpha_0Sz, &simP->alpha_0);
@@ -180,45 +178,9 @@ void read_simulation(string fileSim, Simulation *simP)
     get_dim_and_read(ncid, "sim_prim", &simP->sim_primSz, &simP->sim_pointer[0]);
     get_dim_and_read(ncid, "sim_sec", &simP->sim_secSz, &simP->sim_pointer[1]);
 
-    // for (unsigned i=0; i<simP->sim_primSz; i++) {
-    //     cout << simP->sim_pointer[0][i] << ", ";
-    // }
-    // cout << endl;
-    //
-    // for (unsigned i=0; i<simP->sim_secSz; i++) {
-    //     cout << simP->sim_pointer[1][i] << ", ";
-    // }
-    // cout << endl;
-
-    // status = status && get_from_ncid(ncid, "alpha_0Sz", &simP->alpha_0Sz);
-    // // if (status) simP->alpha_0.resize(simP->alpha_0Sz);
-    // //
-    // status = status && get_from_ncid(ncid, "tau_ISz", &simP->tau_GSz);
-    // // if (status) simP->tau_G.resize(simP->tau_GSz);
-    //
-    // status = status && get_from_ncid(ncid, "rateWntSz", &simP->rateWntSz);
-    //
-    // status = status && get_from_ncid(ncid, "epsSz", &simP->epsSz);
-    //
-    // status = status && get_from_ncid(ncid, "etaSz", &simP->etaSz);
-    //
-    // status = status && get_from_ncid(ncid, "I_alphaSz", &simP->I_alphaSz);
-    //
-    // status = status && get_from_ncid(ncid, "I_betaSz", &simP->I_betaSz);
-    //
     status = status && get_from_ncid(ncid, "orderSz", &simP->orderSz);
     status = status && get_from_ncid(ncid, "charSz", &simP->charSz);
 
-    // simP->steps = max(max(max(simP->nSz,simP->alpha_0Sz),simP->tau_ISz),simP->rateWntSz);
-    // // cout << "sizes - n: " << simP->nSz << ", alpha_0: " << simP->alpha_0Sz << ", tau_G: " << simP->tau_GSz << ", rate: " << simP->rateWntSz << endl;
-    // // cout << "steps: " << simP->steps << endl;
-    //
-    // // adjust sizes of simP accordingly
-    // simP->rateWnt.resize(simP->rateWntSz);
-    // simP->eps.resize(simP->epsSz);
-    // simP->eta.resize(simP->etaSz);
-    // simP->I_alpha.resize(simP->I_alphaSz);
-    // simP->I_beta.resize(simP->I_betaSz);
     simP->order.resize(simP->orderSz);
 
     // read variables from ncid
@@ -241,77 +203,76 @@ void read_simulation(string fileSim, Simulation *simP)
         // cout << simP->order[rec] << endl;
     }
 
-    // status = status && get_from_ncid(ncid, "alpha_0", &simP->alpha_0[0]);
-    // status = status && get_from_ncid(ncid, "tau_I", &simP->tau_I[0]);
-    // status = status && get_from_ncid(ncid, "rateWnt", &simP->rateWnt[0]);
-    // status = status && get_from_ncid(ncid, "eps", &simP->eps[0]);
-    // status = status && get_from_ncid(ncid, "eta", &simP->eta[0]);
-    // status = status && get_from_ncid(ncid, "I_alpha", &simP->I_alpha[0]);
-    // status = status && get_from_ncid(ncid, "I_beta", &simP->I_beta[0]);
-    //
     nc_close(ncid);
     cout << "done!" << endl;
 }
 
 void read_computation(string fileComp, Computation *comP)
 {
-    // cout << "reading computation parameters from " << fileComp << "... " ;
+    cout << "reading computation parameters from " << fileComp << "... " << endl;
 
     int ncid;
     nc_open(fileComp.c_str(), NC_NOWRITE, &ncid);
 
 // get mode parameters
-    get_from_ncid(ncid, "p_theory", &comP->p_theory);
-    get_from_ncid(ncid, "p_theory_hist", &comP->p_theory_hist);
+    // get_from_ncid(ncid, "p_theory", &comP->p_theory);
+    // get_from_ncid(ncid, "p_theory_hist", &comP->p_theory_hist);
+    // get_from_ncid(ncid, "process_data", &comP->process_data);
+
+    // get_from_ncid(ncid, "border", &comP->border);
     get_from_ncid(ncid, "draw_from_theory", &comP->draw_from_theory);
     get_from_ncid(ncid, "draw_finite_time", &comP->draw_finite_time);
-    get_from_ncid(ncid, "process_data", &comP->process_data);
+    get_from_ncid(ncid, "N", &comP->N);
+    get_from_ncid(ncid, "T", &comP->T);     // if T=0 => infty
 
-    get_from_ncid(ncid, "border", &comP->border);
-    get_from_ncid(ncid, "T", &comP->T);
+    comP->seed_theory.resize(comP->draw_from_theory);
+    get_from_ncid(ncid, "seed_theory", &comP->seed_theory);
+    comP->seed_time.resize(comP->draw_finite_time);
+    get_from_ncid(ncid, "seed_time", &comP->seed_time);
 
-    if (comP->draw_from_theory > 0)
-    {
-        int priorSz;
-        get_from_ncid(ncid, "priorSz", &priorSz);
-        comP->prior.resize(priorSz);
+    cout << "read data from com: N=" << comP->N << ", T=" << comP->T << endl;
 
-        get_from_ncid(ncid, "prior", &comP->prior);
-        get_from_ncid(ncid, "N", &comP->N);
-        get_from_ncid(ncid, "n_bin", &comP->n_bin);
+    // if (comP->draw_from_theory > 0)
+    // {
+        // int priorSz;
+        // get_from_ncid(ncid, "priorSz", &priorSz);
+        // comP->prior.resize(priorSz);
 
-        comP -> seed_theory.resize(comP->draw_from_theory);
-        get_from_ncid(ncid, "seed_theory", &comP->seed_theory);
+        // get_from_ncid(ncid, "prior", &comP->prior);
+        // get_from_ncid(ncid, "N", &comP->N);
+        // get_from_ncid(ncid, "n_bin", &comP->n_bin);
 
-        if (comP->draw_finite_time > 0)
-        {
-            comP -> seed_time.resize(comP->draw_from_theory*comP->draw_finite_time);
-            get_from_ncid(ncid, "seed_time", &comP->seed_time);
-        }
-    }
+        // get_from_ncid(ncid, "seed_theory", &comP->seed_theory);
+
+        // if (comP->draw_finite_time > 0)
+        // {
+            // comP -> seed_time.resize(comP->draw_from_theory*comP->draw_finite_time);
+            // get_from_ncid(ncid, "seed_time", &comP->seed_time);
+        // }
+    // }
     nc_close(ncid);
-    // cout << "done!" << endl;
+    cout << "done!" << endl;
 }
 
 
 
-void read_measures(string fileMeasures, Measures *mesP)
-{
-    // cout << "reading measurement data from " << fileMeasures << "... ";
-
-    int ncid;
-    nc_open(fileMeasures.c_str(), NC_NOWRITE, &ncid);
-
-    get_from_ncid(ncid, "NSz", &mesP->N);
-    get_from_ncid(ncid, "T", &mesP->T);
-
-    mesP->N_AP.resize(mesP->N);
-    get_from_ncid(ncid, "N_AP", &mesP->N_AP);
-    mesP->rates.resize(mesP->N);
-    get_from_ncid(ncid, "rates", &mesP->rates);
-    nc_close(ncid);
-    // cout << "done!" << endl;
-}
+// void read_measures(string fileMeasures, Measures *mesP)
+// {
+//     // cout << "reading measurement data from " << fileMeasures << "... ";
+//
+//     int ncid;
+//     nc_open(fileMeasures.c_str(), NC_NOWRITE, &ncid);
+//
+//     get_from_ncid(ncid, "NSz", &mesP->N);
+//     get_from_ncid(ncid, "T", &mesP->T);
+//
+//     mesP->N_AP.resize(mesP->N);
+//     get_from_ncid(ncid, "N_AP", &mesP->N_AP);
+//     mesP->rates.resize(mesP->N);
+//     get_from_ncid(ncid, "rates", &mesP->rates);
+//     nc_close(ncid);
+//     // cout << "done!" << endl;
+// }
 
 
 
@@ -370,7 +331,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
 	// spdlog::info("writing shark data to file '{}'...",fileOut);
 	cout << "writing result data to file " << fileOut << "...";
 
-    int ncid, dimids[3], steps_dim, steps_dim1, Npop_dim;//, info_dim;
+    int ncid, steps_dim, steps_dim1, Npop_dim;//, info_dim;
     unsigned steps = simP->vars[0].steps;
     unsigned steps_1 = simP->vars[1].steps;
     // cout << "steps info: " << steps_info << endl;
@@ -382,10 +343,9 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
     nc_def_dim(ncid, "steps_dim1", steps_1, &steps_dim1);
     // nc_def_dim(ncid, "info_dim", steps_info, &info_dim);
 
-    dimids[0] = Npop_dim;
-    dimids[1] = steps_dim1;
-    dimids[2] = steps_dim;
     // dimids[3] = info_dim;
+    int dimids[3] = {Npop_dim, steps_dim1, steps_dim};
+    int trans_dimids[3] = {Npop_dim, steps_dim1, modP->simulation.nTrans};
 
     int para_dimID[7];
     write_prep_paras(ncid,&para_dimID[0],simP);
@@ -405,10 +365,10 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
         if (simP->mode_stats == 3)
             nc_def_var(ncid, "regions_approx", NC_DOUBLE, 3, &dimids[0], &regions_approx_id);
     }
-    nc_def_var(ncid, "inc_trans", NC_DOUBLE, 1, &dimids[1], &inc_id);
-    nc_def_var(ncid, "imp_trans", NC_DOUBLE, 1, &dimids[1], &imp_id);
-    nc_def_var(ncid, "DM_trans", NC_DOUBLE, 2, &dimids[0], &DM_id);
-    nc_def_var(ncid, "np_trans", NC_DOUBLE, 2, &dimids[0], &np_id);
+    nc_def_var(ncid, "inc_trans", NC_DOUBLE, 2, &trans_dimids[1], &inc_id);
+    nc_def_var(ncid, "imp_trans", NC_DOUBLE, 2, &trans_dimids[1], &imp_id);
+    nc_def_var(ncid, "DM_trans", NC_DOUBLE, 3, &trans_dimids[0], &DM_id);
+    nc_def_var(ncid, "np_trans", NC_DOUBLE, 3, &trans_dimids[0], &np_id);
 
     int alpha_raw_id, alpha_id, sigma_V_id;
     if (simP->mode_stats == 1)
@@ -427,10 +387,10 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
         nc_def_var(ncid, "entropy", NC_DOUBLE, 3, &dimids[0], &entropy_id);
         nc_def_var(ncid, "KL_entropy", NC_DOUBLE, 3, &dimids[0], &KL_entropy_id);
 
-        nc_def_var(ncid, "inc_trans_approx", NC_DOUBLE, 1, &dimids[1], &inc_approx_id);
-        nc_def_var(ncid, "imp_trans_approx", NC_DOUBLE, 1, &dimids[1], &imp_approx_id);
-        nc_def_var(ncid, "DM_trans_approx", NC_DOUBLE, 2, &dimids[0], &DM_approx_id);
-        nc_def_var(ncid, "np_trans_approx", NC_DOUBLE, 2, &dimids[0], &np_approx_id);
+        nc_def_var(ncid, "inc_trans_approx", NC_DOUBLE, 2, &trans_dimids[1], &inc_approx_id);
+        nc_def_var(ncid, "imp_trans_approx", NC_DOUBLE, 2, &trans_dimids[1], &imp_approx_id);
+        nc_def_var(ncid, "DM_trans_approx", NC_DOUBLE, 3, &trans_dimids[0], &DM_approx_id);
+        nc_def_var(ncid, "np_trans_approx", NC_DOUBLE, 3, &trans_dimids[0], &np_approx_id);
     }
 
     if (simP->mode_stats == 4)
@@ -459,21 +419,35 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
 
     write_paras(ncid, para_dimID, simP);
 
-    size_t start[] = {0,0,0}, count[] = {1, steps_1, steps};
-
-    // cout << "trans_inc: " << modP->results.trans_inc[0][0] << endl;
-
+    // prepare trans-vectors for writing:
     Population_Results *popResP, *popResP_approx;
-    nc_put_vara(ncid, inc_id, start, count, &modP->results.trans_inc[0]);
-    nc_put_vara(ncid, imp_id, start, count, &modP->results.trans_imp[0]);
 
-    if ((simP->mode_stats == 2) || (simP->mode_stats == 3))
-    {
-        nc_put_vara(ncid, inc_approx_id, start, count, &modP_approx->results.trans_inc[0]);
-        nc_put_vara(ncid, imp_approx_id, start, count, &modP_approx->results.trans_imp[0]);
+    cout << "transitions: " << modP->simulation.nTrans << endl;
+
+    size_t start[] = {0,0,0}, count[] = {steps_1, steps_1, steps};
+
+    // cout << "counts: " << count[0] << ", " << count[1] << ", " << count[2] << endl;
+
+    count[0] = 1;
+    for (unsigned s=0;s<steps_1;s++) {
+        start[0] = s;
+        count[1] = modP->results.trans_inc[s].size();
+        nc_put_vara(ncid, inc_id, start, count, &modP->results.trans_inc[s][0]);
+        count[1] = modP->results.trans_imp[s].size();
+        nc_put_vara(ncid, imp_id, start, count, &modP->results.trans_imp[s][0]);
     }
 
+    if ((simP->mode_stats == 2) || (simP->mode_stats == 3)) {
+        for (unsigned s=0;s<steps_1;s++) {
+            start[0] = s;
+            count[1] = modP_approx->results.trans_inc[s].size();
+            nc_put_vara(ncid, inc_approx_id, start, count, &modP_approx->results.trans_inc[s][0]);
+            count[1] = modP_approx->results.trans_imp[s].size();
+            nc_put_vara(ncid, imp_approx_id, start, count, &modP_approx->results.trans_imp[s][0]);
+        }
+    }
 
+    count[1] = 1;
     unsigned p_idx = 0;
     for (unsigned l = 0; l < modP->L; l++) {
         for (unsigned p = 0; p < modP->layer[l].nPop; p++) {
@@ -483,18 +457,25 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
 
             start[0] = p_idx;
 
-            start[1] = 0;
-            count[1] = steps_1;
-            nc_put_vara(ncid, DM_id, start, count, &popResP->trans_DM[0]);
-            nc_put_vara(ncid, np_id, start, count, &popResP->trans_np[0]);
+            for (unsigned s=0;s<steps_1;s++) {
+                start[1] = s;
+                count[2] = popResP->trans_DM[s].size();
+                nc_put_vara(ncid, DM_id, start, count, &popResP->trans_DM[s][0]);
+                count[2] = popResP->trans_np[s].size();
+                nc_put_vara(ncid, np_id, start, count, &popResP->trans_np[s][0]);
+            }
 
             if ((simP->mode_stats == 2) || (simP->mode_stats == 3))
             {
-                nc_put_vara(ncid, DM_approx_id, start, count, &popResP_approx->trans_DM[0]);
-                nc_put_vara(ncid, np_approx_id, start, count, &popResP_approx->trans_np[0]);
+                for (unsigned s=0;s<steps_1;s++) {
+                    start[1] = s;
+                    count[2] = popResP_approx->trans_DM[s].size();
+                    nc_put_vara(ncid, DM_approx_id, start, count, &popResP_approx->trans_DM[s][0]);
+                    nc_put_vara(ncid, np_approx_id, start, count, &popResP_approx->trans_np[s][0]);
+                }
             }
 
-            count[1] = 1;
+            count[2] = steps;
 
             for (unsigned rec=0; rec<steps_1; rec++) {
                 start[1] = rec;

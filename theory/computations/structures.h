@@ -11,6 +11,7 @@ class Model;
 struct Model_Results
 {
     vector< vector<double> > trans_inc, trans_imp;
+    // vector< vector<double> > trans_inc, trans_imp;
 
     void initiate(unsigned sim_steps_1, unsigned sim_steps_2, unsigned sim_mode);
 };
@@ -61,6 +62,7 @@ struct Population_Simulation
     bool in_DM, in_np;
     double regions;
     double infoContent, KL, entropy;
+    double max_prob;
 };
 
 struct Model_Simulation
@@ -68,6 +70,7 @@ struct Model_Simulation
     bool in_inc, in_imp;
     double trans_inc, trans_imp;
     bool trans_inc_found = false, trans_imp_found = false;
+    size_t nTrans = 0;
 };
 
 struct PSP
@@ -109,6 +112,12 @@ struct Population
             drive (vector<double>)
                 specifies (along with 2-3 other variables) spiking, external drive, introducing further heterogeneity into the network
     */
+    // parameters:
+	//  	drive:
+	//  	0 : all populations driven to have same firing rates
+	//  	1 : only excitatory one driven
+	//  	2 : recurrent, inhibitory population is driven by afferent spikes from excitatory population
+
     int I_ext;
     double rateWnt;
     double tau_n;
@@ -213,6 +222,7 @@ class Model
         vector<double> infoContent;
 
         // void add_PSP(int p, double tau_I, double tau_norm, double tau_n);
+        void set_rates();
         void set_weights();
         void set_mixture();
         void solve_selfcon(int mode_calc);
@@ -236,6 +246,8 @@ class Model
 // 		model();
         vector< vector<double> > calc_alpha(vector< vector<double> > q);
         // void resize();
+
+        void get_max_prob();
 
     private:
 
@@ -304,28 +316,34 @@ class Simulation
         void store_results(Model *modP, Model *mod_approxP);
 };
 
+struct Measures
+{
+    // int N;
+    // double T;
+    vector<vector<vector<int> > > N_AP;
+    vector<vector<double> > rates;
+    vector<vector<vector<double> > > rates_T;
+};
+
 struct Computation
 {
     // modes
-    int p_theory, p_theory_hist;
+    // int p_theory, p_theory_hist;
     int draw_from_theory, draw_finite_time;
-    int process_data;
+    // int process_data;
 
     // parameter
 //         double alpha_0, rateWnt;
+    // long int seed_time;
     vector<long int> seed_theory, seed_time;
-    int N, n_bin, border;
-    double T;
-    string prior;
-    int k, j;
-};
-
-struct Measures
-{
+    // int N, n_bin, border;
     int N;
-    vector<int> N_AP;
-    vector<double> rates;
     double T;
+    // string prior;
+    int k, j;
+
+    void draw_rates(Model *modP, Measures *mesP);
+    void draw_samples(Measures *mesP);
 };
 
 struct parameters_int

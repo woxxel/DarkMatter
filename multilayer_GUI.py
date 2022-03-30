@@ -32,20 +32,11 @@ class Toolbar(NavigationToolbar2Tk):
         super(Toolbar, self).__init__(*args, **kwargs)
 
 
-
-
-
-L=1
-J_l = np.ones((L,L))
-np.fill_diagonal(J_l,0)
-# print(J_l)
-
 default_params = {
     'L': {
         # layer level parameters
         'eps': 1./np.sqrt(2),
         'eta': 0.9,
-        'J0_l': J_l,
         'kappa': 1.,
     },
     'P': {
@@ -62,12 +53,18 @@ default_params = {
         'tau_I': 0.01,
         'tau_norm': 1.,
     },
+    'J': {
+        'J0_l': np.zeros(0),
+        'in': 1.,
+        'out': 1.,
+    }
 }
 
 naming = {
     'L': 'layer',
     'P': 'population',
-    'S': 'synapse'
+    'S': 'synapse',
+    'J': 'weight'
 }
 
 options = {
@@ -114,6 +111,12 @@ for lvl in ['L','P','S']:
         ])
         sim_list.append(key)
 
+para_elements['J'] = [
+    sg.Text('J_in',key=f'-PARA-TEXT-J-IN-'),
+    sg.In(size=(5,1),enable_events=True, key=f'-PARA-J-in-'),
+    sg.Text('J_out',key=f'-PARA-TEXT-J-OUT-'),
+    sg.In(size=(5,1),enable_events=True, key=f'-PARA-J-out-'),
+]
 
 processing_column = [
     [
@@ -155,7 +158,7 @@ processing_column = [
     ],
 ]
 
-for lvl in ['L','P','S']:
+for lvl in ['L','P','S','J']:
     processing_column.extend([
         [sg.HSeparator()],
         [
@@ -196,13 +199,13 @@ window = sg.Window("Multilayer network analysis", layout,font=font, finalize=Tru
 
 lvl_paras = {
     'L': {
-        'margins': (5,2),
-        'size': (90,20),
+        'margins': (5,5),
+        'size': (90,25),
         'col': (mcol.to_hex([0,1,0]),mcol.to_hex([0,0.8,0]))
     },
     'P': {
         'margins': (2,2),
-        'size': (30,16),
+        'size': (25,16),
         'col': (mcol.to_hex([0,0,0]),mcol.to_hex([0.2,0.2,0.2]))
     },
     'S': {
@@ -210,13 +213,18 @@ lvl_paras = {
         'size': (10,10),
         'col': (mcol.to_hex([0,0,1]),mcol.to_hex([0,0,0.8]))
     },
+    'J': {
+        'margins': (60,None),
+        'size': (2,None),
+        'col': (mcol.to_hex([1,0,0]),mcol.to_hex([0.8,0,0]))
+    },
 }
 
 
 def get_element_location(lvl,ids):
 
-    l,p,s = ids
     if lvl=='L':
+        l,p,s = ids
         start_point = (
             lvl_paras['L']['margins'][0],
             l*lvl_paras['L']['size'][1]+lvl_paras['L']['margins'][1]
@@ -226,6 +234,7 @@ def get_element_location(lvl,ids):
             start_point[1] + lvl_paras['L']['size'][1] - lvl_paras['L']['margins'][1]
         )
     elif lvl=='P':
+        l,p,s = ids
         start_point = (
             lvl_paras['L']['margins'][0]+p*lvl_paras['P']['size'][0]+lvl_paras['P']['margins'][0],
             l*lvl_paras['L']['size'][1]+lvl_paras['L']['margins'][1]+lvl_paras['P']['margins'][1]
@@ -235,6 +244,7 @@ def get_element_location(lvl,ids):
             start_point[1] + lvl_paras['P']['size'][1] - lvl_paras['P']['margins'][1]
         )
     elif lvl=='S':
+        l,p,s = ids
         start_point = (
             lvl_paras['L']['margins'][0]+p*lvl_paras['P']['size'][0]+lvl_paras['P']['margins'][0] + s*lvl_paras['S']['size'][0]+lvl_paras['S']['margins'][0],
             l*lvl_paras['L']['size'][1]+lvl_paras['L']['margins'][1]+lvl_paras['P']['margins'][1]+lvl_paras['S']['margins'][1]
@@ -243,24 +253,31 @@ def get_element_location(lvl,ids):
             start_point[0] + lvl_paras['S']['size'][0] - lvl_paras['S']['margins'][0],
             start_point[1] + lvl_paras['S']['size'][1] - lvl_paras['S']['margins'][1]
         )
+    elif lvl=='J':
+        l,ll = ids
+        start_point = (
+            lvl_paras['J']['margins'][0]+l*2.5+ll*7,
+            lvl_paras['L']['margins'][1] + (1/2. + ll)*lvl_paras['L']['size'][1]
+        )
+        end_point = (
+            start_point[0] + lvl_paras['J']['size'][0],
+            lvl_paras['L']['margins'][1] + (1/2. + l)*lvl_paras['L']['size'][1]
+        )
 
     return start_point, end_point
 
 def run_code(params,sim_params,n):
 
-    # print('run code')
-    # print(sim_params)
     options = {}
     for lvl in ['L','P','S']:
         for key in params[lvl].keys():
             options[key] = list(flatten(params[lvl][key]))
 
         options[lvl] = list(flatten(n[lvl]))
-
+    options['J0_l'] = params['J']
+    options['mode'] = 0
     options['mode_calc'] = 0
     options['mode_stats'] = 0
-
-
 
     options['simulation'] = {}
     for idx in [1,2]:
@@ -270,6 +287,7 @@ def run_code(params,sim_params,n):
     options['simulation']['sim_prim'] = [sim_params[1]['L'],sim_params[1]['P'],sim_params[1]['S']]
     options['simulation']['sim_sec'] = [sim_params[2]['L'],sim_params[2]['P'],sim_params[2]['S']]
 
+    print(options)
     order = list(options['simulation'].keys())
 
     res = darkMatter(steps=50,options=options,rerun=True,compile=True)
@@ -291,7 +309,7 @@ def run_code(params,sim_params,n):
 
 class Elements():
 
-    register = pd.DataFrame(index=['graph_id'],columns=['lvl','L','P','S'])
+    register = pd.DataFrame(index=['graph_id'],columns=['lvl','L','P','S','J'])
 
     n = {
         'L': 0,
@@ -303,9 +321,10 @@ class Elements():
         'L': {},
         'P': {},
         'S': {},
+        'J': {}
     }
 
-    graph_ids = {'L':[],'P':[], 'S':[]}
+    graph_ids = {'L':[],'P':[], 'S':[], 'J':[]}
 
     sim_params = {1: {},2: {}}
 
@@ -318,38 +337,47 @@ class Elements():
         for lvl in ['L','P','S']:
             for key in default_params[lvl].keys():
                 self.params[lvl][key] = []
-        # print(self.register)
+        self.params['J'] = np.ones((0,0))
+
         self.addLayer()
 
     def register_graph(self,f_id,ids,lvl):
         # print(f"registering id {f_id} for level {lvl}")
-        self.register.loc[f_id] = [lvl, ids[0], ids[1] if len(ids)>1 else -1, ids[2] if len(ids)>2 else -1]
+        self.register.loc[f_id] = [lvl, ids[0], ids[1] if len(ids)>1 else -1, ids[2] if len(ids)>2 else -1, ids[3] if len(ids)>3 else -1]
 
         if lvl=='L':
             self.graph_ids['L'].append(f_id)
             self.graph_ids['P'].append([])
             self.graph_ids['S'].append([])
+            self.graph_ids['J'].append([])
         elif lvl=='P':
             self.graph_ids['P'][ids[0]].append(f_id)
             self.graph_ids['S'][ids[0]].append([])
         elif lvl=='S':
             self.graph_ids['S'][ids[0]][ids[1]].append(f_id)
+        elif lvl=='J':
+            self.graph_ids['J'][ids[3]].append(f_id)
         # print('GRAPH_ID:',self.graph_ids)
 
     def get_param_value(self,lvl,key,ids):
+        print(ids)
         if lvl=='L':
             val = self.params[lvl][key][ids['L']]
         elif lvl=='P':
             val = self.params[lvl][key][ids['L']][ids['P']]
         elif lvl=='S':
             val = self.params[lvl][key][ids['L']][ids['P']][ids['S']]
+        elif lvl=='J':
+            if key=='in':
+                val = self.params[lvl][ids['L']][ids['J']]
+            elif key=='out':
+                val = self.params[lvl][ids['J']][ids['L']]
         return val
 
     def pickObject(self,f_id):
 
-        for lvl in ['L','P','S']:
+        for lvl in ['L','P','S','J']:
             window[f'-{lvl}-OPTIONS-'].update(visible=False)
-
         if bool(self.picked):
             if 'L' in self.picked.keys():
                 graph_id = np.where((self.register['lvl']=='L') & (self.register['L']==self.picked['L']))[0]
@@ -369,17 +397,43 @@ class Elements():
                 if len(graph_id):
                     self.graph.Widget.itemconfig(graph_id[0], fill=lvl_paras['S']['col'][0])
 
-        for id in f_id:
-            lvl = self.register.loc[id]['lvl']
-            self.picked[lvl] = self.register.loc[id][lvl]
+            if 'J' in self.picked.keys():
+                graph_id = np.where((self.register['lvl']=='J') &
+                    (self.register['L']==self.picked['L']) &
+                    (self.register['J']==self.picked['J']))[0]
 
-            self.window[f'-{lvl}-OPTIONS-'].update(visible=True)
+                if len(graph_id):
+                    self.graph.Widget.itemconfig(graph_id[0], fill=lvl_paras['J']['col'][0])
 
-            for key in self.params[lvl].keys():
-                val = self.get_param_value(lvl,key,self.register.loc[id])
-                self.window[f'-PARA-{lvl}-{key}-'].update(val)
+        break_it = False
+        for lvl in ['J','S','P','L']:
+            for id in f_id:
+                if lvl==self.register.loc[id]['lvl']:
+                    self.picked[lvl] = self.register.loc[id][lvl]
 
-            self.graph.Widget.itemconfig(id, fill=lvl_paras[lvl]['col'][1])
+                    self.window[f'-{lvl}-OPTIONS-'].update(visible=True)
+
+                    if lvl=='J':
+                        self.picked['L'] = self.register.loc[id]['L']
+                        self.window[f'-PARA-TEXT-J-IN-'].update(f'J_{self.picked["L"]},{self.picked["J"]}')
+                        self.window[f'-PARA-TEXT-J-OUT-'].update(f'J_{self.picked["J"]},{self.picked["L"]}')
+
+                        for key in ['in','out']:
+                            val = self.get_param_value(lvl,key,self.register.loc[id])
+                            print('val:',val)
+                            self.window[f'-PARA-{lvl}-{key}-'].update(val)
+                    else:
+                        for key in self.params[lvl].keys():
+                            val = self.get_param_value(lvl,key,self.register.loc[id])
+                            self.window[f'-PARA-{lvl}-{key}-'].update(val)
+
+                    self.graph.Widget.itemconfig(id, fill=lvl_paras[lvl]['col'][1])
+                    print('picked lvl',lvl)
+                    if lvl=='J':
+                        break_it = True
+                        break
+            if break_it:
+                break
 
     def choose_element(self,graph_id):
 
@@ -464,6 +518,7 @@ class Elements():
 
     def change_params(self,lvl,key,val):
 
+        print('change params:',lvl,key)
         try:
             val = (int if type(default_params[lvl][key])==int else float)(val)
             if lvl=='L':
@@ -472,6 +527,12 @@ class Elements():
                 self.params[lvl][key][self.picked['L']][self.picked['P']] = val
             elif lvl=='S':
                 self.params[lvl][key][self.picked['L']][self.picked['P']][self.picked['S']] = val
+            elif lvl=='J':
+                if key=='in':
+                    self.params[lvl][self.picked['L']][self.picked['J']] = val
+                if key=='out':
+                    self.params[lvl][self.picked['J']][self.picked['L']] = val
+
         except:
             val = self.get_param_value(lvl,key,self.picked)
             self.window[f'-PARA-{lvl}-{key}-'].update(val)
@@ -482,8 +543,12 @@ class Elements():
 
         lower = vals[f'-SIM-PARA-{idx}-LOWER-']
         upper = vals[f'-SIM-PARA-{idx}-UPPER-']
-        lower = 0 if lower=='' else float(lower)
-        upper = 0 if upper=='' else float(upper)
+        try:
+            lower = 0 if lower=='' else float(lower)
+            upper = 0 if upper=='' else float(upper)
+        except:
+            lower = 0
+            upper = 0
         self.sim_params[idx] = {key: [lower,upper], 'key':key}
         # self.window[f'-SIM-PARA-{idx}-LOWER-'].update(lower)
         # self.window[f'-SIM-PARA-{idx}-UPPER-'].update(upper)
@@ -506,22 +571,50 @@ class Elements():
         start_point, end_point = get_element_location('L',[l,None,None])
 
         id = graph.draw_rectangle(start_point, end_point,fill_color=lvl_paras['L']['col'][0], line_color='red')
-
         self.register_graph(id,[l],'L')
+
         self.n['P'].append(0)
         self.n['S'].append([])
 
         for key in default_params['L'].keys():
             self.params['L'][key].append(default_params['L'][key])
-
         for key in default_params['P'].keys():
             self.params['P'][key].append([])
         for key in default_params['S'].keys():
             self.params['S'][key].append([])
 
         self.pickObject([id])
+
+        self.addWeights(l)
         self.addPopulation(l)
         self.addPopulation(l)
+        print(self.params)
+
+    def addWeights(self,l):
+
+        print(self.params)
+
+        if self.n['L'] > 1:
+            for ll in range(self.n['L']):
+                if ll!=l:
+                    start_point, end_point = get_element_location('J',[l,ll])
+
+                    id = graph.draw_rectangle(start_point,end_point,fill_color=lvl_paras['J']['col'][0])
+                    self.register_graph(id,[l,None,None,ll],'J')
+
+                    # win_key = f'-PARA-J-{l}-{ll}-'
+                    # if not (win_key in self.window.AllKeysDict):
+                    #     self.window.extend_layout(self.window['-J-OPTIONS-'],[[
+                    #         sg.Text(f'J_{ll}'),
+                    #         sg.In(size=(5,1),enable_events=True, key=f'-PARA-J-{l}-{ll}-'),
+                    #     ]])
+
+        J_l = np.ones((self.n['L'],self.n['L']))*default_params['J']['in']
+        np.fill_diagonal(J_l,0)
+        for l,J_row in enumerate(self.params['J']):
+            for ll,el in enumerate(J_row):
+                J_l[l,ll] = el
+        self.params['J'] = J_l
 
 
     def addPopulation(self,l):

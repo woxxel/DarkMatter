@@ -18,11 +18,6 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	// parameters:
-	//  	drive:
-	//  	0 : all populations driven to have same firing rates
-	//  	1 : only excitatory one driven
-	//  	2 : recurrent, inhibitory population is driven by afferent spikes from excitatory population
 	string fileModel = argv[1];
     string fileSim = argv[2];
 	string fileOut = argv[3];
@@ -30,7 +25,6 @@ int main(int argc, char** argv)
     Simulation sim, *simP = &sim;
     Model mod, *modP = &mod;
 	Model mod_approx, *modP_approx = &mod_approx;
-    // Results res, *resP = &res;
 
     read_model(fileModel,modP);
     read_model(fileModel,modP_approx);
@@ -42,9 +36,6 @@ int main(int argc, char** argv)
 
     initiate_results(modP,simP);
     initiate_results(modP_approx,simP);
-
-	// Model *modP_approx = new Model(modP);
-	// mod_approx = mod;
 
 	// cout << "calculate solutions for mode stats = " << sim.mode_stats << endl;
 
@@ -75,11 +66,7 @@ int main(int argc, char** argv)
 		// cout << "done" << endl;
 	};
 	// cout << "computation done!" << endl;
-	//
-	// // if (sim.steps == 1)
-	// 	// write_theory(fileOut);
-	// // else {
+
     write_results(fileOut,simP,modP,modP_approx);
-    // // }
 	return 0;
 }

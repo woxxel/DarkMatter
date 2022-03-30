@@ -189,8 +189,8 @@ void Simulation::initiate_y_axis(Model *modP)
 
             popSimP = &modP->layer[l].population[p].simulation;
 
-            popSimP->trans_DM_found = false;
-            popSimP->trans_np_found = false;
+            // popSimP->trans_DM_found = false;
+            // popSimP->trans_np_found = false;
 
             popSimP->trans_DM = NAN;
             popSimP->trans_np = NAN;
@@ -200,8 +200,8 @@ void Simulation::initiate_y_axis(Model *modP)
     modP->simulation.trans_inc = NAN;
     modP->simulation.trans_imp = NAN;
 
-    modP->simulation.trans_inc_found = false;
-    modP->simulation.trans_imp_found = false;
+    // modP->simulation.trans_inc_found = false;
+    // modP->simulation.trans_imp_found = false;
 }
 
 
@@ -229,11 +229,19 @@ void Simulation::store_results(Model * modP, Model * modP_approx)
             popResP->I_balance[vars[1].iter][vars[0].iter] = popSimP->I_balance;
 
             if (popSimP->trans_DM_found) // && (!simP->trans_DM_found[l][p])
+            {
                 popResP->trans_DM[vars[1].iter].push_back(popSimP->trans_DM);
+                modP->simulation.nTrans = max(popResP->trans_DM[vars[1].iter].size(),modP->simulation.nTrans);
+                // cout << "DM transition found and storing" << endl;
+            }
                 // trans_DM_found[p] = true;
 
             if (popSimP->trans_np_found) // && (!simP->trans_np_found[l][p])
+            {
                 popResP->trans_np[vars[1].iter].push_back(popSimP->trans_np);
+                modP->simulation.nTrans = max(popResP->trans_np[vars[1].iter].size(),modP->simulation.nTrans);
+                // cout << "np transition found and storing" << endl;
+            }
                 // trans_np_found[p] = true;
 
             if ((mode_stats == 2) || (mode_stats == 3))
@@ -244,11 +252,17 @@ void Simulation::store_results(Model * modP, Model * modP_approx)
                 // popResP_approx = &bla;
 
                 if (popSimP_approx->trans_DM_found)
+                {
                     popResP_approx->trans_DM[vars[1].iter].push_back(popSimP_approx->trans_DM);
+                    modP_approx->simulation.nTrans = max(popResP_approx->trans_DM[vars[1].iter].size(),modP_approx->simulation.nTrans);
+                }
                     // trans_DM_found_approx[p] = true;
 
                 if (popSimP_approx->trans_np_found)
+                {
                     popResP_approx->trans_np[vars[1].iter].push_back(popSimP_approx->trans_np);
+                    modP_approx->simulation.nTrans = max(popResP_approx->trans_np[vars[1].iter].size(),modP_approx->simulation.nTrans);
+                }
                     // trans_np_found_approx[p] = true;
             }
 
@@ -291,20 +305,32 @@ void Simulation::store_results(Model * modP, Model * modP_approx)
 
 
     if (modP->simulation.trans_imp_found) // && (!simP->trans_imp_found)
+    {
         modP->results.trans_imp[vars[1].iter].push_back(modP->simulation.trans_imp);
+        modP->simulation.nTrans = max(modP->results.trans_imp[vars[1].iter].size(),modP->simulation.nTrans);
+    }
         // trans_imp_found = true;
 
     if (modP->simulation.trans_inc_found) // && (!simP->trans_inc_found)
+    {
         modP->results.trans_inc[vars[1].iter].push_back(modP->simulation.trans_inc);
+        modP->simulation.nTrans = max(modP->results.trans_inc[vars[1].iter].size(),modP->simulation.nTrans);
+    }
         // trans_inc_found = true;
 
     if ((mode_stats == 2) || (mode_stats == 3)) {
         if (trans_imp_found_approx)
+        {
             modP_approx->results.trans_imp[vars[1].iter].push_back(modP_approx->simulation.trans_imp);
+            modP_approx->simulation.nTrans = max(modP_approx->results.trans_imp[vars[1].iter].size(),modP_approx->simulation.nTrans);
+        }
         // trans_imp_found_approx = true;
 
         if (trans_inc_found_approx)
+        {
             modP_approx->results.trans_inc[vars[1].iter].push_back(modP_approx->simulation.trans_inc);
+            modP_approx->simulation.nTrans = max(modP_approx->results.trans_inc[vars[1].iter].size(),modP_approx->simulation.nTrans);
+        }
         // trans_inc_found_approx = true;
     }
 }

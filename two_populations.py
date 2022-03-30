@@ -15,7 +15,7 @@ def two_populations(L=1,S=[1,2],steps=100,plot_ax3D=True,save=0,file_format='png
 ####    2: compare exact vs. approx (single)
 ####    3: KL-phase-space (costly!)
 
-    steps = steps + 1       # correct for removal of first item
+    steps = steps       # correct for removal of first item
 
     ## general plot setup
     set_plot_params()
@@ -28,8 +28,6 @@ def two_populations(L=1,S=[1,2],steps=100,plot_ax3D=True,save=0,file_format='png
 
     J_l = np.ones((L,L))
     np.fill_diagonal(J_l,0)
-    print(J_l)
-
 
     options = {
         # count of layers, populations, PSPs
@@ -56,6 +54,7 @@ def two_populations(L=1,S=[1,2],steps=100,plot_ax3D=True,save=0,file_format='png
         'tau_norm': 1.,
 
         # 'order': ['tau_G','n','alpha_0','rateWnt','eta','eps'],
+        'mode': 0,
         'mode_stats': 0,
         'mode_calc': 0,
         'simulation': {
@@ -71,9 +70,6 @@ def two_populations(L=1,S=[1,2],steps=100,plot_ax3D=True,save=0,file_format='png
     }
 
     order = list(options['simulation'].keys())
-
-    print(order)
-
 
     res = darkMatter(steps=steps,options=options,rerun=rerun,compile=compile)
     # steps1 = res['gamma'].shape[1]
@@ -107,15 +103,15 @@ def two_populations(L=1,S=[1,2],steps=100,plot_ax3D=True,save=0,file_format='png
     for p in range(2):
         plot_fins(ax[p,0],res[order[0]],res[order[1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
 
-    options['tau_I'] = [0.03,0.005,0.2]
-    res = darkMatter(steps=steps,options=options,rerun=rerun,compile=False)
-    for p in range(2):
-        plot_fins(ax[p,1],res[order[0]],res[order[1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
-
-    options['tau_I'] = [0.06,0.005,0.2]
-    res = darkMatter(steps=steps,options=options,rerun=rerun,compile=False)
-    for p in range(2):
-        plot_fins(ax[p,2],res[order[0]],res[order[1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
+    # options['tau_I'] = [0.03,0.005,0.2]
+    # res = darkMatter(steps=steps,options=options,rerun=rerun,compile=False)
+    # for p in range(2):
+    #     plot_fins(ax[p,1],res[order[0]],res[order[1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
+    #
+    # options['tau_I'] = [0.06,0.005,0.2]
+    # res = darkMatter(steps=steps,options=options,rerun=rerun,compile=False)
+    # for p in range(2):
+    #     plot_fins(ax[p,2],res[order[0]],res[order[1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
 
 
     plt.show(block=False)

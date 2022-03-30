@@ -40,61 +40,24 @@ void Layer::print_layer()
     }
 }
 
-// void Model::resize(Simulation *simP)
-// {
-    // resize all to having p populations
-
-    // paras.pop.resize(paras.Npop);
-
-    // paras.rate.resize(paras.Npop);
-    // paras.alpha_0.resize(paras.Npop);
-    //
-	// paras.J_E.resize(paras.Npop);
-	// paras.J_I.resize(paras.Npop);
-    // paras.kappa.resize(paras.Npop);
-
-
-    // parameters to be calculated
-    // shouldnt this be in struct "results"?
-    // paras.q.resize(paras.Npop);
-    //
-    // paras.alpha_raw.resize(paras.Npop);
-	// paras.alpha.resize(paras.Npop);
-	// paras.sigma_V.resize(paras.Npop);
-	// paras.rate_max.resize(paras.Npop);
-    //
-	// paras.gamma.resize(paras.Npop);
-	// paras.delta.resize(paras.Npop);
-    // paras.I_balance.resize(paras.Npop);
-	// paras.chi.resize(paras.Npop);
-    // paras.regions.resize(paras.Npop);
-    //
-    // paras.KL.resize(paras.Npop);
-    // paras.entropy.resize(paras.Npop);
-
-
-    // trans_DM.resize(paras.Npop);
-    // trans_np.resize(paras.Npop);
-    // trans_imp.resize(paras.Npop);
-    // trans_inc.resize(paras.Npop);
-
-    // trans_DM_found.resize(paras.Npop);
-    // trans_np_found.resize(paras.Npop);
-
-    // in_DM.resize(paras.Npop);
-    // in_np.resize(paras.Npop);
-// }
-
-// void Model::add_PSP(int p, double tau_I, double tau_norm, double tau_n)
-// {
-//     PSP psp = {tau_I, tau_norm, tau_n};
-//     paras.pop[p].psp.push_back(psp);
-// }
+void Model::set_rates()
+{
+    for (unsigned l=0; l<L; l++) {
+        for (unsigned p = 0; p < layer[l].nPop; p++) {
+            if (layer[l].population[p].I_ext==1) continue;
+            else {
+                cout << "Method of no-drive not yet implemented. Check balance equation for multiple layers!" << endl;
+                throw;
+            }
+        }
+    }
+}
 
 void Model::set_weights()
 {
     // implement setter, calling set_weights only when according variables are changed
     for (unsigned l=0; l<L; l++) {
+        // layer[l].print_layer();
         // if (paras.drive == 2)
         //     paras.J_0 = paras.J * layer[l].population[p].tau_M;
 
@@ -170,7 +133,7 @@ void Model::get_sigma_V()
                         throw;
                     }
 
-                    // switch betweeen definitions for inter-layer and intra-layer coupling strengths
+                    // switch between definitions for inter-layer and intra-layer coupling strengths
                     if (l==ll)  J = layer[ll].population[pp].J[p];
                     else        J = layer[ll].J_l[l];
 
@@ -294,13 +257,13 @@ void Model::get_delta()
 //! all those could have an added boolean, showing whether they were calculated yet, and only evaluate, if not. however, this would require boolean to be updated, whenever some variable is changed
 void Model::get_gamma()
 {
-    Population_Simulation *simP;
+    Population_Simulation *popSimP;
     for (unsigned l = 0; l < L; l++) {
         for (unsigned p = 0; p < layer[l].nPop; p++) {
-            simP = &layer[l].population[p].simulation;
+            popSimP = &layer[l].population[p].simulation;
 
-            simP->gamma = simP->sigma_V/simP->alpha;
-            // cout << "got gamma: " << simP->gamma << endl;
+            popSimP->gamma = popSimP->sigma_V/popSimP->alpha;
+            cout << "got gamma: " << popSimP->gamma << endl;
         }
     }
 }
@@ -313,7 +276,7 @@ void Model::get_chi()
             popSimP = &layer[l].population[p].simulation;
             double nu_peak_log_I = nu_peak_log_full(popSimP);
             popSimP->chi = -log10(exp(1)) * nu_peak_log_I + log10(popSimP->rate);
-            // cout << "got chi: " << simP->chi << endl;
+            cout << "got chi: " << popSimP->chi << endl;
         }
     }
 }
@@ -518,128 +481,121 @@ void Model::find_transitions(Simulation *simP)
 
     Model_Simulation *mSimP = &simulation;
 
+    // cout << "check inconsistent" << endl;
+    mSimP->trans_inc_found = false;
+    mSimP->trans_imp_found = false;
+    for (unsigned l = 0; l < L; l++) {
+        for (unsigned p = 0; p < layer[l].nPop; p++) {
+            popSimP = &layer[l].population[p].simulation;
+            popSimP->trans_DM_found = false;
+            popSimP->trans_np_found = false;
+        }
+    }
+
+	if (inconsistent(mSimP) && (simP->vars[0].iter>0)) {
+		mSimP->trans_inc_found = true;
+        mSimP->trans_inc = *simP->vars[0].paraP[0];
+
+        // cout << "inconsistent transition (" << simP->vars[1].name << ": " << *simP->vars[1].paraP[0] << ") @ " << *simP->vars[0].paraP[0] << endl;
+	}
+
+    if (mSimP->in_inc) {
+        for (unsigned l = 0; l < L; l++) {
+            for (unsigned p = 0; p < layer[l].nPop; p++)
+            layer[l].population[p].simulation.regions = 3;
+        }
+        return;
+    }
+
     for (unsigned l = 0; l < L; l++) {
         for (unsigned p = 0; p < layer[l].nPop; p++) {
             popSimP = &layer[l].population[p].simulation;
 
-            popSimP->trans_DM_found = false;
-            popSimP->trans_np_found = false;
+            // popSimP->trans_DM_found = false;
+            // popSimP->trans_np_found = false;
             if (DM_border(popSimP) && (simP->vars[0].iter>0)) {
-                // if (!trans_DM_found[p]) {
-                    // resP->trans_DM[p][simP->vars[1].iter] = paras.rate[p];      // doesnt work in cases, when there is a second DM transition at high nu
-                // cout << "DM transition @ " << *simP->vars[0].paraP << endl;
                 popSimP->trans_DM = *simP->vars[0].paraP[0];
-                // trans_DM[p] = paras.rate[p];
                 popSimP->trans_DM_found = true;
-                // }
-            } else {
-                popSimP->trans_DM_found = false;
+                // cout << "DM transition (" << l << "," << p << ","<< simP->vars[1].name << ": " << *simP->vars[1].paraP[0] << ") @ " << *simP->vars[0].paraP[0] << endl;
             }
 
             if (no_peak(popSimP) && (simP->vars[0].iter>0)) {
-                // if (!trans_np_found[p]) {
-                    // cout << " found no peak transition for p=" << p << " and iter #" << simP->y_iter << ", @ rate=" << modP->paras.rate[p] << endl;
-                    // resP->trans_np[p][simP->vars[1].iter] = paras.rate[p];
                 popSimP->trans_np = *simP->vars[0].paraP[0];
                 popSimP->trans_np_found = true;
-                // }
+                // cout << "no peak transition (" << simP->vars[1].name << ": " << *simP->vars[1].paraP[0] << ") @ " << *simP->vars[0].paraP[0] << endl;
+
+                layer[l].population[p].simulation.regions = 2;
             }
         }
     }
 
     // cout << "check implausible" << endl;
-	// starting to find boundaries
-    // cout << "checking transition for iter #" << simP->vars[1].iter << "," << simP->vars[0].iter << ", @ " << simP->vars[0].name << "=" << *simP->vars[0].paraP << endl;
-    mSimP->trans_imp_found = false;
 	if (implausible(mSimP) && (simP->vars[0].iter>0)) {
-		// if (!trans_imp_found) {
         mSimP->trans_imp = *simP->vars[0].paraP[0];
-        // for (unsigned l = 0; l < L; l++) {
-            // for (unsigned p = 0; p < layer[l].nPop; p++)
-                // resP->trans_imp[p][simP->vars[1].iter] = paras.rate[p];
-        // }
-		mSimP->trans_imp_found = true;
-	}
-
-    // cout << "check inconsistent" << endl;
-    mSimP->trans_inc_found = false;
-	if (inconsistent(mSimP) && (simP->vars[0].iter>0)) {
-		// if (!trans_inc_found) {
-		mSimP->trans_inc_found = true;
-        mSimP->trans_inc = *simP->vars[0].paraP[0];
-
-        mSimP->trans_imp = NAN;
         mSimP->trans_imp_found = true;
 
+        // cout << "implausible transition (" << simP->vars[1].name << ": " << *simP->vars[1].paraP[0] << ") @ " << *simP->vars[0].paraP[0] << endl;
+
+        for (unsigned l = 0; l < L; l++) {
+            for (unsigned p = 0; p < layer[l].nPop; p++)
+                layer[l].population[p].simulation.regions = 1.;
+        }
+	}
+
+
+    if (!mSimP->in_imp && !mSimP->in_inc) {
         for (unsigned l = 0; l < L; l++) {
             for (unsigned p = 0; p < layer[l].nPop; p++) {
                 popSimP = &layer[l].population[p].simulation;
-                // popResP = &layer[l].population[p].results;
-                // resP->trans_inc[p][simP->vars[1].iter] = paras.rate[p];
-
-    			// if (!trans_DM_found[p]) {
-    			popSimP->trans_DM = NAN;
-    			popSimP->trans_DM_found = true;
-    			// }
-
-    			// if (!trans_np_found[p]) {
-    				// cout << "forcing np end @ rate = " << modP->paras.rate[p] << endl;
-    				// cout << "previous value: " << resP->trans_np[p][simP->vars[1].iter]<< endl;
-    				// resP->trans_np[p][simP->vars[1].iter] = NAN;
-    			popSimP->trans_np = NAN;
-    			popSimP->trans_np_found = true;
-    			// }
-
-    			// if (!trans_imp_found) {
-    			// }
-    		}
+                if (!popSimP->in_np) {
+                    layer[l].population[p].simulation.regions = 0.;
+                }
+            }
         }
-		// }
-	}
+    }
 
 	// if (trans_inc_found && simP->mode_stats==3)
 	// 	for (unsigned p = 0; p < paras.Npop; p++)
 	// 		resP->KL_entropy[p][simP->vars[1].iter][simP->vars[0].iter] = NAN;
 
-    // cout << "assign region" << endl;
-	if ((simP->mode_stats == 0) || (simP->mode_stats == 3))
-	{
-        int val;
-        for (unsigned l = 0; l < L; l++) {
-            for (unsigned p = 0; p < layer[l].nPop; p++) {
-    			if (mSimP->in_inc) val = 3;
-    			else if (layer[l].population[p].simulation.in_np) val = 2;
-    			else if (mSimP->in_imp) val = 1;
-    			else val = 0;
-
-    			layer[l].population[p].simulation.regions = val;
-                // regions[simP->n_iter][simP->alpha_0_iter][simP->tau_G_iter][simP->rateWnt_iter][p] = val;
-    		}
-        }
-	}
-
     // cout << "final check" << endl;
 	// check if this is the last iteration along x-axis
-	if (simP->vars[0].iter==simP->vars[0].steps-1 || mSimP->in_inc)// && (simP->mode_stats==2))
-	{
-        for (unsigned l = 0; l < L; l++) {
-            for (unsigned p = 0; p < layer[l].nPop; p++) {
-                popSimP = &layer[l].population[p].simulation;
-
-    			if (!popSimP->trans_DM_found)
-    				popSimP->trans_DM = NAN;
-    			if (!popSimP->trans_np_found)
-    				popSimP->trans_np = NAN;
-    			if (!mSimP->trans_imp_found)
-    				mSimP->trans_imp = NAN;
-    			if (!mSimP->in_inc && !mSimP->trans_inc_found)
-    				mSimP->trans_inc = NAN;
-    		}
-        }
-	}
+	// if (simP->vars[0].iter==simP->vars[0].steps-1 || mSimP->in_inc)// && (simP->mode_stats==2))
+	// {
+    //     for (unsigned l = 0; l < L; l++) {
+    //         for (unsigned p = 0; p < layer[l].nPop; p++) {
+    //             popSimP = &layer[l].population[p].simulation;
+    //
+    // 			if (!popSimP->trans_DM_found)
+    // 				popSimP->trans_DM = NAN;
+    // 			if (!popSimP->trans_np_found)
+    // 				popSimP->trans_np = NAN;
+    // 			if (!mSimP->trans_imp_found)
+    // 				mSimP->trans_imp = NAN;
+    // 			if (!mSimP->in_inc && !mSimP->trans_inc_found)
+    // 				mSimP->trans_inc = NAN;
+    // 		}
+    //     }
+	// }
 };
 
+void Model::get_max_prob()
+{
+    Population_Simulation *popSimP;
+    unsigned steps = 1000;
+    double d_nu;
+    for (unsigned l = 0; l < L; l++) {
+        for (unsigned p = 0; p < layer[l].nPop; p++) {
+            popSimP = &layer[l].population[p].simulation;
 
+            d_nu = popSimP->rate_max/steps;
+            popSimP->max_prob = 0;
+            for (unsigned s=0;s<steps;s++) {
+                popSimP->max_prob = max(distribution_exact(s*d_nu,0),popSimP->max_prob);
+            }
+        }
+    }
+}
 
 void Model::integrate_information()
 {
