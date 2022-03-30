@@ -6,7 +6,7 @@ from darkMatter import darkMatter
 from general.plot_statistics import *
 from general.utils import set_plot_params
 
-def two_populations(steps=100,plot_ax3D=True,save=0,file_format='png',rerun=False,compile=False):
+def two_populations(L=1,S=[1,2],steps=100,plot_ax3D=True,save=0,file_format='png',rerun=False,compile=False):
 
 ## stats:
 ####    0: sharkfins
@@ -15,7 +15,7 @@ def two_populations(steps=100,plot_ax3D=True,save=0,file_format='png',rerun=Fals
 ####    2: compare exact vs. approx (single)
 ####    3: KL-phase-space (costly!)
 
-    steps = steps + 1       # correct for removal of first item
+    steps = steps       # correct for removal of first item
 
     ## general plot setup
     set_plot_params()
@@ -26,31 +26,50 @@ def two_populations(steps=100,plot_ax3D=True,save=0,file_format='png',rerun=Fals
         'const_label': []
     }
 
-    # options = {
-    #     'mode_stats': 0,
-    #     'order': ['rateWnt','n','alpha_0','tau_G','eta','eps'],
-    #     'eps': [1./np.sqrt(2)],
-    #     'alpha_0': [0.02],
-    #     'rateWnt': [0.,20.],
-    #     'tau_G': [0.01],
-    #     'tau_A': [0.005],
-    #     'Npop': 2,
-    #     'eta': [0.9],
-    #     'n': [0.,1.],
-    # }
+    J_l = np.ones((L,L))
+    np.fill_diagonal(J_l,0)
+
     options = {
+        # count of layers, populations, PSPs
+        'L': L,
+        'P': 2,
+        'S': S,     # contains number of synapses for each population
+
+        # layer level parameters
+        'eps': 1./np.sqrt(2),
+        'eta': 0.9,
+        'J0_l': J_l,
+        'kappa': 1.,
+
+        # population level parameters
+        'I_ext': 1,
+        'rateWnt': 1.,
+        'alpha_0': 0.02,
+        'tau_M': 0.01,
+        'J0': 1.,
+
+        # psp level parameters
+        'tau_I': [0.01,0.005,0.2],
+        'tau_n': 0.,
+        'tau_norm': 1.,
+
+        # 'order': ['tau_G','n','alpha_0','rateWnt','eta','eps'],
+        'mode': 0,
         'mode_stats': 0,
-        'order': ['eps','alpha_0','rateWnt','n','tau_G','eta'],
-        'eps': [0,1./np.sqrt(2)],
-        'alpha_0': [0,0.1],
-        'rateWnt': [1.],
-        'tau_G': [0.03],
-        'tau_A': [0.005],
-        'Npop': 2,
-        'eta': [0.9],
-        'n': [0.,1.],
+        'mode_calc': 0,
+        'simulation': {
+            # for each iteration parameter, specify (layer,population,psp)-tuple
+            # specify -1 if a level of hierarchy is non-applicable
+            # specify 'None' if should be applied to all candidates
+            'rateWnt': [0.,20.],
+            'alpha_0': [0.,0.2],
+
+            'sim_prim': [0,-1,0],       # when population parameters are iterated, specify population number(s) (empty = all)
+            'sim_sec': [0,-1,0],     # when synaptic timeconstants are iterated, specify number within population
+        }
     }
 
+    order = list(options['simulation'].keys())
 
     res = darkMatter(steps=steps,options=options,rerun=rerun,compile=compile)
     # steps1 = res['gamma'].shape[1]
@@ -82,19 +101,17 @@ def two_populations(steps=100,plot_ax3D=True,save=0,file_format='png',rerun=Fals
 
     # for i in range(res['gamma'].shape)
     for p in range(2):
-        plot_fins(ax[p,0],res[options['order'][0]],res[options['order'][1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
+        plot_fins(ax[p,0],res[order[0]],res[order[1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
 
-    options['rateWnt'] = [2.]
-    # options['tau_G'] = [0.03]
-    res = darkMatter(steps=steps,options=options,rerun=rerun,compile=compile)
-    for p in range(2):
-        plot_fins(ax[p,1],res[options['order'][0]],res[options['order'][1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
-
-    options['rateWnt'] = [5.]
-    # options['tau_G'] = [0.06]
-    res = darkMatter(steps=steps,options=options,rerun=rerun,compile=compile)
-    for p in range(2):
-        plot_fins(ax[p,2],res[options['order'][0]],res[options['order'][1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
+    # options['tau_I'] = [0.03,0.005,0.2]
+    # res = darkMatter(steps=steps,options=options,rerun=rerun,compile=False)
+    # for p in range(2):
+    #     plot_fins(ax[p,1],res[order[0]],res[order[1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
+    #
+    # options['tau_I'] = [0.06,0.005,0.2]
+    # res = darkMatter(steps=steps,options=options,rerun=rerun,compile=False)
+    # for p in range(2):
+    #     plot_fins(ax[p,2],res[order[0]],res[order[1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
 
 
     big_ax = fig.add_axes([0.1,0.1,0.8,0.85])
