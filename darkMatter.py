@@ -272,10 +272,10 @@ def set_computation(fileComputation,options):
     ### parameters for layers
     # model.set_para('layer_L_idx',layer_L_idx)
 
-    com.set_para('N',20,options)
-    com.set_para('T',600.,options)
-    com.set_para('draw_from_theory',10,options)
-    com.set_para('draw_finite_time',10,options)
+    com.set_para('N',10,options)
+    com.set_para('T',100.,options)
+    com.set_para('draw_from_theory',5,options)
+    com.set_para('draw_finite_time',5,options)
     com.set_para('seed_time',np.random.randint(0,10000,getattr(com,'draw_from_theory')),options)
     com.set_para('seed_theory',np.random.randint(0,10000,getattr(com,'draw_finite_time')),options)
 
@@ -295,7 +295,7 @@ def set_computation(fileComputation,options):
         Var[:] = val
     ncid.close()
 
-    com.print_parameter()
+    # com.print_parameter()
 
     return com, sv_str
 

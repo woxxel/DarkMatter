@@ -1,4 +1,6 @@
 #include <vector>
+// #include <random>
+#include "gsl/gsl_rng.h"
 #include <iostream>
 
 using namespace std;
@@ -63,6 +65,9 @@ struct Population_Simulation
     double regions;
     double infoContent, KL, entropy;
     double max_prob;
+
+    double distribution_exact(double nu);
+
 };
 
 struct Model_Simulation
@@ -227,7 +232,6 @@ class Model
         void set_mixture();
         void solve_selfcon(int mode_calc);
         void write_results();
-        double distribution_exact(double nu, int p);
 
         bool q_border1(Population_Simulation *popSimP);
         bool q_border2(Population_Simulation *popSimP);
@@ -329,21 +333,21 @@ struct Computation
 {
     // modes
     // int p_theory, p_theory_hist;
-    int draw_from_theory, draw_finite_time;
+    vector<long int> seed_theory, seed_time;
+    unsigned N;
+    double T;
+    size_t draw_from_theory, draw_finite_time;
+    unsigned k, j;
     // int process_data;
 
     // parameter
 //         double alpha_0, rateWnt;
     // long int seed_time;
-    vector<long int> seed_theory, seed_time;
     // int N, n_bin, border;
-    int N;
-    double T;
     // string prior;
-    int k, j;
 
-    void draw_rates(Model *modP, Measures *mesP);
-    void draw_samples(Measures *mesP);
+    double draw_rate(gsl_rng *rng, Model *modP);
+    double draw_sample(gsl_rng *rng, double rate, double T);
 };
 
 struct parameters_int

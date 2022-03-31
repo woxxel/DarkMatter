@@ -220,17 +220,18 @@ void read_computation(string fileComp, Computation *comP)
     // get_from_ncid(ncid, "process_data", &comP->process_data);
 
     // get_from_ncid(ncid, "border", &comP->border);
-    get_from_ncid(ncid, "draw_from_theory", &comP->draw_from_theory);
-    get_from_ncid(ncid, "draw_finite_time", &comP->draw_finite_time);
+    // get_from_ncid(ncid, "draw_from_theory", &comP->draw_from_theory);
+    // get_from_ncid(ncid, "draw_finite_time", &comP->draw_finite_time);
     get_from_ncid(ncid, "N", &comP->N);
-    get_from_ncid(ncid, "T", &comP->T);     // if T=0 => infty
+    get_from_ncid(ncid, "T", &comP->T);      // if T=0 => infty
 
-    comP->seed_theory.resize(comP->draw_from_theory);
-    get_from_ncid(ncid, "seed_theory", &comP->seed_theory);
-    comP->seed_time.resize(comP->draw_finite_time);
-    get_from_ncid(ncid, "seed_time", &comP->seed_time);
+    get_dim_and_read(ncid, "seed_theory", &comP->draw_from_theory, &comP->seed_theory);
+    get_dim_and_read(ncid, "seed_time", &comP->draw_finite_time, &comP->seed_time);
+    // comP->seed_theory.resize(comP->draw_from_theory);
+    // get_from_ncid(ncid, "seed_theory", &comP->seed_theory);
+    // comP->seed_time.resize(comP->draw_finite_time);
+    // get_from_ncid(ncid, "seed_time", &comP->seed_time);
 
-    cout << "read data from com: N=" << comP->N << ", T=" << comP->T << endl;
 
     // if (comP->draw_from_theory > 0)
     // {
@@ -297,33 +298,61 @@ void read_computation(string fileComp, Computation *comP)
 
 
 
-// void write_measures(string fileOut, computation *comP, measures *mesP, Results *resP)
-// {
-//     // // cout << "writing measures (results) to " << fileOut << "..." << endl;
-//     //
-//     // int ncid, one_dim, N_dim, resolution_dim;
-//     // nc_create(fileOut.c_str(), NC_CLOBBER, &ncid);
-//     //
-//     // int p_Sz = resP->steps;//, bin_Sz = resP->p_hist.size();
-//     //
-//     // nc_def_dim(ncid, "one", 1, &one_dim);
-//     // nc_def_dim(ncid, "N", mesP->N, &N_dim);
-//     // nc_def_dim(ncid, "resolution", p_Sz, &resolution_dim);
-//     // // nc_def_dim(ncid, "bin_dim", bin_Sz, &bin_dim);
-//     //
-//     // write_to_ncid(ncid,"d_nu", NC_DOUBLE, 1, &one_dim, &resP->d_nu);
-//     // write_to_ncid(ncid,"rates", NC_DOUBLE, 1, &N_dim, &mesP->rates.front());
-//     // // rates->put(&mesP->rates.front(), mesP->N);
-//     // // write_to_ncid(ncid,"p_range", NC_DOUBLE, 1, &resolution_dim, &resP->p_range.front());
-//     // // p_range->put(&resP->p_range.front(), p_Sz);
-//     // write_to_ncid(ncid,"p_bayes_est", NC_DOUBLE, 1, &resolution_dim, &resP->p_bayes_est_measures.front());  // whats with measures vs ~measures?
-//     // // p_bayes_est->put(&resP->p_bayes_est_measures.front(), p_Sz);
-//     // // write_to_ncid(ncid,"p_k", NC_DOUBLE, 1, &resolution_dim, &resP->p_k.front());
-//     // // NcVar *p_k = writeResults.add_var("p_k", ncDouble, resolution_dim);
-//     // // p_k->put(&resP->p_k.front(),p_Sz);
-//     // nc_close(ncid);
-//     // // cout << "done!" << endl;
-// }
+void write_measures(string fileOut, Computation *comP, Measures *mesP)
+{
+    cout << "writing measures (results) to " << fileOut << "..." << endl;
+
+    int ncid, N_dim, rates_dim, rates_T_dim;
+    nc_create(fileOut.c_str(), NC_CLOBBER, &ncid);
+
+    unsigned nK = comP->draw_from_theory;
+    unsigned nT = comP->draw_finite_time;
+
+    // int p_Sz = resP->steps;//, bin_Sz = resP->p_hist.size();
+
+    // nc_def_dim(ncid, "one", 1, &one_dim);
+    nc_def_dim(ncid, "N", comP->N, &N_dim);
+    nc_def_dim(ncid, "rates_dim", nK, &rates_dim);
+    nc_def_dim(ncid, "rates_T_dim", nT, &rates_T_dim);
+
+    int dimids[3] = {N_dim, rates_dim, rates_T_dim};
+
+    int rates_id, rates_T_id;
+    nc_def_var(ncid, "rates", NC_DOUBLE, 2, &dimids[0], &rates_id);
+    nc_def_var(ncid, "rates_T", NC_DOUBLE, 3, &dimids[0], &rates_T_id);
+
+    nc_enddef(ncid);
+
+    size_t start[] = {0,0,0}, count[] = {1, nK, nT};
+        // nc_def_dim(ncid, "resolution", p_Sz, &resolution_dim);
+    // // nc_def_dim(ncid, "bin_dim", bin_Sz, &bin_dim);
+    //
+    // write_to_ncid(ncid,"d_nu", NC_DOUBLE, 1, &one_dim, &resP->d_nu);
+    for (unsigned n=0; n<comP->N; n++) {
+        start[0] = n;
+        start[1] = 0;
+        count[1] = nK;
+        nc_put_vara(ncid, rates_id, start, count, &mesP->rates[n][0]);
+
+        for (unsigned k=0; k<nK; k++) {
+            start[1] = k;
+            count[1] = 1;
+            count[2] = nT;
+            nc_put_vara(ncid, rates_T_id, start, count, &mesP->rates_T[n][k][0]);
+        }
+    }
+    // write_to_ncid(ncid,"rates", NC_DOUBLE, 1, &N_dim, &mesP->rates.front());
+    // rates->put(&mesP->rates.front(), mesP->N);
+    // // write_to_ncid(ncid,"p_range", NC_DOUBLE, 1, &resolution_dim, &resP->p_range.front());
+    // // p_range->put(&resP->p_range.front(), p_Sz);
+    // write_to_ncid(ncid,"p_bayes_est", NC_DOUBLE, 1, &resolution_dim, &resP->p_bayes_est_measures.front());  // whats with measures vs ~measures?
+    // // p_bayes_est->put(&resP->p_bayes_est_measures.front(), p_Sz);
+    // // write_to_ncid(ncid,"p_k", NC_DOUBLE, 1, &resolution_dim, &resP->p_k.front());
+    // // NcVar *p_k = writeResults.add_var("p_k", ncDouble, resolution_dim);
+    // // p_k->put(&resP->p_k.front(),p_Sz);
+    nc_close(ncid);
+    cout << "done!" << endl;
+}
 
 
 void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_approx)
@@ -431,6 +460,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
     count[0] = 1;
     for (unsigned s=0;s<steps_1;s++) {
         start[0] = s;
+        start[1] = 0;
         count[1] = modP->results.trans_inc[s].size();
         nc_put_vara(ncid, inc_id, start, count, &modP->results.trans_inc[s][0]);
         count[1] = modP->results.trans_imp[s].size();
@@ -440,6 +470,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
     if ((simP->mode_stats == 2) || (simP->mode_stats == 3)) {
         for (unsigned s=0;s<steps_1;s++) {
             start[0] = s;
+            start[1] = 0;
             count[1] = modP_approx->results.trans_inc[s].size();
             nc_put_vara(ncid, inc_approx_id, start, count, &modP_approx->results.trans_inc[s][0]);
             count[1] = modP_approx->results.trans_imp[s].size();

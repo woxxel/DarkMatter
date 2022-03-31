@@ -16,60 +16,29 @@ double poisson_distr(int k, double lambda)
         return exp(k*log(lambda)-lambda-lgamma(k+1.0));
 }
 
-void Computation::draw_rates(Model *modP, Measures *mesP)
+double Computation::draw_rate(gsl_rng *rng, Model *modP)
 {
-    cout << "start! k: " << k << ", N: " << N << endl;
-    mesP->rates[k].resize(N);
     // initiate variables
-    double rate_tmp;
-
-    // initiate random number generator
-    gsl_rng_env_setup();
-    const gsl_rng_type *TYPE = gsl_rng_mt19937;
-    gsl_rng * rng = gsl_rng_alloc(TYPE);
-//         printf("r is a '%s' generator\n", gsl_rng_name(rng));
-    gsl_rng_set(rng, 1 + seed_theory[k]);
-
-    modP->get_max_prob();
-    // int l=0,p=1;
     Population_Simulation *popSimP = &modP->layer[0].population[1].simulation;
-    // for each neuron get rate_inf
-    for (int n=0; n<N; ++n) {
-        // rejection sampling algorithm
-        bool found = false;
-        do {
-            rate_tmp = gsl_rng_uniform_pos(rng)*popSimP->rate_max;                // generate random rate
-//                         cout << "\t nu = " << rate_inf_tmp << " ,\t p(nu) = " << modP->distribution_exact(rate_inf_tmp,0) << endl;
-            // and accept sample according to theoretically predicted probability
-            if (gsl_ran_flat(rng, 0,popSimP->max_prob) < modP->distribution_exact(rate_tmp,0))
-            {
-                mesP->rates[k][n] = rate_tmp;
-                found = true;
-                // resP->N_AP[comP->k][n] = int(rate_inf_tmp*comP->T);
-            }
-        }
-        while (found == false);
+    double rate;
+    int i=0;    // track iterations to break off in case of inability to find something
+
+    // rejection sampling algorithm
+    while (true) {
+        rate = gsl_rng_uniform_pos(rng)*popSimP->rate_max; // generate random rate
+        // and accept sample according to theoretically predicted probability
+        if (gsl_ran_flat(rng, 0,popSimP->max_prob) < popSimP->distribution_exact(rate))
+            return rate;
+            // mesP->rates[k][n] = rate_tmp;
+            // resP->N_AP[comP->k][n] = int(rate_inf_tmp*comP->T);
+        if (i++ > 100000) return NAN;
     }
 }
 
-void Computation::draw_samples(Measures *mesP)
+double Computation::draw_sample(gsl_rng *rng, double rate, double T)
 {
-        mesP->rates_T[k][j].resize(N,0);
-        mesP->N_AP[k][j].resize(N,0);
-
-        random_device rd;
-
-//         seed: comP->seed_time[comP->k*comP->draw_finite_time]
-//         cout << "random generator test: " << rd << endl;
-
-        mt19937 gen(rd()); // this gives almost deterministic results, for whatever reason...
-        for (int n=0; n<N; ++n)
-        {
-                poisson_distribution<int> d(mesP->rates[k][n]*T);    // initiating poisson distribution with mean rate_inf*T
-
-                mesP->N_AP[k][j][n] = d(gen);
-                mesP->rates_T[k][j][n] = mesP->N_AP[k][j][n]/T;                       // generating a random number of spikes from this
-        }
+    // int N_AP = gsl_ran_poisson(rng,rate*T);
+    return gsl_ran_poisson(rng,rate*T)/T;     // generating a random number of spikes from this
 }
 
 // vector<double> get_density_estimate(vector<int> data, computation sim, string kernel)

@@ -287,14 +287,14 @@ double Model::nu_peak_log_full(Population_Simulation *popSimP)
     return log(popSimP->rate_max) - (gsl_pow_2(popSimP->gamma*popSimP->delta)-2*(gsl_pow_2(popSimP->gamma)- 1) + popSimP->gamma*popSimP->delta*sqrt(gsl_pow_2(popSimP->gamma*popSimP->delta)-4*(gsl_pow_2(popSimP->gamma)-1))) /(4*gsl_pow_2(gsl_pow_2(popSimP->gamma) - 1));
 }
 
-double Model::distribution_exact(double nu, int p)
+double Population_Simulation::distribution_exact(double nu)
 {
     //! should not be evaluated, if gamma*delta > 200 or so, as cosh -> infty
-    double rate_ratio = nu/paras.rate_max[p];
+    double rate_ratio = nu/rate_max;
 //         cout << "ratio: " << rate_ratio << endl;
 //         cout << "log: " << log(rate_ratio) << endl;
 //         cout << "cosh: " << cosh(paras.gamma[p]*paras.delta[p]*sqrt(-2*log(rate_ratio))) << endl;
-    return paras.gamma[p]/(paras.rate_max[p]*sqrt(-M_PI*log(rate_ratio)))*exp(-gsl_pow_2(paras.delta[p])/2)*pow(rate_ratio,gsl_pow_2(paras.gamma[p])-1)*cosh(paras.gamma[p]*paras.delta[p]*sqrt(-2*log(rate_ratio)));
+    return gamma/(rate_max*sqrt(-M_PI*log(rate_ratio)))*exp(-gsl_pow_2(delta)/2)*pow(rate_ratio,gsl_pow_2(gamma)-1)*cosh(gamma*delta*sqrt(-2*log(rate_ratio)));
 }
 
 void Model::solve_selfcon(int mode_calc)
@@ -590,9 +590,9 @@ void Model::get_max_prob()
 
             d_nu = popSimP->rate_max/steps;
             popSimP->max_prob = 0;
-            for (unsigned s=0;s<steps;s++) {
-                popSimP->max_prob = max(distribution_exact(s*d_nu,0),popSimP->max_prob);
-            }
+            for (unsigned s=1;s<steps;s++)
+                popSimP->max_prob = max(popSimP->distribution_exact(s*d_nu),popSimP->max_prob);
+            // cout << "l,p: " << l << "," << p << " max distribution value: " << popSimP->max_prob << endl;
         }
     }
 }

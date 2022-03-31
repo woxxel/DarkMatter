@@ -20,6 +20,8 @@ void read_measures(string fileMeasures, Measures *mesP);
 // void write_theory(string fileOut, Results *resP);
 // void write_theory(string fileOut, computation *comP, measures *mesP, results *resP);
 void write_results(string fileOut, Simulation *simP, Model *modP);
+void write_measures(string fileOut, Computation *comP, Measures *mesP);
+
 
 // void write_stats_mode_3(NcFile writeResults, results *resP, int p, string addStr, int dim1, int dim2);
 string strApp(string str1, string str2);

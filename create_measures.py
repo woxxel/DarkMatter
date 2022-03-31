@@ -51,7 +51,7 @@ def create_measures(L=1,S=[1,2],plot_ax3D=True,save=0,file_format='png',rerun=Fa
         'mode_stats': 0,
         'mode_calc': 0,
         'simulation': {
-            'N': 20,    # number of neurons to draw from
+            'N': 10,    # number of neurons to draw from
             'T': 600.,   # time of measurement
 
             # 'draw_from_theory': 1,
@@ -66,3 +66,4 @@ def create_measures(L=1,S=[1,2],plot_ax3D=True,save=0,file_format='png',rerun=Fa
 
 
     res = darkMatter(steps=steps,options=options,mode=1,rerun=rerun,compile=compile)
+    return res
