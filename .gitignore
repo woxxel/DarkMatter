@@ -2,3 +2,5 @@ data
 *.pyc
 
 *.png
+*.mat
+*.xlsx
