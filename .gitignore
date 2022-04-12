@@ -6,3 +6,4 @@ data
 *.xlsx
 
 theory/sharkfins
+sbi-logs/*
