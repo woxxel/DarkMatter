@@ -35,7 +35,7 @@ def darkMatter(steps=100,mode=0,options={},rerun=False,compile=False):
         sim, sv_str = set_simulation(filePara,options,steps)
     elif mode==1:
         filePara = './data/comPara.nc'
-        com, sv_str = set_computation(filePara,options)
+        com, sv_str = set_computation(filePara,options['computation'])
 
     # fileResults = './data/results.nc'
     fileResults = './data/results_%s.nc' % (sv_str)
@@ -274,16 +274,17 @@ def set_computation(fileComputation,options):
 
     com.set_para('N',10,options)
     com.set_para('T',100.,options)
-    com.set_para('draw_from_theory',5,options)
-    com.set_para('draw_finite_time',5,options)
-    com.set_para('seed_time',np.random.randint(0,10000,getattr(com,'draw_from_theory')),options)
-    com.set_para('seed_theory',np.random.randint(0,10000,getattr(com,'draw_finite_time')),options)
+    com.set_para('draw_from_theory',100,options)
+    com.set_para('draw_finite_time',100,options)
+    # com.set_para('seed_theory',np.random.randint(0,10000,getattr(com,'draw_finite_time')),options)
 
     sv_str = 'computation'
     for key in com.paras:
         val = getattr(com,key)
         if (type(val)!=list and type(val)!=np.ndarray):
             sv_str += '_%s=%g' % (key,val)
+
+    com.set_para('seed',np.random.randint(0,2**16),options)
 
     ncid = Dataset(fileComputation, "w");#, format="NETCDF4")
     ncid.createDimension('one',1)

@@ -333,10 +333,11 @@ struct Computation
 {
     // modes
     // int p_theory, p_theory_hist;
-    vector<long int> seed_theory, seed_time;
+    // vector<long int> seed_theory, seed_time;
+    long int seed;
     unsigned N;
     double T;
-    size_t draw_from_theory, draw_finite_time;
+    unsigned draw_from_theory, draw_finite_time;
     unsigned k, j;
     // int process_data;
 

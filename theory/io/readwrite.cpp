@@ -58,7 +58,7 @@ void write_to_ncid(int ncid, const char *varName, nc_type varType, int dimSz, co
 void read_model(string fileModel, Model *modP)
 {
     // spdlog::info("reading model parameters from {} ... ",fileModel);
-    cout << "reading model parameters from " << fileModel << "... ";
+    // cout << "reading model parameters from " << fileModel << "... ";
     int ncid;
     int status = true;
 
@@ -154,12 +154,12 @@ void read_model(string fileModel, Model *modP)
 
     nc_close(ncid);
     if (!status) throw;
-    cout << "done!" << endl;
+    // cout << "done!" << endl;
 }
 
 void read_simulation(string fileSim, Simulation *simP)
 {
-    cout << "reading simulation parameters from " << fileSim << "... ";
+    // cout << "reading simulation parameters from " << fileSim << "... ";
     int ncid;
     int status = true;
 
@@ -204,29 +204,33 @@ void read_simulation(string fileSim, Simulation *simP)
     }
 
     nc_close(ncid);
-    cout << "done!" << endl;
+    // cout << "done!" << endl;
 }
 
 void read_computation(string fileComp, Computation *comP)
 {
-    cout << "reading computation parameters from " << fileComp << "... " << endl;
+    // cout << "reading computation parameters from " << fileComp << "... " << endl;
 
     int ncid;
     nc_open(fileComp.c_str(), NC_NOWRITE, &ncid);
 
-// get mode parameters
+    // get mode parameters
     // get_from_ncid(ncid, "p_theory", &comP->p_theory);
     // get_from_ncid(ncid, "p_theory_hist", &comP->p_theory_hist);
     // get_from_ncid(ncid, "process_data", &comP->process_data);
 
     // get_from_ncid(ncid, "border", &comP->border);
-    // get_from_ncid(ncid, "draw_from_theory", &comP->draw_from_theory);
-    // get_from_ncid(ncid, "draw_finite_time", &comP->draw_finite_time);
+    get_from_ncid(ncid, "draw_from_theory", &comP->draw_from_theory);
+    get_from_ncid(ncid, "draw_finite_time", &comP->draw_finite_time);
     get_from_ncid(ncid, "N", &comP->N);
     get_from_ncid(ncid, "T", &comP->T);      // if T=0 => infty
 
-    get_dim_and_read(ncid, "seed_theory", &comP->draw_from_theory, &comP->seed_theory);
-    get_dim_and_read(ncid, "seed_time", &comP->draw_finite_time, &comP->seed_time);
+    get_from_ncid(ncid, "seed", &comP->seed);
+    // cout << "nTheory: " << comP->draw_from_theory << endl;
+    // cout << "nTime: " << comP->draw_finite_time << endl;
+    // cout << "seed: " << comP->seed << endl;
+    // get_dim_and_read(ncid, "seed_theory", &comP->draw_from_theory, &comP->seed_theory);
+    // get_dim_and_read(ncid, "seed_time", &comP->draw_finite_time, &comP->seed_time);
     // comP->seed_theory.resize(comP->draw_from_theory);
     // get_from_ncid(ncid, "seed_theory", &comP->seed_theory);
     // comP->seed_time.resize(comP->draw_finite_time);
@@ -252,7 +256,7 @@ void read_computation(string fileComp, Computation *comP)
         // }
     // }
     nc_close(ncid);
-    cout << "done!" << endl;
+    // cout << "done!" << endl;
 }
 
 
@@ -300,7 +304,7 @@ void read_computation(string fileComp, Computation *comP)
 
 void write_measures(string fileOut, Computation *comP, Measures *mesP)
 {
-    cout << "writing measures (results) to " << fileOut << "..." << endl;
+    // cout << "writing measures (results) to " << fileOut << "..." << endl;
 
     int ncid, N_dim, rates_dim, rates_T_dim;
     nc_create(fileOut.c_str(), NC_CLOBBER, &ncid);
@@ -351,14 +355,14 @@ void write_measures(string fileOut, Computation *comP, Measures *mesP)
     // // NcVar *p_k = writeResults.add_var("p_k", ncDouble, resolution_dim);
     // // p_k->put(&resP->p_k.front(),p_Sz);
     nc_close(ncid);
-    cout << "done!" << endl;
+    // cout << "done!" << endl;
 }
 
 
 void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_approx)
 {
 	// spdlog::info("writing shark data to file '{}'...",fileOut);
-	cout << "writing result data to file " << fileOut << "...";
+	// cout << "writing result data to file " << fileOut << "...";
 
     int ncid, steps_dim, steps_dim1, Npop_dim;//, info_dim;
     unsigned steps = simP->vars[0].steps;
@@ -374,7 +378,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
 
     // dimids[3] = info_dim;
     int dimids[3] = {Npop_dim, steps_dim1, steps_dim};
-    int trans_dimids[3] = {Npop_dim, steps_dim1, modP->simulation.nTrans};
+    const int trans_dimids[3] = {Npop_dim, steps_dim1, (int) modP->simulation.nTrans};
 
     int para_dimID[7];
     write_prep_paras(ncid,&para_dimID[0],simP);
@@ -451,7 +455,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
     // prepare trans-vectors for writing:
     Population_Results *popResP, *popResP_approx;
 
-    cout << "transitions: " << modP->simulation.nTrans << endl;
+    // cout << "transitions: " << modP->simulation.nTrans << endl;
 
     size_t start[] = {0,0,0}, count[] = {steps_1, steps_1, steps};
 
@@ -566,7 +570,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
     }
 
     nc_close(ncid);
-    cout << "done!" << endl;
+    // cout << "done!" << endl;
 }
 
 void write_prep_paras(int ncid, int *dimID, Simulation *simP)

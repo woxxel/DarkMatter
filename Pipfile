@@ -13,6 +13,9 @@ ipykernel = "*"
 dash = "*"
 pandas = "*"
 pysimplegui = "*"
+h5py = "*"
+torch = "*"
+sbi = "*"
 
 [dev-packages]
 

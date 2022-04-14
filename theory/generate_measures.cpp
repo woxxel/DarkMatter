@@ -26,7 +26,6 @@ int main(int argc, char** argv)
 
     read_model(fileModel,modP);
     read_computation(fileCom,comP);
-	cout << "com stats: N=" << com.N << ", T=" << com.T << endl;
 
     mod.set_weights();
     mod.solve_selfcon(0);
@@ -40,9 +39,9 @@ int main(int argc, char** argv)
 	gsl_rng_env_setup();
     const gsl_rng_type *TYPE = gsl_rng_mt19937;
     gsl_rng *rng = gsl_rng_alloc(TYPE);
-	gsl_rng_set(rng, 1 + com.seed_theory[0]);
+	gsl_rng_set(rng, 1 + com.seed);
 
-	cout << "drawing firing rates from theoretical distribution..." << endl;
+	// cout << "drawing firing rates from theoretical distribution..." << endl;
 	for (unsigned n=0; n<com.N; n++) {
 		mes.rates[n].resize(com.draw_from_theory);
 		mes.rates_T[n].resize(com.draw_from_theory);

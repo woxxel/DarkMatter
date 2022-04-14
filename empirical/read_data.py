@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider
+
 import h5py
 
 def compDiff(a,b,classify):
@@ -16,7 +18,7 @@ def compDiff(a,b,classify):
     return comp
 
 
-def plot_animal(animal,ax,j=0):
+def plot_animal(spike_data,animal,ax,j=0):
 
     i=0
     for sd in spike_data:
@@ -39,9 +41,8 @@ def plot_animal(animal,ax,j=0):
 
             i+=1
     plt.tight_layout()
-    plt.show()
 
-def read_data(filePath='data/spiking_data_for_modeling.mat', classify = ['spikes_animal_idx','spikes_hemisphere_idx','spikes_genotype']):
+def read_data(filePath='../data/BuscheLab/spiking_data_for_modeling.mat', classify = ['spikes_animal_idx','spikes_hemisphere_idx','spikes_genotype'],plot=False):
 
     """
 
@@ -49,6 +50,8 @@ def read_data(filePath='data/spiking_data_for_modeling.mat', classify = ['spikes
             path to empirical data
         classify: list(strings)
             list, specifying data along which to cluster
+        plt: bool [False]
+            specifies, whether to plot data
 
     """
 
@@ -65,6 +68,7 @@ def read_data(filePath='data/spiking_data_for_modeling.mat', classify = ['spikes
     data['spikes_animal_idx'] = data['spikes_animal_idx'].flatten()
     data['spikes_cluster_idx'] = data['spikes_cluster_idx'].flatten()
     data['spikes_hemisphere_idx'] = data['spikes_hemisphere_idx'].flatten()
+    # data['spikes_depth_rel2L5'] = data['spikes_depth_rel2L5'].flatten()
 
     ### clustering data
     spike_data = []
@@ -130,28 +134,37 @@ def read_data(filePath='data/spiking_data_for_modeling.mat', classify = ['spikes
             for i in range(nIntervals):
                 sd['rate'][n,i+1] = np.sum((s>i*dT) & (s<(i+1)*dT))/dT
 
-    nAnimals = len(np.unique(data['spikes_animal_idx']))
+    if plot:
+        nAnimals = len(np.unique(data['spikes_animal_idx']))
 
-    r = np.zeros((nAnimals,2))
-    N = np.zeros((nAnimals,2))
+        r = np.zeros((nAnimals,2))
+        N = np.zeros((nAnimals,2))
 
-    for sd in spike_data:
-        a = int(sd['classification']['spikes_animal_idx'])-1
-        h = int(sd['classification']['spikes_hemisphere_idx'])-1
-        r[a,h] = sd['g'][2]/np.sum(sd['g'][1:])
-        N[a,h] = sd['N']
-    plt.plot(N[:,0],r[:,0],'ro',label='left')
-    plt.plot(N[:,1],r[:,1],'ko',label='right')
-    plt.plot(N.T,r.T,'k-')
+        for sd in spike_data:
+            a = int(sd['classification']['spikes_animal_idx'])-1
+            h = int(sd['classification']['spikes_hemisphere_idx'])-1
+            r[a,h] = sd['g'][2]/np.sum(sd['g'][1:])
+            N[a,h] = sd['N']
+        plt.plot(N[:,0],r[:,0],'ro',label='left')
+        plt.plot(N[:,1],r[:,1],'ko',label='right')
+        plt.plot(N.T,r.T,'k-')
 
-    #print('fraction of inhibitory neurons: ', r)
-    plt.ylabel('fraction of inhibitory neurons')
-    plt.xlabel('total number of neurons')
-    plt.legend()
-    plt.show(block=False)
+        #print('fraction of inhibitory neurons: ', r)
+        plt.ylabel('fraction of inhibitory neurons')
+        plt.xlabel('total number of neurons')
+        plt.legend()
+        plt.show(block=False)
 
+        def change_slider(animal):
+            print(animal)
+            plot_animal(spike_data,animal,ax)
 
-    fig,ax = plt.subplots(2,2,figsize=(12,4))
-    plot_animal(animal,ax,4)
+        animal = 2
+        fig,ax = plt.subplots(2,2,figsize=(12,4))
+        # axamp = plt.axes([0.02, .6, 0.4, 0.02])
+        plot_animal(spike_data,animal,ax,4)
+        # slider = Slider(axamp, 'animal', 1, 9, valinit=animal,orientation='horizontal')
+        # slider.on_changed(change_slider)
+        plt.show(block=False)
 
-return spike_data
+    return spike_data

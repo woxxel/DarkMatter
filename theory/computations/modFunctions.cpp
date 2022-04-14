@@ -263,7 +263,7 @@ void Model::get_gamma()
             popSimP = &layer[l].population[p].simulation;
 
             popSimP->gamma = popSimP->sigma_V/popSimP->alpha;
-            cout << "got gamma: " << popSimP->gamma << endl;
+            // cout << "got gamma: " << popSimP->gamma << endl;
         }
     }
 }
@@ -276,7 +276,7 @@ void Model::get_chi()
             popSimP = &layer[l].population[p].simulation;
             double nu_peak_log_I = nu_peak_log_full(popSimP);
             popSimP->chi = -log10(exp(1)) * nu_peak_log_I + log10(popSimP->rate);
-            cout << "got chi: " << popSimP->chi << endl;
+            // cout << "got chi: " << popSimP->chi << endl;
         }
     }
 }
