@@ -151,12 +151,12 @@ SBI = sbi_darkmatter()
 SBI.register_data()
 SBI.create_cdf(animal=2)
 
-prior = utils.BoxUniform(low=np.zeros(3), high=np.array([10,0.1,0.1]))
-posterior = infer(SBI.simulator,prior, method='SNPE',num_simulations=100)
+prior = utils.BoxUniform(low=np.zeros(3), high=np.array([10,0.2,0.2]))
+posterior = infer(SBI.simulator,prior, method='SNPE',num_simulations=1000)
 
-observation = torch.zeros(1)
+observation = torch.ones(1)
 
 samples = posterior.sample((100000,), x=observation)
 log_probability = posterior.log_prob(samples, x=observation)
-_ = analysis.pairplot(samples, limits=[[0,10],[0,0.1],[0,0.1]], figsize=(12,12))
+_ = analysis.pairplot(samples, limits=[[0,10],[0,0.2],[0,0.1]], figsize=(12,12))
 plt.show(block=False)
