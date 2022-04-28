@@ -16,6 +16,8 @@ pysimplegui = "*"
 h5py = "*"
 torch = "*"
 sbi = "*"
+pymc3 = "*"
+arviz = "*"
 
 [dev-packages]
 
