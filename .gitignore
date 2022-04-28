@@ -7,3 +7,5 @@ data
 
 theory/sharkfins
 sbi-logs/*
+
+Pipfile.lock
