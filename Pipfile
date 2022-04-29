@@ -18,6 +18,7 @@ torch = "*"
 sbi = "*"
 pymc3 = "*"
 arviz = "*"
+jupyter = "*"
 
 [dev-packages]
 
