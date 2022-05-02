@@ -56,7 +56,7 @@ def create_measures(L=1,S=[1,2],plot_ax3D=True,save=0,file_format='png',rerun=Fa
             # 'seed_time': 1.,
         },
         'computation': {
-            'N': 50,    # number of neurons to draw from
+            'N': 100,    # number of neurons to draw from
             'T': 600.,   # time of measurement
 
             'draw_from_theory': 4,
