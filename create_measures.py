@@ -6,7 +6,7 @@ from darkMatter import darkMatter
 from general.plot_statistics import *
 from general.utils import set_plot_params
 
-def create_measures(L=1,S=[1,2],plot_ax3D=True,save=0,file_format='png',rerun=False,compile=False):
+def create_measures(L=1,S=[1,2],N=100,eps=0,plot_ax3D=True,save=0,file_format='png',rerun=False,compile=False):
 
     steps = 1
 
@@ -29,7 +29,7 @@ def create_measures(L=1,S=[1,2],plot_ax3D=True,save=0,file_format='png',rerun=Fa
         'S': S,     # contains number of synapses for each population
 
         # layer level parameters
-        'eps': 1./np.sqrt(2),
+        'eps': eps, #1./np.sqrt(2),
         'eta': 0.9,
         'J0_l': J_l,
         'kappa': 1.,
@@ -56,7 +56,7 @@ def create_measures(L=1,S=[1,2],plot_ax3D=True,save=0,file_format='png',rerun=Fa
             # 'seed_time': 1.,
         },
         'computation': {
-            'N': 100,    # number of neurons to draw from
+            'N': N,    # number of neurons to draw from
             'T': 600.,   # time of measurement
 
             'draw_from_theory': 4,
