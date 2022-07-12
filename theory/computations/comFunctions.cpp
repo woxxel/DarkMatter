@@ -10,24 +10,24 @@
 // #include <gsl/gsl_integration.h>
 
 #include "functions.h"
+// #include "structures.h"
 
 double poisson_distr(int k, double lambda)
 {
         return exp(k*log(lambda)-lambda-lgamma(k+1.0));
 }
 
-double Computation::draw_rate(gsl_rng *rng, Model *modP)
+double Population_Simulation::draw_rate(gsl_rng *rng)
 {
     // initiate variables
-    Population_Simulation *popSimP = &modP->layer[0].population[1].simulation;
     double rate;
     int i=0;    // track iterations to break off in case of inability to find something
 
     // rejection sampling algorithm
     while (true) {
-        rate = gsl_rng_uniform_pos(rng)*popSimP->rate_max; // generate random rate
+        rate = gsl_rng_uniform_pos(rng)*rate_max; // generate random rate
         // and accept sample according to theoretically predicted probability
-        if (gsl_ran_flat(rng, 0,popSimP->max_prob) < popSimP->distribution_exact(rate))
+        if (gsl_ran_flat(rng, 0,max_prob) < distribution_exact(rate))
             return rate;
             // mesP->rates[k][n] = rate_tmp;
             // resP->N_AP[comP->k][n] = int(rate_inf_tmp*comP->T);
@@ -35,7 +35,7 @@ double Computation::draw_rate(gsl_rng *rng, Model *modP)
     }
 }
 
-double Computation::draw_sample(gsl_rng *rng, double rate, double T)
+double Population_Simulation::draw_sample(gsl_rng *rng, double rate, double T)
 {
     // int N_AP = gsl_ran_poisson(rng,rate*T);
     return gsl_ran_poisson(rng,rate*T)/T;     // generating a random number of spikes from this

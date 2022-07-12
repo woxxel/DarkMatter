@@ -68,6 +68,9 @@ struct Population_Simulation
 
     double distribution_exact(double nu);
 
+    double draw_rate(gsl_rng *rng);
+    double draw_sample(gsl_rng *rng, double rate, double T);
+
 };
 
 struct Model_Simulation
@@ -324,9 +327,9 @@ struct Measures
 {
     // int N;
     // double T;
-    vector<vector<vector<int> > > N_AP;
-    vector<vector<double> > rates;
-    vector<vector<vector<double> > > rates_T;
+    vector<vector<vector<vector<int> > > > N_AP;
+    vector<vector<vector<double> > > rates;
+    vector<vector<vector<vector<double> > > > rates_T;
 };
 
 struct Computation

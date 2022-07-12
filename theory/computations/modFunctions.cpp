@@ -42,12 +42,26 @@ void Layer::print_layer()
 
 void Model::set_rates()
 {
+    double rate, J;
     for (unsigned l=0; l<L; l++) {
         for (unsigned p = 0; p < layer[l].nPop; p++) {
             if (layer[l].population[p].I_ext==1) continue;
             else {
-                cout << "Method of no-drive not yet implemented. Check balance equation for multiple layers!" << endl;
-                throw;
+                rate = 0;
+
+                for (unsigned ll=0; ll<L; ll++) {   // projecting layer
+                	for (unsigned pp = 0; pp < layer[ll].nPop; pp++) {   // projecting population
+                        if (ll==l && pp==p) continue;
+                        if (ll!=l && (p==0 || pp==0)) continue;     // inter-layer impact only between excitatory populations
+
+                        if (l==ll)  J = layer[ll].population[pp].J[p];
+                        else        J = layer[ll].J_l[l];
+
+                        rate += J * layer[ll].population[pp].rateWnt;
+                    }
+                }
+
+                layer[l].population[p].rateWnt = rate / (layer[l].kappa * layer[l].population[p].J[p]);
             }
         }
     }

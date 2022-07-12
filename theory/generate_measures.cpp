@@ -32,8 +32,8 @@ int main(int argc, char** argv)
     // mod.find_transitions(simP);
 	mod.get_max_prob();
 
-	mes.rates.resize(com.N);
-	mes.rates_T.resize(com.N);
+	mes.rates.resize(mod.layer[0].nPop);
+	mes.rates_T.resize(mod.layer[0].nPop);
 
 	// initiate random number generator
 	gsl_rng_env_setup();
@@ -42,17 +42,23 @@ int main(int argc, char** argv)
 	gsl_rng_set(rng, 1 + com.seed);
 
 	// cout << "drawing firing rates from theoretical distribution..." << endl;
-	for (unsigned n=0; n<com.N; n++) {
-		mes.rates[n].resize(com.draw_from_theory);
-		mes.rates_T[n].resize(com.draw_from_theory);
+	for (unsigned p=0; p<mod.layer[0].nPop; p++) {
+		Population_Simulation *popSimP = &mod.layer[0].population[p].simulation;
+		mes.rates[p].resize(com.N);
+		mes.rates_T[p].resize(com.N);
 
-		for (unsigned k=0; k<com.draw_from_theory; k++) {
-			mes.rates[n][k] = com.draw_rate(rng,modP);
-			mes.rates_T[n][k].resize(com.draw_finite_time);
+		for (unsigned n=0; n<com.N; n++) {
+			mes.rates[p][n].resize(com.draw_from_theory);
+			mes.rates_T[p][n].resize(com.draw_from_theory);
 
-			for (unsigned t=0; t<com.draw_finite_time; t++) {
-				mes.rates_T[n][k][t] = com.draw_sample(rng,mes.rates[n][k],com.T);
-				// cout << "neuron n with rate " << mes.rates[n][k] << ", drew rate: " << mes.rates_T[n][k][t] << endl;
+			for (unsigned k=0; k<com.draw_from_theory; k++) {
+				mes.rates[p][n][k] = popSimP->draw_rate(rng);
+				mes.rates_T[p][n][k].resize(com.draw_finite_time);
+
+				for (unsigned t=0; t<com.draw_finite_time; t++) {
+					mes.rates_T[p][n][k][t] = popSimP->draw_sample(rng,mes.rates[p][n][k],com.T);
+					// cout << "neuron n with rate " << mes.rates[n][k] << ", drew rate: " << mes.rates_T[n][k][t] << endl;
+				}
 			}
 		}
 	}

@@ -13,6 +13,7 @@ void Simulation_Variable::initialize(double *modVarP, double *varP, unsigned var
         varName (string)
             Name of the variable
     */
+
     // cout <<" initializing " << varName << " with " << varSz << " variables" << endl;
     // cout << "current value of variable: " << *modVarP << endl;
     name = varName;
@@ -173,8 +174,11 @@ bool Simulation::run_iteration(Model *modP, Model *modP_approx)
         loops++;
     }
     // print_simStatus();
+    modP->set_rates();
     modP->set_weights(); // could rather be implemented via setter to according variables
     modP->set_mixture();
+
+    modP_approx->set_rates();
     modP_approx->set_weights(); // could rather be implemented via setter to according variables
     modP_approx->set_mixture();
     return loops!=nVar;

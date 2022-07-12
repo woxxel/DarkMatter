@@ -266,7 +266,7 @@ def get_element_location(lvl,ids):
 
     return start_point, end_point
 
-def run_code(params,sim_params,n):
+def run_code(steps,params,sim_params,n):
 
     options = {}
     for lvl in ['L','P','S']:
@@ -290,11 +290,13 @@ def run_code(params,sim_params,n):
     print(options)
     order = list(options['simulation'].keys())
 
-    res = darkMatter(steps=50,options=options,rerun=True,compile=True)
+    res = darkMatter(steps=steps,options=options,rerun=True,compile=True)
 
     ## general plot setup
     set_plot_params()
 
+
+    ### change such that no extra plotting window is opened
     fig,ax = plt.subplots(1,2)
     plt_para = {
         'ax_label': [],
@@ -330,6 +332,8 @@ class Elements():
 
     picked = {}
 
+    steps = 50
+
     def __init__(self,window,graph):
         self.graph = graph
         self.window = window
@@ -340,6 +344,7 @@ class Elements():
         self.params['J'] = np.ones((0,0))
 
         self.addLayer()
+        self.window[f'-SIM-STEPS-'].update(self.steps)
 
     def register_graph(self,f_id,ids,lvl):
         # print(f"registering id {f_id} for level {lvl}")
@@ -420,7 +425,7 @@ class Elements():
 
                         for key in ['in','out']:
                             val = self.get_param_value(lvl,key,self.register.loc[id])
-                            print('val:',val)
+                            # print('val:',val)
                             self.window[f'-PARA-{lvl}-{key}-'].update(val)
                     else:
                         for key in self.params[lvl].keys():
@@ -728,6 +733,7 @@ while True:
 
     if event=='-SIM-STEPS-':
         print('changed steps')
+        els.steps = int(values['-SIM-STEPS-'])
 
     if event.startswith('-SIM-PARA-'):
         idx = int(event.split('-')[-3])
@@ -741,6 +747,6 @@ while True:
         window.set_cursor('hand2')
 
     if event=="-RUN-":
-        run_code(els.params,els.sim_params,els.n)
+        run_code(els.steps,els.params,els.sim_params,els.n)
 
 window.close()
