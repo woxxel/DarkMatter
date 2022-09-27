@@ -81,7 +81,7 @@ Npop=1
 drive=0
 save=0
 file_format='png'
-rerun=False
+rerun=True
 compile=False
 
     ## load data
@@ -96,7 +96,17 @@ options = {
     'n': n,
     'drive': drive,
     'mode_stats': 0,
-    'J': J
+    'J': J,
+    'simulation': {
+        # for each iteration parameter, specify (layer,population,psp)-tuple
+        # specify -1 if a level of hierarchy is non-applicable
+        # specify 'None' if should be applied to all candidates
+        'rateWnt': [0.,20.],
+        'alpha_0': [0.,0.2],
+
+        'sim_prim': [0,-1,0],       # when population parameters are iterated, specify population number(s) (empty = all)
+        'sim_sec': [0,-1,0],     # when synaptic timeconstants are iterated, specify number within population
+    }
 }
 
 results = darkMatter(steps=steps,options=options,rerun=rerun,compile=compile)
