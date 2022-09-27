@@ -6,6 +6,7 @@ data
 *.xlsx
 
 theory/sharkfins
+notebooks/.ipynb_checkpoints/*
 sbi-logs/*
 
 Pipfile.lock
