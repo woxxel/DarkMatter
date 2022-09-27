@@ -4,6 +4,7 @@ data
 *.png
 *.mat
 *.xlsx
+*.nc
 
 theory/sharkfins
 notebooks/.ipynb_checkpoints/*
