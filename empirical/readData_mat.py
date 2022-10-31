@@ -74,7 +74,7 @@ def read_data(filePath='../data/BuscheLab/spiking_data_for_modeling_with_depth.m
     for l in range(len(layer_border)-1):
         #print((layer_border[l-1] < depth) & (depth < layer_border[l]))
         data['layer'][(layer_border[l] <= depth) & (depth < layer_border[l+1])] = l
-        print(l,layer_border[l],layer_border[l+1], sum(data['layer']==l))
+        #print(l,layer_border[l],layer_border[l+1], sum(data['layer']==l))
 
     ### clustering data
     spike_data = []
@@ -121,8 +121,11 @@ def read_data(filePath='../data/BuscheLab/spiking_data_for_modeling_with_depth.m
         sd_tmp = {}
         for key in sort_keys:
             data_tmp = []
-            for i,n in enumerate(sort_idx):
+            for n in sort_idx:
                 data_tmp.append(sd[key][n])
+            # if not (key=='spike_times'):
+            #     print('data')
+            #     print(data_tmp)
             sd[key] = data_tmp
         sd['cluster_idx'] = np.array(sd['cluster_idx'])
 
@@ -187,7 +190,7 @@ def read_data(filePath='../data/BuscheLab/spiking_data_for_modeling_with_depth.m
         plt.setp(ax[1][0],xlabel='depth',ylabel='# neurons')
         plt.show(block=False)
 
-        #fig,ax = plt.subplots(4,5,figsize=(15,8))
+        fig,ax = plt.subplots(4,5,figsize=(15,8))
         for i,animal in enumerate(spike_data):
             _ = ax[i//5][i%5].hist(animal['depth'],np.linspace(-1000,1000,51))
 

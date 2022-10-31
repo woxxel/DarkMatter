@@ -29,8 +29,8 @@ def construct_model_nu_max(name,mP,nu_mean=20.,nu_sigma=5.):
     sigma_nu_max = pm.Normal('sigma_nu_max',mu=5.,sigma=2.);
 
     # define nu_max as being able to differ between layers and clusters, but not animals
-    nu_max = pm.Normal('nu_max',mu=mu_nu_max,sigma=sigma_nu_max,shape=(mP._num_layers,mP._num_clusters));
-    nu_max = tt.tile(nu_max,(mP.nMax,mP._num_animals,1,1),4)
+    nu_max = pm.Normal('nu_max',mu=mu_nu_max,sigma=sigma_nu_max,shape=(mP._num_animals,mP._num_layers,mP._num_clusters));
+    nu_max = tt.tile(nu_max,(mP.nMax,1,1,1),4)
 
     tt.printing.Print('nu')(tt.shape(nu_max))
 

@@ -10,7 +10,7 @@ def run_on_data(mP,draws=5000,tune=10000,loadPath=None,savePath=None):
 
     if loadPath:
         return az.from_netcdf(loadPath)
-        
+
     os.environ['MKL_NUM_THREADS'] = '1'
     os.environ['OPENBLAS_NUM_THREADS'] = '1'
 
@@ -30,7 +30,11 @@ def run_on_data(mP,draws=5000,tune=10000,loadPath=None,savePath=None):
                 tt.log( tt.cosh( gamma * delta * tt.sqrt( -2 * scaled_NU ) ) )
 
             # penalize nan-entries (e.g. when log is negative, etc)
-            logP = tt.switch(tt.isnan(logP), -10000., logP)
+            logP_masked = tt.switch(tt.isnan(logP), 0, logP)
+            min_val = tt.min(logP_masked)
+            tt.printing.Print('logP minimum')(tt.min(logP_masked))
+
+            logP = tt.switch(tt.isnan(logP), min_val*2, logP)
 
             return tt.sum(logP)
 

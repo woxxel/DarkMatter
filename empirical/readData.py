@@ -22,9 +22,9 @@ class ModelParams:
 
         pass
 
-    def mat_data(self, filePath='../../data/BuscheLab/spiking_data_for_modeling_with_depth.mat'):
+    def mat_data(self, filePath='../../data/BuscheLab/spiking_data_for_modeling_with_depth.mat',plot=False):
 
-        data = read_data(filePath=filePath,plot=False)
+        data = read_data(filePath=filePath,plot=plot)
         self._num_animals = len(data)
         self._num_layers = 3
         self._num_clusters = 2
@@ -35,8 +35,9 @@ class ModelParams:
         self.types = ['WT','cTKO']
         self.type = np.array([0 if sd["classification"]["spikes_genotype"][1]==114 else 1 for sd in data])
 
-        self.spikes = np.zeros(self.modelShape + (0,))
-        spikes_shape = self.spikes.shape
+        self.spikes_raw = np.zeros(self.modelShape + (0,))
+
+        spikes_shape = self.spikes_raw.shape
         for animal_idx,sd in enumerate(data):
 
             for layer_idx in range(self._num_layers):
@@ -46,14 +47,15 @@ class ModelParams:
                     idx = (np.array(sd['layer'])==layer_idx) & (sd['cluster_idx']-1==cluster_idx)
                     nSpikes = idx.sum()
                     if nSpikes > spikes_shape[-1]:
-                        self.spikes = np.pad(self.spikes,((0,0),(0,0),(0,0),(0,nSpikes-spikes_shape[-1])),'constant',constant_values=np.NaN)
-                        spikes_shape = self.spikes.shape
+                        self.spikes_raw = np.pad(self.spikes_raw,((0,0),(0,0),(0,0),(0,nSpikes-spikes_shape[-1])),'constant',constant_values=np.NaN)
+                        spikes_shape = self.spikes_raw.shape
 
-                    self.spikes[animal_idx,layer_idx,cluster_idx,:nSpikes] = sd['rate'][idx,0]
+                    self.spikes_raw[animal_idx,layer_idx,cluster_idx,:nSpikes] = sd['rate'][idx,0]
 
         self.nMax = spikes_shape[-1]
 
-        self.spikes = np.transpose(self.spikes,(3,0,1,2))
+
+        self.spikes = np.transpose(self.spikes_raw,(3,0,1,2))
         self.mask = ~np.isnan(self.spikes)
         self.spikes = self.spikes[self.mask]
 
