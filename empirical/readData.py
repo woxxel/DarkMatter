@@ -1,9 +1,12 @@
 import pandas as pd
 import numpy as np
-import os
+import os, sys
 
-from .readData_mat import *
-from .readData_xls import *
+root_dir = os.path.dirname(os.path.abspath(''))
+if not root_dir in sys.path: sys.path.append(root_dir)
+
+from empirical.readData_mat import *
+from empirical.readData_xls import *
 
 class ModelParams:
 
@@ -22,6 +25,43 @@ class ModelParams:
 
         pass
 
+    # def initialize_rate_df(self,mouse_types,nMice,n_layer=1,n_cluster=1):
+    #
+    #     """ initializing an empty pandas-dataframe to store neuron firing rate data
+    #
+    #         Input parameters:
+    #             mouse_types: list(str)
+    #                 list of mouse types
+    #             nMice:       list(int)
+    #                 number of mice per mouse type
+    #             n_layer:     int [default: 1]
+    #                 number of layers in the data
+    #             n_cluster:   int [default: 1]
+    #                 number of neuron cluster types (exc., inh., ...)
+    #
+    #         Output:
+    #             df: pandas Dataframe
+    #                 empty dataframe with multicolumn structure for storing
+    #                 firing rates
+    #     """
+    #
+    #     ## checking if input makes sense
+    #     assert isinstance(mouse_types,list) and isinstance(nMice,list), f'type of mouse_types ({type(mouse_types)}) and nMice ({type(nMice)}) required to be lists.'
+    #     assert len(mouse_types)==len(nMice), f'number of mouse types ({len(mouse_types)}) and mouse numbers ({len(nMice)}) need to agree.'
+    #
+    #     ## creating the column labels
+    #     col_names = []
+    #     for type_idx,mouse_type in enumerate(mouse_types):
+    #         for mouse_ID in range(nMice[type_idx]):
+    #             for layer in range(n_layer):
+    #                 for cluster in range(n_cluster):
+    #                     col_names.append((mouse_type,mouse_ID,layer,cluster))
+    #
+    #     ## creating and returning the empty dataframe
+    #     df = pd.DataFrame(columns=col_names)
+    #     df.columns = pd.MultiIndex.from_tuples(df.columns, names=['mouse type','mouse ID','layer','cluster'])
+    #     return df
+
     def mat_data(self, filePath='../../data/BuscheLab/spiking_data_for_modeling_with_depth.mat',plot=False):
 
         data = read_data(filePath=filePath,plot=plot)
@@ -35,73 +75,160 @@ class ModelParams:
         self.types = ['WT','cTKO']
         self.type = np.array([0 if sd["classification"]["spikes_genotype"][1]==114 else 1 for sd in data])
 
-        self.spikes_raw = np.zeros(self.modelShape + (0,))
+        self.rates_raw = np.zeros(self.modelShape + (0,))
+        self.nMice = np.zeros(len(self.types))
 
-        spikes_shape = self.spikes_raw.shape
-        for animal_idx,sd in enumerate(data):
+        rates_shape = self.rates_raw.shape
+        for type_idx, animal_type in enumerate(self.types):
 
-            for layer_idx in range(self._num_layers):
+            animal_idx = 0
 
-                for cluster_idx in range(self._num_clusters):
+            for sd in data[self.type==type_idx]:
 
-                    idx = (np.array(sd['layer'])==layer_idx) & (sd['cluster_idx']-1==cluster_idx)
-                    nSpikes = idx.sum()
-                    if nSpikes > spikes_shape[-1]:
-                        self.spikes_raw = np.pad(self.spikes_raw,((0,0),(0,0),(0,0),(0,nSpikes-spikes_shape[-1])),'constant',constant_values=np.NaN)
-                        spikes_shape = self.spikes_raw.shape
+                for layer_idx in range(self._num_layers):
 
-                    self.spikes_raw[animal_idx,layer_idx,cluster_idx,:nSpikes] = sd['rate'][idx,0]
+                    for cluster_idx in range(self._num_clusters):
 
-        self.nMax = spikes_shape[-1]
+                        idx = (np.array(sd['layer'])==layer_idx) & (sd['cluster_idx']-1==cluster_idx)
+                        nRates = idx.sum()
+                        if nRates > rates_shape[-1]:
+                            self.rates_raw = np.pad(self.rates_raw,((0,0),(0,0),(0,0),(0,nRates-rates_shape[-1])),'constant',constant_values=np.NaN)
+                            rates_shape = self.rates_raw.shape
+
+                        self.rates_raw[type_idx,animal_idx,layer_idx,cluster_idx,:nRates] = sd['rate'][idx,0]
+                animal_idx += 1
+
+            self.nMice[type_idx] = animal_idx
+
+        self.nMax = rates_shape[-1]
 
 
-        self.spikes = np.transpose(self.spikes_raw,(3,0,1,2))
-        self.mask = ~np.isnan(self.spikes)
-        self.spikes = self.spikes[self.mask]
+        self.rates = np.transpose(self.rates_raw,(3,0,1,2))
+        self.mask = ~np.isnan(self.rates)
+        self.rates = self.rates[self.mask]
 
-    def xlsx_data(self, filePath='../../data/BuscheLab/2P_data.xlsx',sheets=None,include_silent=True):
+    def xlsx_data(self, filePath='../../data/BuscheLab/2P_data.xlsx',sheets=None,population_keys=['mouse type']):
 
-        self._num_layers = 1
-        self._num_clusters = 1
+        """
+            function to turn xlsx sheets into a properly structured pandas-DataFrame
+            and write results to self.rates
+
+            Input:
+                filePath: string
+                    (relative/absolute) path to the file
+                sheets: list(string)
+                    list of sheets to be read from the file. None (default) reads all
+                population_keys: list(string)
+                    Meta-tags to determine names of population. First is descriptor
+                    of sheetnames followed by descriptor for title-rows of excel.
+                    len(population_keys)-1 equals the number of headlines expected
+                    in file and len(population)_keys) is the number of multicolumn
+                    indices in resulting pandas-DataFrame
+        """
+        assert len(population_keys)>=1, 'at least one key for population distinction has to be provided'
 
         data = pd.ExcelFile(filePath)
         sheets = sheets if sheets else data.sheet_names
 
-        self._num_animals = 0
-        spikes_shape = 0
-        self.modelShape = (self._num_animals,self._num_layers,self._num_clusters)
-        self.spikes_raw = np.zeros(self.modelShape + (spikes_shape,))
-        self.types = sheets
-        self.type = []
+        # create dictionary to preformat data to be written into dataframe
+        rate_dict = {}
+        for sheet in sheets:        # iterate through specified sheets
 
-        for i,sheet in enumerate(sheets):
+            input_df = data.parse(sheet,header=list(range(len(population_keys)-1)))
 
-            read_spikes = pd.read_excel(filePath,sheet_name=sheet)
-            read_spikes = read_spikes.to_numpy()
+            for col in input_df.columns:    # iterate through each column in sheet
 
-            nSpikes = read_spikes.shape[0]
-            if nSpikes > spikes_shape:
-                self.spikes_raw = np.pad(self.spikes_raw,((0,0),(0,0),(0,0),(0,nSpikes-spikes_shape)),'constant',constant_values=np.NaN)
-                spikes_shape = nSpikes
+                # create column keys from header-rows
+                key = (sheet,*col) if isinstance(col,tuple) else (sheet,col)
+                rate_dict[key] = pd.Series(input_df[col])
+
+        self.rates = pd.DataFrame(rate_dict)
+        column_names = [[str(entry) for entry in col] for col in self.rates.columns]
+        self.rates.columns = pd.MultiIndex.from_tuples(column_names, names=population_keys)
 
 
-            self.spikes_raw = np.pad(self.spikes_raw,((0,read_spikes.shape[1]),(0,0),(0,0),(0,0)),'constant',constant_values=np.NaN)
+    def regularize_rates(self):
+        """
+            this method is used to create a regular dataframe with the same number
+            of sub-levels on each level, to allow proper interaction
+        """
 
-            for spikes in read_spikes.T:
-                self.spikes_raw[self._num_animals,0,0,:nSpikes] = spikes
-                self.type.append(i)
-                self._num_animals += 1
+        population_names = list(self.rates.columns.names)
+        max_shape = self.get_data_shape()
 
-        self.type = np.array(self.type)
+        data = self.rates.copy()
 
-        self.modelShape = (self._num_animals,self._num_layers,self._num_clusters)
-        self.spikes = np.transpose(self.spikes_raw,(3,0,1,2))
-        self.nMax = self.spikes.shape[0]
-        if include_silent:
-            self.spikes[self.spikes==0] = 1/600.
+        def expand_df(levels,selector=[]):
 
-        self.mask = np.logical_and(~np.isnan(self.spikes),self.spikes>0)
-        self.spikes = self.spikes[self.mask]
+            """
+                manipulates self.rates DataFrame to have regular shape
+
+                Input:
+                    levels: list(string)
+                        remaining levels to dive into
+                    selector: list(string)
+                        keys to navigate to current section of data
+            """
+
+            # obtain lower level keys
+            this_level = levels[0]
+            if len(selector):
+                keys = np.unique(list(data[selector].columns.get_level_values(this_level)))
+            else:
+                keys = np.unique(list(data.columns.get_level_values(this_level)))
+
+            # if some data is missing, create dummy entries
+            if len(keys) < max_shape[this_level]:
+                key = (*selector,*['dummy']*len(levels))
+                data[key] = np.NaN
+
+            if len(levels)<=1:
+                return
+
+            # dive deeper
+            for key in keys:
+                expand_df(levels[1:],(*selector,key))
+
+        expand_df(population_names)
+
+        # after all is done, sort dataframe such that indices appear at proper positions
+        data = data.sort_index(axis=1)
+        data = data.to_numpy()
+        self.mask = ~np.isnan(data)
+        return data
+
+
+    def get_data_shape(self):
+
+        """
+            obtain maximum number of sublevels for each column level to create
+            accordingly shaped tensor
+        """
+
+        population_names = list(self.rates.columns.names)
+
+        max_shape = {}
+        for name in population_names:
+            max_shape[name] = 0
+
+        def get_max_dim(data,levels):
+
+            this_level = levels[0]
+            keys = np.unique(list(data.columns.get_level_values(this_level)))
+
+            max_shape[this_level] = max(max_shape[this_level],len(keys))
+
+            if len(levels)<=1:
+                return
+
+            for key in keys:
+                get_max_dim(data[key],levels[1:])
+
+        get_max_dim(self.rates,population_names)
+
+        return max_shape
+
+
 
     def artificical_data(self,):
 

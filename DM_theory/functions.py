@@ -20,6 +20,9 @@ def get_tau_I(nu_max,tau_m=0.01):
 def get_nu_bar(gamma,delta,nu_max):
     return nu_max * gamma / np.sqrt(gamma**2 + 1) * np.exp(-delta**2 / (2*(1+gamma**2)))
 
+def get_q(gamma,delta,nu_max):
+    return nu_max**2 * gamma / np.sqrt(gamma**2 + 2) * np.exp(-delta**2 / (2+gamma**2))
+
 def get_alpha_0(gamma,delta,nu_max,tau_m=0.01,J_0=-1):
     J_0 *= tau_m
 
