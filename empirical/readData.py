@@ -178,9 +178,20 @@ class ModelParams:
                 keys = np.unique(list(data.columns.get_level_values(this_level)))
 
             # if some data is missing, create dummy entries
-            if len(keys) < max_shape[this_level]:
-                key = (*selector,*['dummy']*len(levels))
+            # if len(keys) < max_shape[this_level]:
+            for i in range(max_shape[this_level] - len(keys)):
+                print(f'expanding @ lvl {this_level} with keys: {keys}, selectors: {selector}')
+
+                name = f'dummy_{i}'
+                j=1
+                while name in keys:
+                    name = f'dummy_{i+j}'
+                    j += 1
+
+                key = (*selector,*[name]*len(levels))
                 data[key] = np.NaN
+
+                keys = np.append(keys,name)
 
             if len(levels)<=1:
                 return
@@ -192,10 +203,7 @@ class ModelParams:
         expand_df(population_names)
 
         # after all is done, sort dataframe such that indices appear at proper positions
-        data = data.sort_index(axis=1)
-        data = data.to_numpy()
-        self.mask = ~np.isnan(data)
-        return data
+        return data.sort_index(axis=1)
 
 
     def get_data_shape(self):
@@ -225,6 +233,9 @@ class ModelParams:
                 get_max_dim(data[key],levels[1:])
 
         get_max_dim(self.rates,population_names)
+        # max_shape['val1'] = 2
+
+        self.data_shape = list(max_shape.values())
 
         return max_shape
 

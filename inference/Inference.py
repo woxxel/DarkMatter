@@ -53,8 +53,16 @@ class Inference:
 
     def load_data(self, dataType='empirical', filePath='../data/BuscheLab/2P_data.xlsx'):
 
-        self.mP = ModelParams(dataType, filePath=filePath, population_keys=['*mouse_type','animal','val1'])
-        self.data = self.mP.regularize_rates()
+        self.mP = ModelParams(dataType, filePath=filePath, population_keys=['*mouse_type','animal'])
+        self.data_df = self.mP.regularize_rates()
+
+        self.data = self.data_df.to_numpy()
+
+        N_zeros = (self.data==0).sum()
+        print(f'zeros in data: {N_zeros}')
+        self.data[self.data==0] = np.random.rand(N_zeros)*1./600
+
+        self.data_mask = ~np.isnan(self.data) & (self.data>0)
 
         self.dataLoaded = True
 
@@ -93,8 +101,6 @@ class Inference:
 
         # obtain information from data-column-header
         population_names = list(self.mP.rates.columns.names)
-        population_shapes = self.mP.get_data_shape()
-        population_shapes = list(population_shapes.values())
         N_levels = len(population_names)
 
         # only columns with '*' are used for top-level inference
@@ -102,13 +108,10 @@ class Inference:
 
         print(f'name: {name}')
         print(self.paras[name])
-        # print(population_names)
-        # print(population_shapes)
-        # print(is_hierarchical)
 
         hierarchical_shape = [
             sha if is_hierarchical[p] else 1
-            for p,sha in enumerate(population_shapes)
+            for p,sha in enumerate(self.mP.data_shape)
         ]
         # print(hierarchical_shape)
 
@@ -125,18 +128,18 @@ class Inference:
         prior_animal = pm.Normal(f'{name}',
             mu=prior_mean,
             sigma=self.paras[name]['sigma_animal'],
-            shape=population_shapes
+            shape=self.mP.data_shape
         )
 
         # tt.printing.Print('prior animal')(tt.shape(prior_animal))
-        prior_animal = prior_animal.reshape((-1,1))
+        prior_animal = prior_animal.reshape((1,-1))
 
         # tt.printing.Print('prior animal')(tt.shape(prior_animal))
 
         # broadcast distribution to draw values for each neuron
         prior_animal = tt.tile(
             prior_animal,
-            (self.data.shape[0], *[1]*(N_levels-1)) ### why -1?
+            (self.data.shape[0], 1) ### why -1?    *[1]*(N_levels-1)
         )
         tt.printing.Print('prior animal (final)')(tt.shape(prior_animal))
 
@@ -158,13 +161,14 @@ class Inference:
         if loadPath:
             return az.from_netcdf(loadPath)
 
+        data_observed = self.data[self.data_mask]
         with pm.Model() as model:
             # replace normals with student-t distributions
 
             priors = {}
             for para in self.paras:
                 priors[para] = self.construct_model_hierarchical(para)
-                priors[para][self.mP.mask]
+                priors[para] = priors[para][self.data_mask]
 
 
             def likelihood(data):
@@ -173,25 +177,26 @@ class Inference:
                 logP = self.logp(data,priors)
 
                 # penalize nan-entries (e.g. when log is negative, etc)
-                logP_masked = tt.switch(tt.isnan(logP), 0, logP)
-                min_val = tt.min(logP_masked)
+                #logP_masked = tt.switch(tt.isnan(logP), 0, logP)
+                #min_val = tt.min(logP_masked)
                 #tt.printing.Print('logP minimum')(tt.min(logP_masked))
                 #tt.printing.Print('logP')(logP_masked)
 
-                logP = tt.switch(tt.isnan(logP), min_val*2, logP)
+                #logP = tt.switch(tt.isnan(logP), min_val*2, logP)
 
                 return tt.sum(logP)
 
             ## watch out: for some reason, NaNs in observed data are converted to 0s
-            logP = pm.DensityDist('logP',likelihood,observed=self.data[self.mP.mask])
+            logP = pm.DensityDist('logP',likelihood,observed=data_observed)
 
             trace = pm.sample(
                 init='adapt_diag',
                 chains=4,draws=draws,tune=tune,
                 target_accept=0.8,
-                return_inferencedata=True)
+                return_inferencedata=True,
+                max_treedepth=20)
 
             if savePath:
                 trace.to_netcdf(savePath)
 
-            return trace
+            self.trace = trace
