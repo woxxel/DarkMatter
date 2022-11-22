@@ -147,7 +147,7 @@ class Inference:
 
 
     ## currently issues: ~99% of traces diverge -> pole is difficult to fit
-    def run_on_data(self,draws=5000,tune=10000,loadPath=None,savePath=None):
+    def run_on_data(self,draws=5000,tune=10000,loadPath=None,savePath=None,**kwargs):
 
         """
             ToDo:
@@ -192,9 +192,8 @@ class Inference:
             trace = pm.sample(
                 init='adapt_diag',
                 chains=4,draws=draws,tune=tune,
-                target_accept=0.8,
                 return_inferencedata=True,
-                max_treedepth=20)
+                **kwargs)
 
             if savePath:
                 trace.to_netcdf(savePath)
