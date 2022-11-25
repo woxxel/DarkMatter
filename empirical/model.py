@@ -1,10 +1,16 @@
 import numpy as np
 
 def p_nu(NU,gamma,delta,nu_max):
-
-    return gamma / ( nu_max * np.sqrt( -np.pi * np.log( NU / nu_max ) ) ) * \
+    scaled_NU = np.log(NU / nu_max)
+    return gamma / ( nu_max * np.sqrt( -np.pi * scaled_NU ) ) * \
         np.exp( - delta**2/2.) * ( NU / nu_max )**(gamma**2 - 1) * \
-        np.cosh( gamma * delta * np.sqrt( -2 * np.log( NU / nu_max) ) )
+        np.cosh( gamma * delta * np.sqrt( -2 * scaled_NU ) )
+
+def logp_nu(NU,gamma,delta,nu_max):
+    scaled_NU = np.log(NU / nu_max)
+    return - np.log( nu_max / gamma * np.sqrt( -np.pi * scaled_NU ) ) - delta**2 / 2 + \
+        ( gamma**2 - 1 ) * scaled_NU + \
+        np.log( np.cosh( gamma * delta * np.sqrt( -2 * scaled_NU ) ) )
 
 def get_nu_bar(gamma,delta,nu_max):
     return nu_max * gamma / np.sqrt(gamma**2 + 1) * np.exp(-delta**2 / (2*(1+gamma**2)))
