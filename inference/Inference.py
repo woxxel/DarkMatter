@@ -27,7 +27,7 @@ class Inference:
                 paras = {
                     'gamma':{'mu':1.5, 'sigma':1.0, 'sigma_animal':1.0,'prior':'Normal'},
                     'delta':{'mu':4.,'sigma':2., 'sigma_animal':1.0,'prior':'Normal'},
-                    'nu_max':{'mu':40.,'sigma':10., 'sigma_animal':1.0,'prior':'Normal'}
+                    'nu_max':{'mu':60.,'sigma':20., 'sigma_animal':5.0,'prior':'Normal'}
                 }
             assert all(key in paras for key in ("gamma","delta","nu_max")), "Please provide all necessary parameters!"
             def logp(data,paras):
@@ -35,6 +35,11 @@ class Inference:
                 return - tt.log( paras['nu_max'] / paras['gamma'] * tt.sqrt( -np.pi * scaled_NU ) ) - paras['delta']**2 / 2 + \
                     ( paras['gamma']**2 - 1 ) * scaled_NU + \
                     tt.log( tt.cosh( paras['gamma'] * paras['delta'] * tt.sqrt( -2 * scaled_NU ) ) )
+            # def logp_raw(data,paras):
+            #     scaled_NU = np.log(data / paras['nu_max'])
+            #     return - np.log( paras['nu_max'] / paras['gamma'] * np.sqrt( -np.pi * scaled_NU ) ) - paras['delta']**2 / 2 + \
+            #         ( paras['gamma']**2 - 1 ) * scaled_NU + \
+            #         np.log( np.cosh( paras['gamma'] * paras['delta'] * np.sqrt( -2 * scaled_NU ) ) )
 
         elif func=='lognorm':
             assert all(key in paras for key in ("mu","sigma")), "Please provide all necessary parameters!"
@@ -44,6 +49,7 @@ class Inference:
 
 
         self.logp = logp
+        # self.logp_raw = logp_raw
 
         for key in paras.keys():
             self.paras[key] = {}
@@ -60,7 +66,10 @@ class Inference:
 
         N_zeros = (self.data==0).sum()
         print(f'zeros in data: {N_zeros}')
-        self.data[self.data==0] = np.random.rand(N_zeros)*1./600
+#        self.data[self.data==0] = np.random.rand(N_zeros)*1./600
+
+        T = 600.
+        self.data[self.data<=1./T] = -np.log(1-np.random.rand((self.data<=1./T).sum()))/T
 
         self.data_mask = ~np.isnan(self.data) & (self.data>0)
 
@@ -162,6 +171,7 @@ class Inference:
             return az.from_netcdf(loadPath)
 
         data_observed = self.data[self.data_mask]
+        #silent = tt.le(data_observed,1./600)
         with pm.Model() as model:
             # replace normals with student-t distributions
 
@@ -177,10 +187,11 @@ class Inference:
                 logP = self.logp(data,priors)
 
                 # penalize nan-entries (e.g. when log is negative, etc)
-                #logP_masked = tt.switch(tt.isnan(logP), 0, logP)
+                # logP_masked = tt.switch(tt.isnan(logP), 0, logP)
+                # logP = tt.switch(silent, logP-10., logP)
                 #min_val = tt.min(logP_masked)
                 #tt.printing.Print('logP minimum')(tt.min(logP_masked))
-                #tt.printing.Print('logP')(logP_masked)
+                tt.printing.Print('logP')(logP)
 
                 #logP = tt.switch(tt.isnan(logP), min_val*2, logP)
 
@@ -191,6 +202,7 @@ class Inference:
 
             trace = pm.sample(
                 init='adapt_diag',
+                step=pm.Metropolis(),
                 chains=4,draws=draws,tune=tune,
                 return_inferencedata=True,
                 **kwargs)
