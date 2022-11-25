@@ -57,7 +57,7 @@ class Inference:
                 self.paras[key][para] = paras[key][para]
 
 
-    def load_data(self, dataType='empirical', filePath='../data/BuscheLab/2P_data.xlsx'):
+    def load_data(self, dataType='empirical', filePath='../data/BuscheLab/2P_data.xlsx',include_silent=False):
 
         self.mP = ModelParams(dataType, filePath=filePath, population_keys=['*mouse_type','animal'])
         self.data_df = self.mP.regularize_rates()
@@ -67,9 +67,9 @@ class Inference:
         N_zeros = (self.data==0).sum()
         print(f'zeros in data: {N_zeros}')
 #        self.data[self.data==0] = np.random.rand(N_zeros)*1./600
-
-        T = 600.
-        self.data[self.data<=1./T] = -np.log(1-np.random.rand((self.data<=1./T).sum()))/T
+        if include_silent:
+            T = 600.
+            self.data[self.data<=1./T] = -np.log(1-np.random.rand((self.data<=1./T).sum()))/T
 
         self.data_mask = ~np.isnan(self.data) & (self.data>0)
 
