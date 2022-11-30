@@ -30,16 +30,25 @@ class Inference:
                     'nu_max':{'mu':60.,'sigma':20., 'sigma_animal':5.0,'prior':'Normal'}
                 }
             assert all(key in paras for key in ("gamma","delta","nu_max")), "Please provide all necessary parameters!"
-            def logp(data,paras):
-                scaled_NU = tt.log(data / paras['nu_max'])
-                return - tt.log( paras['nu_max'] / paras['gamma'] * tt.sqrt( -np.pi * scaled_NU ) ) - paras['delta']**2 / 2 + \
-                    ( paras['gamma']**2 - 1 ) * scaled_NU + \
-                    tt.log( tt.cosh( paras['gamma'] * paras['delta'] * tt.sqrt( -2 * scaled_NU ) ) )
+            def logp(data,gamma,delta,nu_max):
+
+                if type(data)==np.array:
+                    data_silent = data==0
+                    N_silent = data_silent.sum()
+                    data = data[data_silent]
+
+                    p_silent = integrate.quad(lambda nu : p_nu(nu,gamma,delta,nu_max)*np.exp(-nu*T),0,10)
+
+                scaled_NU = tt.log(data / nu_max)
+                return - tt.log( nu_max / gamma * tt.sqrt( -np.pi * scaled_NU ) ) - delta**2 / 2 + \
+                    ( gamma**2 - 1 ) * scaled_NU + \
+                    tt.log( tt.cosh( gamma * delta * tt.sqrt( -2 * scaled_NU ) ) )
+                
             # def logp_raw(data,paras):
-            #     scaled_NU = np.log(data / paras['nu_max'])
-            #     return - np.log( paras['nu_max'] / paras['gamma'] * np.sqrt( -np.pi * scaled_NU ) ) - paras['delta']**2 / 2 + \
-            #         ( paras['gamma']**2 - 1 ) * scaled_NU + \
-            #         np.log( np.cosh( paras['gamma'] * paras['delta'] * np.sqrt( -2 * scaled_NU ) ) )
+            #     scaled_NU = np.log(data / nu_max)
+            #     return - np.log( nu_max / gamma * np.sqrt( -np.pi * scaled_NU ) ) - delta**2 / 2 + \
+            #         ( gamma**2 - 1 ) * scaled_NU + \
+            #         np.log( np.cosh( gamma * delta * np.sqrt( -2 * scaled_NU ) ) )
 
         elif func=='lognorm':
             assert all(key in paras for key in ("mu","sigma")), "Please provide all necessary parameters!"
@@ -184,7 +193,7 @@ class Inference:
             def likelihood(data):
 
                 # introduce checks for consistency, etc
-                logP = self.logp(data,priors)
+                logP = self.logp(data,**priors)
 
                 # penalize nan-entries (e.g. when log is negative, etc)
                 # logP_masked = tt.switch(tt.isnan(logP), 0, logP)
