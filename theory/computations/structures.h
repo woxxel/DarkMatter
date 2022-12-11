@@ -122,8 +122,8 @@ struct Population
     */
     // parameters:
 	//  	drive:
-	//  	0 : all populations driven to have same firing rates
-	//  	1 : only excitatory one driven
+	//  	0 : only excitatory one driven
+  //  	1 : all populations driven to have same firing rates
 	//  	2 : recurrent, inhibitory population is driven by afferent spikes from excitatory population
 
     int I_ext;
