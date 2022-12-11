@@ -31,6 +31,7 @@ def darkMatter(steps=100,mode=0,options={},rerun=False,compile=False):
 
     model = set_model(fileModel,options)
     if mode==0:
+        print('hello')
         filePara = './data/simPara.nc'
         sim, sv_str = set_simulation(filePara,options,steps)
     elif mode==1:

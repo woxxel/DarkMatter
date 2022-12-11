@@ -8,7 +8,7 @@ from darkMatter import darkMatter
 from general.plot_statistics import *
 from general.utils import set_plot_params
 
-def threshold_stats(steps=1000,rateWnt=[0,20],alpha_0=[0,0.02,0.04],tau_G=[0.005],eps=[0.5],eta=[0.9],n=[0],J=-1.,Npop=1,drive=0,save=0,file_format='png',rerun=False,compile=False):
+def threshold_stats(steps=1000,rateWnt=[0,20],alpha_0=[0.02,0.04],tau_G=[0.005],eps=[0.5],eta=[0.9],n=[0],J=-1.,Npop=1,drive=0,save=0,file_format='png',rerun=False,compile=False):
 
     options = {
         'Npop': Npop,

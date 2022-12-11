@@ -99,7 +99,7 @@ def sharkfins(steps=10,Npop=1,plot_ax3D=True,save=0,file_format='png',rerun=Fals
         for key in para_order:
             options[key] = inpara[key][i]
 
-        results.append(darkMatter(steps,options,rerun=rerun,compile=compile))
+        results.append(darkMatter(steps=steps,options=options,rerun=rerun,compile=compile))
 
         set_labels(results[i],para_order,plt_para)
 

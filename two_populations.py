@@ -123,7 +123,7 @@ def two_populations(L=1,S=[1,2],steps=100,plot_ax3D=True,save=0,file_format='png
     big_ax.spines['left'].set_visible(False)
 
     # plt.setp(big_ax,xlabel=r'$\displaystyle \bar{\nu}$',ylabel=r'$\displaystyle r$')
-    plt.setp(big_ax,xlabel=r'$\displaystyle \bar{\eps}$',ylabel=r'$\displaystyle \alpha_0$')
+    plt.setp(big_ax,xlabel=r"$\bar{ \varepsilon }$",ylabel=r'$\alpha_0$')
 
     fig.tight_layout(pad=3.0)
     if save:
