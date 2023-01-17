@@ -43,7 +43,7 @@ class Inference:
                 return - tt.log( nu_max / gamma * tt.sqrt( -np.pi * scaled_NU ) ) - delta**2 / 2 + \
                     ( gamma**2 - 1 ) * scaled_NU + \
                     tt.log( tt.cosh( gamma * delta * tt.sqrt( -2 * scaled_NU ) ) )
-                
+
             # def logp_raw(data,paras):
             #     scaled_NU = np.log(data / nu_max)
             #     return - np.log( nu_max / gamma * np.sqrt( -np.pi * scaled_NU ) ) - delta**2 / 2 + \
@@ -177,7 +177,8 @@ class Inference:
         """
 
         if loadPath:
-            return az.from_netcdf(loadPath)
+            self.trace = az.from_netcdf(loadPath)
+            return
 
         data_observed = self.data[self.data_mask]
         #silent = tt.le(data_observed,1./600)

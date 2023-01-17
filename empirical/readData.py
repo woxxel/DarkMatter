@@ -6,7 +6,7 @@ root_dir = os.path.dirname(os.path.abspath(''))
 if not root_dir in sys.path: sys.path.append(root_dir)
 
 from empirical.readData_mat import *
-from empirical.readData_xls import *
+#from empirical.readData_xls import *
 
 class ModelParams:
 
