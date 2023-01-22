@@ -33,6 +33,7 @@ class Inference:
             def logp(data,gamma,delta,nu_max):
 
                 if type(data)==np.array:
+                    
                     data_silent = data==0
                     N_silent = data_silent.sum()
                     data = data[data_silent]
