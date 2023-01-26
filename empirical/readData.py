@@ -144,7 +144,15 @@ class ModelParams:
 
         self.rates = pd.DataFrame(rate_dict)
         column_names = [[str(entry) for entry in col] for col in self.rates.columns]
+        print(f'column names: {column_names}')
         self.rates.columns = pd.MultiIndex.from_tuples(column_names, names=population_keys)
+        max_shape = self.get_data_shape()
+
+        self.types = np.unique(self.rates.columns.get_level_values(population_keys[0]))
+
+        self.animal_mask = np.zeros(np.prod(self.data_shape),dtype='bool')
+        for i,c in enumerate(self.types):
+            self.animal_mask[i*self.data_shape[1]:i*self.data_shape[1]+self.rates[c].shape[1]] = True
 
 
     def regularize_rates(self):
@@ -200,7 +208,7 @@ class ModelParams:
             for key in keys:
                 expand_df(levels[1:],(*selector,key))
 
-        expand_df(population_names)
+        #expand_df(population_names)
 
         # after all is done, sort dataframe such that indices appear at proper positions
         return data.sort_index(axis=1)
