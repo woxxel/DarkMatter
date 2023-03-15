@@ -7,6 +7,7 @@ data
 
 theory/sharkfins
 notebooks/.ipynb_checkpoints/*
+notebooks/logs*
 sbi-logs/*
 
 Pipfile.lock
