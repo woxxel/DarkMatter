@@ -6,7 +6,7 @@ class transformParas:
 
     def __init__(self,gamma=1.5,delta=4.2,nu_max=45.,
                  J=-1,tau_M=0.01,tau_A=0.005,tau_N=0.2,tau_G=0.005,
-                 nu_E=None,nu_I=2.,kappa_E=4.):
+                 nu_E=None,nu_I=1.,nu_I_scale=1.,kappa_E=4.,normalize_height=False):
 
         self.gamma = gamma
         self.delta = delta
@@ -21,9 +21,12 @@ class transformParas:
         self.J_0 = J * tau_M
 
         self.nu_E = nu_E
-        self.nu_I = nu_I
+        self.nu_I = nu_I_scale*nu_I
+        # self.nu_I_scale = nu_I_scale
 
         self.kappa_E = kappa_E
+
+        self.normalize_height = normalize_height
 
         self.calculated = np.zeros(3,dtype='bool')
 
@@ -86,45 +89,72 @@ class transformParas:
 
 
 
-    def sigma_V(self, r = 0.5):
+    def calculate_sigmas(self, r = 0.5):
 
         r_A = 1.-r
         r_N = r
 
         nu_E = self.get_nu_mean()
-        #nu_I = nu_E*self.nu_I
+        nu_I = self.nu_I
 
-        sigma_V_G = self.J_0**2 * self.nu_I / ( 2 * (self.tau_G + self.tau_M))
+        if self.normalize_height:
+            sigma_I_G = self.tau_G * self.J_0**2 * nu_I / 2
+            sigma_I_A = self.J_0**2 * nu_E * \
+             ( self.tau_A * r_A**2/ 2 + (r_A * r_N * self.tau_A*self.tau_N) / (self.tau_A + self.tau_N) )
+            sigma_I_N = self.J_0**2 * nu_E * \
+             ( self.tau_N * r_N**2/ 2 + (r_A * r_N * self.tau_A*self.tau_N) / (self.tau_A + self.tau_N) )
+        else:
+            sigma_I_G = self.J_0**2 * nu_I / ( 2 * self.tau_G )
+            sigma_I_A = self.J_0**2 * nu_E * \
+             ( r_A**2/( 2*self.tau_A ) + (r_A * r_N) / (self.tau_A + self.tau_N) )
+            sigma_I_N = self.J_0**2 * nu_E * \
+             ( r_N**2/( 2*self.tau_N ) + (r_A * r_N) / (self.tau_A + self.tau_N) )
 
-        sigma_V_A = self.J_0**2 * nu_E / (self.tau_A + self.tau_M) * \
-         ( r_A**2/2. + (r_A * r_N * self.tau_A) / (self.tau_A + self.tau_N) )
+        sigma_V_G = sigma_I_G * self.tau_G / ( self.tau_G + self.tau_M )
+        sigma_V_A = sigma_I_A * self.tau_A / ( self.tau_A + self.tau_M )
+        sigma_V_N = sigma_I_N * self.tau_N / ( self.tau_N + self.tau_M )
 
-        sigma_V_N = self.J_0**2 * nu_E / (self.tau_N + self.tau_M) * \
-         ( r_N**2/2. + (r_A * r_N * self.tau_N) / (self.tau_A + self.tau_N) )
+        self.sigma_V = np.sqrt(sigma_V_G + (sigma_V_A + sigma_V_N) * self.kappa_E)
+        #print(sigma_V)
 
-        return np.sqrt(sigma_V_G + (sigma_V_A + sigma_V_N) * self.kappa_E)
+        sigma_dV_G = sigma_V_G/(self.tau_G*self.tau_M)
+        sigma_dV_A = sigma_V_A/(self.tau_A*self.tau_M)
+        sigma_dV_N = sigma_V_N/(self.tau_N*self.tau_M)
 
-    def sigma_V_dot(self, r = 0.5):
+        self.sigma_V_dot = np.sqrt(sigma_dV_G + (sigma_dV_A + sigma_dV_N) * self.kappa_E)
 
-        r_A = 1.-r
-        r_N = r
+        # sigma_V_G = self.J_0**2 * nu_I / ( 2 * (self.tau_G + self.tau_M))
+        #
+        # sigma_V_A = self.J_0**2 * nu_E / (self.tau_A + self.tau_M) * \
+        #  ( r_A**2/2. + (r_A * r_N * self.tau_A) / (self.tau_A + self.tau_N) )
+        #
+        # sigma_V_N = self.J_0**2 * nu_E / (self.tau_N + self.tau_M) * \
+        #  ( r_N**2/2. + (r_A * r_N * self.tau_N) / (self.tau_A + self.tau_N) )
 
-        nu_E = self.get_nu_mean()
-        #nu_I = nu_E*self.nu_I
+        # return np.sqrt(sigma_V_G + (sigma_V_A + sigma_V_N) * self.kappa_E)
 
-        sigma_dV_G = 1./(self.tau_G * self.tau_M) * self.J_0**2 * self.nu_I / ( 2 * (self.tau_G + self.tau_M))
-
-        sigma_dV_A = 1./(self.tau_A * self.tau_M) * self.J_0**2 * nu_E / (self.tau_A + self.tau_M) * \
-         ( r_A**2/2. + (r_A * r_N * self.tau_A) / (self.tau_A + self.tau_N) )
-
-        sigma_dV_N = 1./(self.tau_N * self.tau_M) * self.J_0**2 * nu_E / (self.tau_N + self.tau_M) * \
-         ( r_N**2/2. + (r_A * r_N * self.tau_N) / (self.tau_A + self.tau_N) )
-
-        return np.sqrt(sigma_dV_G + (sigma_dV_A + sigma_dV_N) * self.kappa_E)
+    # def sigma_V_dot(self, r = 0.5):
+    #
+    #     r_A = 1.-r
+    #     r_N = r
+    #
+    #     nu_E = self.get_nu_mean()
+    #     nu_I = nu_E*self.nu_I_scale
+    #
+    #     sigma_dV_G = 1./(self.tau_G * self.tau_M) * self.J_0**2 * nu_I / ( 2 * (self.tau_G + self.tau_M))
+    #
+    #     sigma_dV_A = 1./(self.tau_A * self.tau_M) * self.J_0**2 * nu_E / (self.tau_A + self.tau_M) * \
+    #      ( r_A**2/2. + (r_A * r_N * self.tau_A) / (self.tau_A + self.tau_N) )
+    #
+    #     sigma_dV_N = 1./(self.tau_N * self.tau_M) * self.J_0**2 * nu_E / (self.tau_N + self.tau_M) * \
+    #      ( r_N**2/2. + (r_A * r_N * self.tau_N) / (self.tau_A + self.tau_N) )
+    #
+    #     return np.sqrt(sigma_dV_G + (sigma_dV_A + sigma_dV_N) * self.kappa_E)
 
 
     def get_nu_max(self,r):
-        res = 1./(2*math.pi) * self.sigma_V_dot(r)/self.sigma_V(r)
+        self.calculate_sigmas(r)
+        res = 1./(2*math.pi) * self.sigma_V_dot/self.sigma_V
         #print('paras:',r,self.sigma_V(r),self.sigma_V_dot(r))
         #print(r,res)
         return res
