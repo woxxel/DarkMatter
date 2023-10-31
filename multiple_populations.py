@@ -6,21 +6,23 @@ from darkMatter import darkMatter
 from general.plot_statistics import *
 from general.utils import set_plot_params
 
-def two_populations(L=1,S=[1,2,2],steps=100,plot_ax3D=True,save=0,file_format='png',rerun=False,compile=False):
+from empirical.model import *
+
+def multiple_populations(L=1,nI=1,nE=2,Psi_0=[0,-0.02,0.02],steps=100,plot_ax3D=True,save=0,file_format='png',rerun=False,compile=False):
 
 ## stats:
 ####    0: sharkfins
 ####    1: rate_dependence stats
-######    2: borders phase space
+####    2: borders phase space
 ####    2: compare exact vs. approx (single)
 ####    3: KL-phase-space (costly!)
 
-    steps = steps       # correct for removal of first item
+    # steps = steps       # correct for removal of first item
 
     ## general plot setup
     set_plot_params()
 
-    fig,ax = plt.subplots(2,3,figsize=(7.5,5),dpi=300)
+    fig,ax = plt.subplots(3,3,figsize=(7.5,5),dpi=300)
     plt_para = {
         'ax_label': [],
         'const_label': []
@@ -29,6 +31,23 @@ def two_populations(L=1,S=[1,2,2],steps=100,plot_ax3D=True,save=0,file_format='p
     J_l = np.ones((L,L))
     np.fill_diagonal(J_l,0)
 
+    def create_population_values(I_val,E_val):
+
+        I_val = I_val if type(I_val)==list else [I_val]
+        E_val = E_val if type(E_val)==list else [E_val]
+
+        val = I_val*nI
+        val.extend(E_val*nE)
+        return val
+
+    S = create_population_values(1,2)
+    kappa = create_population_values(1,0.5)
+    J0 = create_population_values(-1.,1.)
+    tau_I = create_population_values(0.01,[0.005,0.2])
+
+    # Psi_0 = [0,0.05,-0.05]
+    alpha_0 = [0,0.0,0.02]
+    
     options = {
         # count of layers, populations, PSPs
         'L': L,
@@ -43,17 +62,15 @@ def two_populations(L=1,S=[1,2,2],steps=100,plot_ax3D=True,save=0,file_format='p
         # population level parameters
         'I_ext': 1,
         'rateWnt': 1.,
-        'kappa': [1.,0.5,0.5],
-        'alpha_0': 0.02,
-        # 'Psi_0': [0,0.05,-0.05],
-        'Psi_0': [0,0.05],
+        'kappa': kappa,
+        'alpha_0': alpha_0,
+        'Psi_0': Psi_0,
         'tau_M': 0.01,
-        # 'J0': [-1.,1.,1.],
-        'J0': [-1.,1.],
+        'J0': J0,
 
         # psp level parameters
         # 'tau_I': [0.01,0.005,0.2,0.005,0.2],
-        'tau_I': [0.01,0.005,0.2],
+        'tau_I': tau_I,
         'tau_n': 0.,
         'tau_norm': 1.,
 
@@ -61,18 +78,20 @@ def two_populations(L=1,S=[1,2,2],steps=100,plot_ax3D=True,save=0,file_format='p
         'mode': 0,
         'mode_stats': 0,
         'mode_calc': 0,
+        'mode_selfcon': 1,
+        
         'simulation': {
             # for each iteration parameter, specify (layer,population,psp)-tuple
             # specify -1 if a level of hierarchy is non-applicable
             # specify 'None' if should be applied to all candidates
-            'rateWnt': [0.,20.],
-            'alpha_0': [0.,0.2],
+            # 'rateWnt': [0.,20.],
+            'Psi_0': [-0.1,0.1],
+            'alpha_0': [0.,0.1],
 
-            'sim_prim': [0,-1,0],       # when population parameters are iterated, specify population number(s) (empty = all)
-            'sim_sec': [0,-1,0],     # when synaptic timeconstants are iterated, specify number within population
+            'sim_prim': [0,2,0],       # when population parameters are iterated, specify population number(s) (negative = all)
+            'sim_sec': [0,2,0],     # when synaptic timeconstants are iterated, specify number within population
         }
     }
-    print(options)
 
     order = list(options['simulation'].keys())
 
@@ -105,9 +124,9 @@ def two_populations(L=1,S=[1,2,2],steps=100,plot_ax3D=True,save=0,file_format='p
     # plt.setp(ax[1,1],xlim=options[x_key],ylim=[0,10])
 
     # for i in range(res['gamma'].shape)
-    for p in range(2):
+    for p in range(nI+nE):
         plot_fins(ax[p,0],res[order[0]],res[order[1]],res['gamma'][p,...],res['chi'][p,...],res['regions'][p,...],plt_para)
-
+    
     # options['tau_I'] = [0.03,0.005,0.2]
     # res = darkMatter(steps=steps,options=options,rerun=rerun,compile=False)
     # for p in range(2):
@@ -136,6 +155,14 @@ def two_populations(L=1,S=[1,2,2],steps=100,plot_ax3D=True,save=0,file_format='p
         plt.savefig(sv_name,format=file_format,dpi=600)
         print('Figure saved as "%s"' % sv_name)
 
+    plt.show(block=False)
+
+    x=10; y=10
+    print('build widgets to explore, plot distribution of thresholds, make threshold-dependent exploration (phase-space alpha_0 <-> Psi_0)')
+    plt.figure()
+    nu = np.linspace(0,20,1001)
+    plt.plot(nu,p_nu(nu,res['gamma'][1,x,y],res['delta'][1,x,y],20),'k-')
+    plt.plot(nu,p_nu(nu,res['gamma'][2,x,y],res['delta'][2,x,y],20),'k--')
     plt.show(block=False)
 
     return res

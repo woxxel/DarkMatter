@@ -31,7 +31,7 @@ def darkMatter(steps=100,mode=0,options={},rerun=False,compile=False):
 
     model = set_model(fileModel,options)
     if mode==0:
-        print('hello')
+        # print('hello')
         filePara = './data/simPara.nc'
         sim, sv_str = set_simulation(filePara,options,steps)
     elif mode==1:
@@ -54,6 +54,7 @@ def darkMatter(steps=100,mode=0,options={},rerun=False,compile=False):
         os.system(run_str)
 
     # obtain data from simulation
+    print(fileResults)
     ncid = Dataset(fileResults, "r")
 
     results = {}
@@ -141,7 +142,6 @@ def set_model(fileModel,options):
     model.set_para('eps',0.,options,sz=L)
     model.set_para('eta',0.,options,sz=L)
     model.set_para('J0_l',1.,options,sz=L)              # synaptic strength of inter-layer interactions
-    model.set_para('kappa',1.,options,sz=L)            # connectivity ratio (should have dim=Npop)
 
     ### parameters for each population
     # model.set_para('pop_L_idx',pop_L_idx)
@@ -149,7 +149,9 @@ def set_model(fileModel,options):
 
     model.set_para('I_ext',1,options,sz=nP)           # external, constant drive
     model.set_para('rateWnt',1.,options,sz=nP)           # external, constant drive
+    model.set_para('kappa',1.,options,sz=nP)            # connectivity ratio (should have dim=Npop)
     model.set_para('alpha_0',0.,options,sz=nP)           # external, constant drive
+    model.set_para('Psi_0',0.,options,sz=nP)           # external, constant drive
     model.set_para('tau_M',0.01,options,sz=nP)        # membrane timeconstant in sec
     model.set_para('tau_n',0.,options,sz=nP)
     model.set_para('J0',-1.,options,sz=nP)             # base synaptic strength
@@ -220,6 +222,7 @@ def set_simulation(fileSim,options,steps):
     sim.set_para('mode',0,options,register=False)             # 0=phase plots, 1=data simulation
     sim.set_para('mode_calc',0,options,register=False)        # 0=exact, 1=approx
     sim.set_para('mode_stats',0,options,register=False)       # 0=general stats, 1=...
+    sim.set_para('mode_selfcon',0,options,register=False)       # 0=obtain 2nd moments, 1=obtain 2nd moments and all but first rate
 
     # order = ['rateWnt','alpha_0','tau_G','n','eps','eta','I_alpha','I_beta']
     # sim.set_para('order',order,options)
@@ -242,7 +245,7 @@ def set_simulation(fileSim,options,steps):
     ncid = Dataset(fileSim, "w")
     ncid.createDimension('one',1)
 
-    sim.paras.extend(['mode_calc','mode_stats','sim_prim','sim_sec','order'])
+    sim.paras.extend(['mode_calc','mode_stats','mode_selfcon','sim_prim','sim_sec','order'])
     # print(sim.__dict__)
     for key in sim.paras:
 
@@ -261,7 +264,7 @@ def set_simulation(fileSim,options,steps):
 
     ncid.close()
 
-    # sim.print_parameter()
+    sim.print_parameter()
 
     return sim, sv_str
 

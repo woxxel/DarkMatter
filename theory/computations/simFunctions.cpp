@@ -4,8 +4,6 @@ void Simulation_Variable::initialize(double *modVarP, double *varP, unsigned var
     /*
         modVarP (double*)
             pointer to variable value in model
-        modVarSz (unsigned)
-            number of different variables within the network (=Npop)
         varP (double*)
             pointer to array containing iteration values of variable
         varSz (unsigned)
@@ -80,6 +78,8 @@ void Simulation::set_vars(Model *modP, unsigned var_idx, unsigned l, unsigned p,
         vars[var_idx].initialize(&modP->layer[l].eps, &eps[0], eps.size(), "eps");
     } else if (order[var_idx].compare(0,7,"alpha_0")==0) {
         vars[var_idx].initialize(&modP->layer[l].population[p].alpha_0, &alpha_0[0], alpha_0.size(), "alpha_0");
+    } else if (order[var_idx].compare(0,5,"Psi_0")==0) {
+        vars[var_idx].initialize(&modP->layer[l].population[p].Psi_0, &Psi_0[0], Psi_0.size(), "Psi_0");
     } else if (order[var_idx].compare(0,7,"rateWnt")==0) {
         vars[var_idx].initialize(&modP->layer[l].population[p].rateWnt, &rateWnt[0], rateWnt.size(), "rateWnt");
     } else if (order[var_idx].compare(0,5,"tau_n")==0) {
@@ -103,6 +103,7 @@ void Simulation::initialize(Model *modP)
 
     for (unsigned i=0;i<nVar;i++)
     {
+        // getting layers to change variables in from sim_pointer-input
         l.clear();
         l.push_back(sim_pointer[i][0]); // should be obtained from provided vector
         if (l[0]<0) {
@@ -113,7 +114,7 @@ void Simulation::initialize(Model *modP)
             layer = l[ll];
 
             // cout << "layer (" << ll << ")" << layer << endl;
-
+            // getting populations to change variables in from sim_pointer-input
             p.clear();
             p.push_back(sim_pointer[i][1]);
             if (p[0]<0) {
@@ -124,6 +125,7 @@ void Simulation::initialize(Model *modP)
                 population = p[pp];
                 // cout << "population (" << pp << ")" << population << endl;
 
+                // getting synapses to change variables in from sim_pointer-input
                 s.clear();
                 s.push_back(sim_pointer[i][2]);
                 if (s[0]<0) {
@@ -228,8 +230,10 @@ void Simulation::store_results(Model * modP, Model * modP_approx)
             popResP->q[vars[1].iter][vars[0].iter] = popSimP->q;
 
             popResP->gamma[vars[1].iter][vars[0].iter] = popSimP->gamma;
-            popResP->chi[vars[1].iter][vars[0].iter] = popSimP->chi;
             popResP->delta[vars[1].iter][vars[0].iter] = popSimP->delta;
+            popResP->rate_max[vars[1].iter][vars[0].iter] = popSimP->rate_max;
+
+            popResP->chi[vars[1].iter][vars[0].iter] = popSimP->chi;
             popResP->I_balance[vars[1].iter][vars[0].iter] = popSimP->I_balance;
 
             if (popSimP->trans_DM_found) // && (!simP->trans_DM_found[l][p])
@@ -279,6 +283,7 @@ void Simulation::store_results(Model * modP, Model * modP_approx)
 
             if (mode_stats == 1)
             {
+                popResP->regions[vars[1].iter][vars[0].iter] = popSimP->regions;
                 popResP->alpha_raw[vars[1].iter][vars[0].iter] = popSimP->alpha_raw;
                 popResP->alpha[vars[1].iter][vars[0].iter] = popSimP->alpha;
                 popResP->sigma_V[vars[1].iter][vars[0].iter] = popSimP->sigma_V;

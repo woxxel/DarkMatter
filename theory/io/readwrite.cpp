@@ -79,17 +79,18 @@ void read_model(string fileModel, Model *modP)
     status = status && get_from_ncid(ncid, "I_alpha", &modP->I_alpha);
     status = status && get_from_ncid(ncid, "I_beta", &modP->I_beta);
 
-    double eps[modP->L], eta[modP->L], J0_l[modP->L][modP->L], kappa[modP->L];
+    double eps[modP->L], eta[modP->L], J0_l[modP->L][modP->L];
     status = status && get_from_ncid(ncid, "eps", &eps[0]);
     status = status && get_from_ncid(ncid, "eta", &eta[0]);
     status = status && get_from_ncid(ncid, "J0_l", &J0_l[0]);
-    status = status && get_from_ncid(ncid, "kappa", &kappa[0]);
 
     int I_ext[nP];
-    double rateWnt[nP], alpha_0[nP], tau_M[nP], tau_n[nP], J0[nP];
+    double rateWnt[nP], kappa[nP], alpha_0[nP], Psi_0[nP], tau_M[nP], tau_n[nP], J0[nP];
     status = status && get_from_ncid(ncid, "I_ext", &I_ext[0]);
     status = status && get_from_ncid(ncid, "rateWnt", &rateWnt[0]);
+    status = status && get_from_ncid(ncid, "kappa", &kappa[0]);
     status = status && get_from_ncid(ncid, "alpha_0", &alpha_0[0]);
+    status = status && get_from_ncid(ncid, "Psi_0", &Psi_0[0]);
     status = status && get_from_ncid(ncid, "tau_M", &tau_M[0]);
     status = status && get_from_ncid(ncid, "tau_n", &tau_n[0]);
     status = status && get_from_ncid(ncid, "J0", &J0[0]);
@@ -101,6 +102,7 @@ void read_model(string fileModel, Model *modP)
     unsigned p_idx = 0, s_idx = 0;
     for (unsigned l=0; l<modP->L; l++) {
         modP->layer[l].l = l;
+        modP->layer[l].nPop = nP;
         modP->layer[l].population.resize(modP->layer[l].nPop);
 
         modP->layer[l].eps = eps[l];
@@ -108,7 +110,6 @@ void read_model(string fileModel, Model *modP)
         modP->layer[l].J0_l.resize(modP->L);
         for (unsigned ll=0; ll<modP->L; ll++)
             modP->layer[l].J0_l[ll] = J0_l[ll][l];    // check again, whether indices are in right order
-        modP->layer[l].kappa = kappa[l];
         // modP->layer[l].setWeights();
 
         for (unsigned p=0; p<modP->layer[l].nPop; p++)
@@ -121,7 +122,9 @@ void read_model(string fileModel, Model *modP)
 
             modP->layer[l].population[p].I_ext = I_ext[p_idx];
             modP->layer[l].population[p].rateWnt = rateWnt[p_idx];
+            modP->layer[l].population[p].kappa = kappa[p_idx];
             modP->layer[l].population[p].alpha_0 = alpha_0[p_idx];
+            modP->layer[l].population[p].Psi_0 = Psi_0[p_idx];
             modP->layer[l].population[p].tau_M = tau_M[p_idx];
             modP->layer[l].population[p].tau_n = tau_n[p_idx];
             modP->layer[l].population[p].J0 = J0[p_idx];
@@ -168,6 +171,7 @@ void read_simulation(string fileSim, Simulation *simP)
     get_dim_and_read(ncid, "eps", &simP->epsSz, &simP->eps);
     get_dim_and_read(ncid, "eta", &simP->etaSz, &simP->eta);
     get_dim_and_read(ncid, "alpha_0", &simP->alpha_0Sz, &simP->alpha_0);
+    get_dim_and_read(ncid, "Psi_0", &simP->Psi_0Sz, &simP->Psi_0);
     get_dim_and_read(ncid, "rateWnt", &simP->rateWntSz, &simP->rateWnt);
     get_dim_and_read(ncid, "tau_I", &simP->tau_ISz, &simP->tau_I);
     get_dim_and_read(ncid, "tau_n", &simP->tau_nSz, &simP->tau_n);
@@ -186,6 +190,7 @@ void read_simulation(string fileSim, Simulation *simP)
     // read variables from ncid
     status = status && get_from_ncid(ncid, "mode_calc", &simP->mode_calc);
     status = status && get_from_ncid(ncid, "mode_stats", &simP->mode_stats);
+    status = status && get_from_ncid(ncid, "mode_selfcon", &simP->mode_selfcon);
 
     // reading string... quite bulky - isn't there a better solution?
     vector<vector<char>> order(simP->orderSz, vector<char> (simP->charSz));
@@ -379,6 +384,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
 
     nc_create(fileOut.c_str(), NC_CLOBBER, &ncid);
 
+    // cout << "Npop: " << modP->nPop << endl;
     nc_def_dim(ncid, "Npop", modP->nPop, &Npop_dim);
     nc_def_dim(ncid, "steps_dim", steps, &steps_dim);
     nc_def_dim(ncid, "steps_dim1", steps_1, &steps_dim1);
@@ -393,12 +399,13 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
 
     int DM_id, np_id, inc_id, imp_id;
     int DM_approx_id, np_approx_id, inc_approx_id, imp_approx_id;
-    int q_id, gamma_id, chi_id, delta_id, I_balance_id, regions_id, regions_approx_id;
+    int q_id, gamma_id, delta_id, rate_max_id, chi_id, I_balance_id, regions_id, regions_approx_id;
     int info_id;
     nc_def_var(ncid, "q", NC_DOUBLE, 3, &dimids[0], &q_id);
     nc_def_var(ncid, "gamma", NC_DOUBLE, 3, &dimids[0], &gamma_id);
-    nc_def_var(ncid, "chi", NC_DOUBLE, 3, &dimids[0], &chi_id);
     nc_def_var(ncid, "delta", NC_DOUBLE, 3, &dimids[0], &delta_id);
+    nc_def_var(ncid, "rate_max", NC_DOUBLE, 3, &dimids[0], &rate_max_id);
+    nc_def_var(ncid, "chi", NC_DOUBLE, 3, &dimids[0], &chi_id);
     nc_def_var(ncid, "I_balance", NC_DOUBLE, 3, &dimids[0], &I_balance_id);
     if ((simP->mode_stats == 0) || (simP->mode_stats == 3))
     {
@@ -414,6 +421,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
     int alpha_raw_id, alpha_id, sigma_V_id;
     if (simP->mode_stats == 1)
     {
+        nc_def_var(ncid, "regions", NC_DOUBLE, 3, &dimids[0], &regions_id);
         nc_def_var(ncid, "alpha_raw", NC_DOUBLE, 3, &dimids[0], &alpha_raw_id);
         nc_def_var(ncid, "alpha", NC_DOUBLE, 3, &dimids[0], &alpha_id);
         nc_def_var(ncid, "sigma_V", NC_DOUBLE, 3, &dimids[0], &sigma_V_id);
@@ -519,15 +527,15 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
             }
 
             count[2] = steps;
-
             for (unsigned rec=0; rec<steps_1; rec++) {
                 start[1] = rec;
                 start[2] = 0;
                 // count[2] = steps;
                 nc_put_vara(ncid, q_id, start, count, &popResP->q[rec][0]);
                 nc_put_vara(ncid, gamma_id, start, count, &popResP->gamma[rec][0]);
-                nc_put_vara(ncid, chi_id, start, count, &popResP->chi[rec][0]);
                 nc_put_vara(ncid, delta_id, start, count, &popResP->delta[rec][0]);
+                nc_put_vara(ncid, rate_max_id, start, count, &popResP->rate_max[rec][0]);
+                nc_put_vara(ncid, chi_id, start, count, &popResP->chi[rec][0]);
                 nc_put_vara(ncid, I_balance_id, start, count, &popResP->I_balance[rec][0]);
 
                 if ((simP->mode_stats == 0) || (simP->mode_stats == 3))
@@ -538,6 +546,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
                 }
                 if (simP->mode_stats == 1)
                 {
+                    nc_put_vara(ncid, regions_id, start, count, &popResP->regions[rec][0]);
                     nc_put_vara(ncid, alpha_raw_id, start, count, &popResP->alpha_raw[rec][0]);
                     nc_put_vara(ncid, alpha_id, start, count, &popResP->alpha[rec][0]);
                     nc_put_vara(ncid, sigma_V_id, start, count, &popResP->sigma_V[rec][0]);

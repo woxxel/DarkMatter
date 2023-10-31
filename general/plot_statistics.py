@@ -294,8 +294,8 @@ def plot_fins(ax,x_arr,y_arr,gamma,chi,regions,plt_para):
     #     # ax.set_xlabel(ax_labels[1],fontsize=12)
     #     # ax.set_ylabel(ax_labels[0],fontsize=12)
 
-    ax.set_xlim([0,x_arr[-1]])
-    ax.set_ylim([0,y_arr[-1]])
+    ax.set_xlim([x_arr[0],x_arr[-1]])
+    ax.set_ylim([y_arr[0],y_arr[-1]])
     return pchi,pgamma
 
 def plot_colorbar(pchi,pgamma,plt_para,x=[0.85,0.88],y=[0.1,0.95]):

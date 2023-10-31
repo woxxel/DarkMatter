@@ -42,7 +42,11 @@ int main(int argc, char** argv)
 	while (sim.run_iteration(modP,modP_approx))
 	{
 		// cout << "start iteration... " << endl;
-		mod.solve_selfcon(sim.mode_calc);
+		if (sim.mode_selfcon==0)
+			mod.solve_selfcon(sim.mode_calc);
+		else 
+			mod.solve_selfcon_from_currents(sim.mode_calc);
+		
 		mod.find_transitions(simP);
 	//
 		// cout << "solving approx... " << endl;

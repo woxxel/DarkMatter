@@ -27,8 +27,9 @@ void Population_Results::initiate(unsigned sim_steps_1, unsigned sim_steps_2, un
     rate.resize(sim_steps_2,vector<double>(sim_steps_1));
     q.resize(sim_steps_2,vector<double>(sim_steps_1));
     gamma.resize(sim_steps_2,vector<double>(sim_steps_1));
-    chi.resize(sim_steps_2,vector<double>(sim_steps_1));
     delta.resize(sim_steps_2,vector<double>(sim_steps_1));
+    rate_max.resize(sim_steps_2,vector<double>(sim_steps_1));
+    chi.resize(sim_steps_2,vector<double>(sim_steps_1));
     I_balance.resize(sim_steps_2,vector<double>(sim_steps_1));
 
     if ((sim_mode == 0) || (sim_mode == 3))
@@ -42,6 +43,7 @@ void Population_Results::initiate(unsigned sim_steps_1, unsigned sim_steps_2, un
     if (sim_mode == 1)
     {
         // cout << "start q size : " << resP->q.size() << endl;
+        regions.resize(sim_steps_2,vector<double>(sim_steps_1));
         alpha_raw.resize(sim_steps_2,vector<double>(sim_steps_1));
         alpha.resize(sim_steps_2,vector<double>(sim_steps_1));
         sigma_V.resize(sim_steps_2,vector<double>(sim_steps_1));
@@ -123,6 +125,139 @@ void compare_approx(Model *modP, Model *mod_approxP)
     }
 }
 
+int selfconsistency_from_currents_f (const gsl_vector * vars, void * params, gsl_vector * f)
+{
+    Model * modP = (Model *) params;
+    Population *popP;
+
+    popP = &modP->layer[0].population[0];
+
+    double rate = popP->rateWnt;
+    // cout << "rate: " << rate << endl;
+    double rate_max = popP->simulation.rate_max;
+
+    double sigma_V = popP->simulation.sigma_V;
+    
+    // define the two selfconsistency equations:
+    double alpha_I_sq = gsl_vector_get(vars,0);
+    double I_0 = gsl_vector_get(vars,1);
+
+    // double nu_1, nu_2;
+    double alpha_1 = sqrt(alpha_I_sq + gsl_pow_2(modP->layer[0].population[0].alpha_0));
+    double alpha_2 = sqrt(alpha_I_sq + gsl_pow_2(modP->layer[0].population[1].alpha_0));
+
+    // nu_1 = calc_first_moment(rate_max,sigma_V,alpha_1,I_0,modP->layer[0].population[0].Psi_0);
+    // nu_2 = calc_first_moment(rate_max,sigma_V,alpha_2,I_0,modP->layer[0].population[1].Psi_0);
+    // if (I_0 < 0) 
+    // {
+    //     I_0 = abs(I_0);
+    //     // gsl_vector_set(vars,1,I_0);
+    // }
+    // if (alpha_I_sq < 0)// || nu_1<0 || nu_1>(2*rate) || nu_2<0 || nu_2>(2*rate)) {
+    // {
+    //     // gsl_vector_set(f,0,gsl_pow_2(alpha_I*10));
+    //     // gsl_vector_set(f,1,gsl_vector_get(f,1)*2.);
+    //     cout << "checks *not* passed for alpha=" << alpha_I_sq << ", I=" << I_0 << ", f is (" << gsl_vector_get(f,0) << "," << gsl_vector_get(f,1) << ") - continue!" << endl;
+    //     return GSL_SUCCESS;
+    // } 
+    // else {
+    // cout << "alpha_I=" << alpha_I_sq << ", I=" << I_0 << endl;
+    // }
+
+    // cout << "parameters in selfcon: alpha (1/2): (" << alpha_1 << " , " << alpha_2 << ")" << endl;
+
+
+    double selfcon_nu = 1./2. * (
+        calc_first_moment(rate_max,sigma_V,alpha_1,I_0,modP->layer[0].population[0].Psi_0) + 
+        calc_first_moment(rate_max,sigma_V,alpha_2,I_0,modP->layer[0].population[1].Psi_0)
+        ) - rate;
+
+    double selfcon_alpha = gsl_pow_2(popP->J[0])/2. * (
+        calc_second_moment(rate_max,sigma_V,alpha_1,I_0,modP->layer[0].population[0].Psi_0) + 
+        calc_second_moment(rate_max,sigma_V,alpha_2,I_0,modP->layer[0].population[1].Psi_0)
+        ) - alpha_I_sq;
+
+    // cout << "nu: (" << calc_first_moment(rate_max,sigma_V,alpha_1,I_0,modP->layer[0].population[0].Psi_0) << " , " << calc_first_moment(rate_max,sigma_V,alpha_2,I_0,modP->layer[0].population[1].Psi_0) << ")" << endl;
+    
+    // cout << "q: (" << calc_second_moment(rate_max,sigma_V,alpha_1,I_0,modP->layer[0].population[0].Psi_0) << " , " << calc_second_moment(rate_max,sigma_V,alpha_2,I_0,modP->layer[0].population[1].Psi_0) << ")" << endl;
+
+    // cout << "selfcon_nu = " << selfcon_nu << endl;
+    // cout << "selfcon_alpha = " << selfcon_alpha << endl;
+
+    gsl_vector_set(f,0,gsl_pow_2(selfcon_nu));
+    gsl_vector_set(f,1,gsl_pow_2(selfcon_alpha));
+    // gsl_vector_set(f,0,abs(selfcon_nu));
+    // gsl_vector_set(f,1,abs(selfcon_alpha));
+
+    return GSL_SUCCESS;
+}
+
+double calc_first_moment(double rate_max, double sigma_V, double alpha, double I_0, double Psi_0)
+{
+    return rate_max * sigma_V / sqrt(gsl_pow_2(alpha) + gsl_pow_2(sigma_V)) * exp(- gsl_pow_2(I_0 - Psi_0)/(2*(gsl_pow_2(alpha) + gsl_pow_2(sigma_V))));
+}
+
+double calc_second_moment(double rate_max, double sigma_V, double alpha, double I_0, double Psi_0)
+{
+    return gsl_pow_2(rate_max) * sigma_V / sqrt(2*gsl_pow_2(alpha) + gsl_pow_2(sigma_V)) * exp(- gsl_pow_2(I_0 - Psi_0)/(2*gsl_pow_2(alpha) + gsl_pow_2(sigma_V)));
+}
+
+int selfconsistency_f_split (const gsl_vector * vars, void * params, gsl_vector * f)
+{
+	Model * modP = (Model *) params;
+
+	vector<vector<double> > alpha, q_search;
+
+    double delta_nu = gsl_vector_get(vars,0);
+
+    unsigned p_idx = 1;
+    // vector<double> q_search = {vars.begin() + 1, vars.end()};
+
+    q_search.resize(modP->L);
+    alpha.resize(modP->L);
+    for (unsigned l = 0; l < modP->L; l++) {
+        q_search[l].resize(modP->layer[l].nPop);
+        alpha[l].resize(modP->layer[l].nPop);
+        for (unsigned p = 0; p < modP->layer[l].nPop; p++) {
+
+            modP->layer[l].population[p].simulation.rate = modP->network_rate + pow(-1,p)*delta_nu;
+
+            q_search[l][p] = gsl_vector_get(vars,p_idx);
+            p_idx++;
+        }
+    }
+
+    alpha = modP->calc_alpha(q_search);
+    modP->get_sigma_V();
+    // cout << "alpha: 1: " << alpha[0][0] << ", 2: " << alpha[0][1] << endl;
+    // cout << "sigma: 1: " << modP->layer[0].population[0].simulation.sigma_V << ", 2: " << modP->layer[0].population[1].simulation.sigma_V << endl;
+
+    // compute and set the results
+    p_idx = 0;
+    for (unsigned l = 0; l < modP->L; l++) {
+        gsl_vector_set (f, p_idx, selfcon_split(
+            modP->network_rate + delta_nu, modP->network_rate - delta_nu, 
+            modP->layer[l].population[0].Psi_0, modP->layer[l].population[1].Psi_0,
+            alpha[l][0],
+            modP->layer[l].population[0].simulation.sigma_V,
+            modP->layer[l].population[0].simulation.rate_max)
+        );
+        p_idx++;
+        for (unsigned p = 0; p < modP->layer[l].nPop; p++) {
+            gsl_vector_set (f, p_idx, selfcon(
+                alpha[l][p],
+                modP->layer[l].population[p].simulation.sigma_V,
+                modP->network_rate + pow(-1,p)*delta_nu,
+                q_search[l][p],
+                modP->layer[l].population[p].simulation.rate_max));
+            p_idx++;
+        }
+        
+    }
+
+	return GSL_SUCCESS;
+}
+
 
 int selfconsistency_f (const gsl_vector * q, void * params, gsl_vector * f)
 {
@@ -154,6 +289,12 @@ int selfconsistency_f (const gsl_vector * q, void * params, gsl_vector * f)
     }
 
 	return GSL_SUCCESS;
+}
+
+
+double selfcon_split(double rate_1, double rate_2, double psi_1, double psi_2, double alpha, double sigma_V, double rate_max)
+{
+    return sqrt(I_squared_nu(alpha,sigma_V,rate_1,rate_max)) - sqrt(I_squared_nu(alpha,sigma_V,rate_2,rate_max)) - psi_1 + psi_2;
 }
 
 double selfcon(double alpha, double sigma_V, double rate, double q, double rate_max)

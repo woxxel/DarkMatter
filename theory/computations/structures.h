@@ -20,7 +20,7 @@ struct Model_Results
 
 struct Population_Results
 {
-    vector<vector<double> > rate, q, alpha_raw, alpha, sigma_V, gamma, chi, delta, I_balance, regions, entropy, KL_entropy;
+    vector<vector<double> > rate, q, alpha_raw, alpha, sigma_V, gamma, delta, rate_max, chi, I_balance, regions, entropy, KL_entropy;
 
 
     vector<vector<double> > infoContent;
@@ -58,9 +58,9 @@ struct Population_Simulation
 
     double trans_DM, trans_np;
 
-    double rate, q, rate_max;
+    double rate, q;
     double sigma_V, alpha, alpha_raw;
-    double I_balance, delta, chi, gamma;
+    double I_balance, gamma, delta, rate_max, chi;
     bool in_DM, in_np;
     double regions;
     double infoContent, KL, entropy;
@@ -130,6 +130,7 @@ struct Population
     double rateWnt;
     double tau_n;
     double J0; // synaptic strength base value
+    double kappa;
 
     // int drive;
     // double K_0; // average incoming number of synapses as multiple of recurrent connections number K
@@ -140,7 +141,7 @@ struct Population
             alpha_0 (double)
                 heterogeneity of this population
     */
-    double alpha_0;
+    double alpha_0, Psi_0;
 
     double tau_M;
     vector<double> J;
@@ -154,7 +155,7 @@ struct Layer
     // Defines parameters for each layer of the network.
     // Each layer is composed of an excitatory and an inhibitory population, whos interactions are specified by eta & eps
     vector<Population> population;
-    unsigned nPop = 2;
+    unsigned nPop;
     unsigned l; // layer ID
 
 
@@ -172,7 +173,6 @@ struct Layer
     */
     double eta, eps;
     vector<double> J0_l, J_l;
-    double kappa;
 
     void print_layer();
 };
@@ -188,7 +188,7 @@ struct parameters
 	double tau_G, tau_A, tau_N, tau_M, J;
 	double eta, eps, n;
     double kappa;
-    vector<double> rate, q, alpha_0;
+    vector<double> rate, q, alpha_0, Psi_0;
 
     //external drive
     // int drive;
@@ -219,6 +219,7 @@ class Model
         vector <Layer> layer;
 
         unsigned nPop;
+        double network_rate; // needed, e.g. in the case of split subpopulations
 
         double I_alpha, I_beta;
 
@@ -234,6 +235,8 @@ class Model
         void set_weights();
         void set_mixture();
         void solve_selfcon(int mode_calc);
+        void solve_selfcon_split(int mode_calc);
+        void solve_selfcon_from_currents(int mode_calc);
         void write_results();
 
         bool q_border1(Population_Simulation *popSimP);
@@ -255,10 +258,10 @@ class Model
         // void resize();
 
         void get_max_prob();
+        void get_sigma_V();
 
     private:
 
-        void get_sigma_V();
         void get_alpha();
         void get_delta();
         void get_gamma();
@@ -296,15 +299,15 @@ class Simulation
         bool trans_imp_found, trans_inc_found, trans_imp_found_approx, trans_inc_found_approx;
         double trans_inc, trans_imp;
 
-        vector<double> eps, eta, alpha_0, rateWnt, I_alpha, I_beta, tau_I, tau_n;
+        vector<double> eps, eta, alpha_0, Psi_0, rateWnt, I_alpha, I_beta, tau_I, tau_n;
         vector<vector<int> > sim_pointer;
 
         unsigned nVar;
         vector<string> order; // contains the strings of parameters in the order that the iteration should walk through
 
         // unsigned n_iter, alpha_0_iter, tau_G_iter, rateWnt_iter, eps_iter, eta_iter;
-        int mode_calc, mode_stats;
-        size_t tau_nSz, alpha_0Sz, tau_ISz, rateWntSz, epsSz, etaSz, I_alphaSz, I_betaSz, orderSz, charSz, steps, sim_primSz, sim_secSz;
+        int mode_calc, mode_stats, mode_selfcon;
+        size_t tau_nSz, alpha_0Sz, Psi_0Sz, tau_ISz, rateWntSz, epsSz, etaSz, I_alphaSz, I_betaSz, orderSz, charSz, steps, sim_primSz, sim_secSz;
 
         // vector<bool> trans_DM_found, trans_np_found, trans_DM_found_approx, trans_np_found_approx;
 
@@ -356,7 +359,7 @@ struct Computation
 
 struct parameters_int
 {
-	double alpha_0;
+	double alpha_0, Psi_0;
 	double rate_max;
 	double gamma, delta;
 
