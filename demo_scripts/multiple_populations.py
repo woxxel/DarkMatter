@@ -89,7 +89,7 @@ def multiple_populations(L=1,nI=1,nE=2,Psi_0=[0,-0.02,0.02],steps=100,plot_ax3D=
             'alpha_0': [0.,0.1],
 
             'sim_prim': [0,2,0],       # when population parameters are iterated, specify population number(s) (negative = all)
-            'sim_sec': [0,2,0],     # when synaptic timeconstants are iterated, specify number within population
+            'sim_sec': [0,-1,0],     # when synaptic timeconstants are iterated, specify number within population
         }
     }
 

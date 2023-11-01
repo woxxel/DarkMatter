@@ -1,13 +1,19 @@
 data
+figures
+sort
+__pycache__
+
 *.pyc
 
 *.png
 *.mat
 *.xlsx
+*.nc
 
 theory/sharkfins
+theory/generate_measures
+
 notebooks/.ipynb_checkpoints/*
 notebooks/logs*
-sbi-logs/*
 
 Pipfile.lock
