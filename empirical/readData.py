@@ -2,10 +2,10 @@ import pandas as pd
 import numpy as np
 import os, sys
 
-root_dir = os.path.dirname(os.path.abspath(''))
-if not root_dir in sys.path: sys.path.append(root_dir)
+# root_dir = os.path.dirname(os.path.abspath(''))
+# if not root_dir in sys.path: sys.path.append(root_dir)
 
-from empirical.readData_mat import *
+from .readData_mat import *
 #from empirical.readData_xls import *
 
 class ModelParams:

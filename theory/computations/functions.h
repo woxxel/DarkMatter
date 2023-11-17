@@ -27,10 +27,10 @@ double pdf2hist(double lower, double upper, parameters paras);
 double rate_distribution(double nu, double rate_max, double gamma, double delta);
 
 double int_shannon_entropy(double nu, void *params);
-double shannon_entropy(int p, double lower, double upper, parameters paras);
+double shannon_entropy(int p, double lower, double upper, Population_Simulation *paras);
 
 double int_KL(double nu, void *params);
-double KL_divergence(int p, double lower, double upper, parameters paras, parameters paras_approx);
+double KL_divergence(int p, double lower, double upper, Population_Simulation *paras, Population_Simulation *paras_approx);
 
 
 // void bayesian_estimate_theory(Model *modP, computation *comP, Results *resP);

@@ -1,8 +1,3 @@
-// #include <math.h>
-// #include <stdarg.h>
-// #include <gsl/gsl_randist.h>
-// #include "gsl/gsl_rng.h"
-
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_multiroots.h>
 #include <gsl/gsl_integration.h>
@@ -13,16 +8,14 @@
 
 void Model_Results::initiate(unsigned sim_steps_1, unsigned sim_steps_2, unsigned sim_mode)
 {
-    trans_inc.resize(sim_steps_1);
-    trans_imp.resize(sim_steps_1);
+    trans_inc.resize(sim_steps_1,vector<int>(0));
+    trans_imp.resize(sim_steps_1,vector<int>(0));
 }
 
 void Population_Results::initiate(unsigned sim_steps_1, unsigned sim_steps_2, unsigned sim_mode)
 {
-    trans_DM.resize(sim_steps_1);
-    trans_np.resize(sim_steps_1);
-    // trans_inc.resize(sim_steps_1);
-    // trans_imp.resize(sim_steps_1);
+    trans_DM.resize(sim_steps_1,vector<int>(0));
+    trans_np.resize(sim_steps_1,vector<int>(0));
 
     rate.resize(sim_steps_2,vector<double>(sim_steps_1));
     q.resize(sim_steps_2,vector<double>(sim_steps_1));
@@ -84,9 +77,8 @@ void initiate_results(Model *modP, Simulation *simP)
     modP->results.initiate(simP->vars[0].steps,simP->vars[1].steps,simP->mode_stats);
 
     for (unsigned l=0; l<modP->L; l++) {
-        for (unsigned p=0; p<modP->layer[l].nPop; p++) {
+        for (unsigned p=0; p<modP->layer[l].nPop; p++)
             modP->layer[l].population[p].results.initiate(simP->vars[0].steps,simP->vars[1].steps,simP->mode_stats);
-        }
     }
 }
 
@@ -108,20 +100,27 @@ void initiate_results(Model *modP, Simulation *simP)
 //     }
 // }
 
-void compare_approx(Model *modP, Model *mod_approxP)
+void compare_approx(Model *modP, Model *modP_approx)
 {
-    for (unsigned p = 0; p < modP->paras.Npop; p++)
+    Population_Simulation *popSimP, *popSimP_approx;
+    for (unsigned l = 0; l < modP->L; l++) 
     {
-        long double cosh_tmp = cosh(modP->paras.gamma[p]*modP->paras.delta[p]*sqrt(-2*log(pow(10,-6)/modP->paras.rate_max[p]))); // check if pdf can be calculated
-        if (!isinf(cosh_tmp) && !isnan(cosh_tmp))
+        for (unsigned p = 0; p < modP->layer[l].nPop; p++)
         {
-            modP->paras.KL[p] = KL_divergence(p,0,modP->paras.rate_max[p],modP->paras,mod_approxP->paras);
-            modP->paras.entropy[p] = shannon_entropy(p,0,modP->paras.rate_max[p],modP->paras);
+            popSimP = &modP->layer[l].population[p].simulation;
+            popSimP_approx = &modP_approx->layer[l].population[p].simulation;
+            long double cosh_tmp = cosh(popSimP->gamma*popSimP->delta*sqrt(-2*log(pow(10,-6)/popSimP->rate_max))); // check if pdf can be calculated
+            if (!isinf(cosh_tmp) && !isnan(cosh_tmp))
+            {
+                popSimP->KL = KL_divergence(p,0,popSimP->rate_max,popSimP,popSimP_approx);
+                popSimP->entropy = shannon_entropy(p,0,popSimP->rate_max,popSimP);
 
-        } else {
-            modP->paras.KL[p] = NAN;
-            modP->paras.entropy[p] = NAN;
+            } else {
+                popSimP->KL = NAN;
+                popSimP->entropy = NAN;
+            }
         }
+
     }
 }
 
@@ -141,6 +140,10 @@ int selfconsistency_from_currents_f (const gsl_vector * vars, void * params, gsl
     // define the two selfconsistency equations:
     double alpha_I_sq = gsl_vector_get(vars,0);
     double I_0 = gsl_vector_get(vars,1);
+    if (isnan(I_0)) {
+        return GSL_FAILURE;
+    }
+    // cout << "I_0: " << I_0 << endl;
 
     // double nu_1, nu_2;
     double alpha_1 = sqrt(alpha_I_sq + gsl_pow_2(modP->layer[0].population[0].alpha_0));
@@ -150,8 +153,8 @@ int selfconsistency_from_currents_f (const gsl_vector * vars, void * params, gsl
     // nu_2 = calc_first_moment(rate_max,sigma_V,alpha_2,I_0,modP->layer[0].population[1].Psi_0);
     // if (I_0 < 0) 
     // {
-    //     I_0 = abs(I_0);
-    //     // gsl_vector_set(vars,1,I_0);
+        // I_0 = abs(I_0);
+        // gsl_vector_set(vars,1,I_0);
     // }
     // if (alpha_I_sq < 0)// || nu_1<0 || nu_1>(2*rate) || nu_2<0 || nu_2>(2*rate)) {
     // {
@@ -184,10 +187,10 @@ int selfconsistency_from_currents_f (const gsl_vector * vars, void * params, gsl
     // cout << "selfcon_nu = " << selfcon_nu << endl;
     // cout << "selfcon_alpha = " << selfcon_alpha << endl;
 
-    gsl_vector_set(f,0,gsl_pow_2(selfcon_nu));
-    gsl_vector_set(f,1,gsl_pow_2(selfcon_alpha));
-    // gsl_vector_set(f,0,abs(selfcon_nu));
-    // gsl_vector_set(f,1,abs(selfcon_alpha));
+    // gsl_vector_set(f,0,gsl_pow_2(selfcon_nu));
+    // gsl_vector_set(f,1,gsl_pow_2(selfcon_alpha));
+    gsl_vector_set(f,0,selfcon_nu);
+    gsl_vector_set(f,1,selfcon_alpha);
 
     return GSL_SUCCESS;
 }
@@ -304,12 +307,12 @@ double selfcon(double alpha, double sigma_V, double rate, double q, double rate_
 
 double I_squared_nu(double alpha, double sigma_V, double rate, double rate_max)
 {
-	return -( gsl_pow_2(alpha) + gsl_pow_2(sigma_V) ) * log( gsl_pow_2(rate/rate_max) * (1 + gsl_pow_2(alpha / sigma_V)) );
+    return -( gsl_pow_2(alpha) + gsl_pow_2(sigma_V) ) * log( gsl_pow_2(rate/rate_max) * (1 + gsl_pow_2(alpha / sigma_V)) );
 }
 
 double I_squared_q(double alpha, double sigma_V, double q, double rate_max)
 {
-	return -( gsl_pow_2(alpha) + 0.5*gsl_pow_2(sigma_V) ) * log( (gsl_pow_2(q)/gsl_pow_4(rate_max) ) * (1 + 2*gsl_pow_2(alpha / sigma_V)) );
+    return -( gsl_pow_2(alpha) + 0.5*gsl_pow_2(sigma_V) ) * log( (gsl_pow_2(q)/gsl_pow_4(rate_max) ) * (1 + 2*gsl_pow_2(alpha / sigma_V)) );
 }
 
 // void simulation::store_results_approx(Simulation *simP, Model *modP, results * resP)
@@ -346,15 +349,15 @@ double I_squared_q(double alpha, double sigma_V, double q, double rate_max)
 //     return max_tmp;
 // }
 
-double shannon_entropy(int p, double lower, double upper, parameters paras)
+double shannon_entropy(int p, double lower, double upper, Population_Simulation *paras)
 {
 //         struct parameters_int *para = (struct parameters_int *) paras;
 
     struct parameters_int Pparas;
 
-    Pparas.rate_max = paras.rate_max[p];
-    Pparas.gamma = paras.gamma[p];
-    Pparas.delta = paras.delta[p];
+    Pparas.rate_max = paras->rate_max;
+    Pparas.gamma = paras->gamma;
+    Pparas.delta = paras->delta;
 
     gsl_function p_integrate;
     p_integrate.function = &int_shannon_entropy; //this should be changed to general function (can't be, as this function here needs to have special variables -> integration)
@@ -380,18 +383,18 @@ double int_shannon_entropy(double nu, void *params)
 }
 
 
-double KL_divergence(int p, double lower, double upper, parameters paras, parameters paras_approx)
+double KL_divergence(int p, double lower, double upper, Population_Simulation *paras, Population_Simulation *paras_approx)
 {
 //         struct parameters_int *para = (struct parameters_int *) paras;
 
     struct parameters_int Pparas;
 
-    Pparas.rate_max = paras.rate_max[p];
-    Pparas.gamma = paras.gamma[p];
-    Pparas.delta = paras.delta[p];
+    Pparas.rate_max = paras->rate_max;
+    Pparas.gamma = paras->gamma;
+    Pparas.delta = paras->delta;
 
-    Pparas.gamma_approx = paras_approx.gamma[p];
-    Pparas.delta_approx = paras_approx.delta[p];
+    Pparas.gamma_approx = paras_approx->gamma;
+    Pparas.delta_approx = paras_approx->delta;
 
     gsl_function p_integrate;
     p_integrate.function = &int_KL; //this should be changed to general function (can't be, as this function here needs to have special variables -> integration)

@@ -10,8 +10,8 @@ class network:
             'tau_A': 0.005,
             'tau_N': 0.2,
             'tau_M': 0.01,
-            'alpha_0': 0.0,
-            'J_0': -1.,
+            #'alpha_0': 0.0,
+            'J_0': 1.,
 
             'eta': 0.9,
             'eps': 1/np.sqrt(2),
@@ -30,24 +30,43 @@ class network:
         J = self.J_0 * self.tau_M          # synaptic coupling strength
 
         self.J = np.array([
-            [self.eps * J, np.sqrt(1 - self.eps**2) * J],
-            [self.eta * self.eps * J, np.sqrt(1 - (self.eta*self.eps)**2) * J]
-        ])
+            [- np.sqrt(1 - self.eps**2), self.eps],
+            [- np.sqrt(1 - (self.eta*self.eps)**2), self.eta * self.eps]
+        ]) * J
+
+    def broadcast_q(self,q):
+
+        if np.isscalar(q):
+            return np.tile(q,(2,1))
+        else:
+            if q.shape[0] == 2:
+                return q
+            else:
+                return np.tile(q,(2,1))
 
 
     def I_squared_nu(self, nu, q, p):
+        nu = np.tile(nu,(2,1)) if np.isscalar(nu) else nu
+
         return - ( self.alpha(q,p)**2 + self.sigma_V(nu,p)**2 ) * np.log( (nu[p,...]/self.rate_max(nu,p))**2 * (1 + (self.alpha(q,p) / self.sigma_V(nu,p))**2) )
 
     def I_squared_q(self, nu, q, p):
+        q = self.broadcast_q(q)
+
         return -( self.alpha(q,p)**2 + 1./2 * self.sigma_V(nu, p)**2 ) * np.log( ( q[p,...]/self.rate_max(nu, p)**2 )**2 * (1 + 2*(self.alpha(q,p) / self.sigma_V(nu,p))**2) )
 
-#    def get_q(self,nu,q,I):
-#        return self.rate_max()**2 * self.sigma_V(nu) / np.sqrt(2*self.alpha(q)**2 + self.sigma_V(nu)**2) * np.exp( - I**2 / (2 * self.alpha(q)**2 + self.sigma_V(nu)**2) )
+    def get_q(self,nu,q,p,I=None):
+       I = I if I else self.I_squared_nu(nu,q,p)       
+       return self.rate_max(nu,p)**2 * self.sigma_V(nu,p) / np.sqrt(2*self.alpha(q,p)**2 + self.sigma_V(nu,p)**2) * np.exp( - I**2 / (2 * self.alpha(q,p)**2 + self.sigma_V(nu,p)**2) )
+
 
     def alpha(self, q, p=0):
+        q = self.broadcast_q(q)
         return np.sqrt(self.J[p,0]**2 * q[0,...] + self.J[p,1]**2 * q[1,...] + self.alpha_0**2)
 
     def sigma_V(self, nu, p=0):
+
+        nu = np.tile(nu,(2,1)) if np.isscalar(nu) else nu
 
         r_A = 1.-self.r
         r_N = self.r
@@ -58,6 +77,8 @@ class network:
         return np.sqrt(sigma_sq)
 
     def sigma_V_dot(self, nu, p=0):
+
+        nu = np.tile(nu,(2,1)) if np.isscalar(nu) else nu
 
         r_A = 1.-self.r
         r_N = self.r

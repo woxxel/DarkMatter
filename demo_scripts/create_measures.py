@@ -3,8 +3,7 @@ import matplotlib.pyplot as plt
 import math
 
 from darkMatter import darkMatter
-from general.plot_statistics import *
-from general.utils import set_plot_params
+from utils.plots import *
 
 def create_measures(L=1,S=[1,2],N=100,T=600.,num_animals=4,plot_ax3D=True,save=0,file_format='png',rerun=False,compile=False,**opts):
 

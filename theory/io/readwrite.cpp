@@ -3,6 +3,8 @@
 #include <netcdf.h>
 #include <typeinfo>
 
+#include <plog/Log.h>
+
 #include "readwrite.h"
 
 /* Handle errors by printing an error message and exiting with a
@@ -17,7 +19,7 @@ bool get_from_ncid(int ncid, const char *varName, void *varP)
     int status = nc_inq_varid(ncid, varName, &varid);
     if (status != NC_NOERR)
     {
-        cout << "Variable "<< varName << " not found!" << endl;
+        PLOG_INFO << "Variable "<< varName << " not found!";
         return false;
     }
     nc_get_var(ncid, varid, varP);
@@ -31,7 +33,7 @@ bool get_from_ncid(int ncid, const char *varName, size_t *varP)
     int status = nc_inq_dimid(ncid, varName, &varid);
     if (status != NC_NOERR)
     {
-        cout << "Dimension "<< varName << " not found!" << endl;
+        PLOG_INFO << "Dimension "<< varName << " not found!";
         return false;
     }
     nc_inq_dimlen(ncid, varid, varP);
@@ -375,12 +377,15 @@ void write_measures(string fileOut, Computation *comP, Measures *mesP)
 void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_approx)
 {
 	// spdlog::info("writing shark data to file '{}'...",fileOut);
+
+    // could change this to separate functions, which individually open file in write access and add data?!
+
 	// cout << "writing result data to file " << fileOut << "...";
 
-    int ncid, steps_dim, steps_dim1, Npop_dim;//, info_dim;
+    int ncid, steps_dim, steps_dim1, Npop_dim, trans_dim;//, info_dim;
     unsigned steps = simP->vars[0].steps;
     unsigned steps_1 = simP->vars[1].steps;
-    // cout << "steps info: " << steps_info << endl;
+    PLOG_DEBUG << "steps: " << steps << ", " << steps_1;
 
     nc_create(fileOut.c_str(), NC_CLOBBER, &ncid);
 
@@ -388,11 +393,12 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
     nc_def_dim(ncid, "Npop", modP->nPop, &Npop_dim);
     nc_def_dim(ncid, "steps_dim", steps, &steps_dim);
     nc_def_dim(ncid, "steps_dim1", steps_1, &steps_dim1);
-    // nc_def_dim(ncid, "info_dim", steps_info, &info_dim);
+    nc_def_dim(ncid, "trans_dim", modP->simulation.nTrans, &trans_dim);
 
-    // dimids[3] = info_dim;
     int dimids[3] = {Npop_dim, steps_dim1, steps_dim};
-    const int trans_dimids[3] = {Npop_dim, steps_dim1, (int) modP->simulation.nTrans};
+    const int trans_dimids[3] = {Npop_dim, steps_dim1, trans_dim};
+
+    // cout << "trans_dimids: " << modP->nPop << "," << steps_1 << "," << (int) modP->simulation.nTrans << endl;
 
     int para_dimID[7];
     write_prep_paras(ncid,&para_dimID[0],simP);
@@ -413,10 +419,10 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
         if (simP->mode_stats == 3)
             nc_def_var(ncid, "regions_approx", NC_DOUBLE, 3, &dimids[0], &regions_approx_id);
     }
-    nc_def_var(ncid, "inc_trans", NC_DOUBLE, 2, &trans_dimids[1], &inc_id);
-    nc_def_var(ncid, "imp_trans", NC_DOUBLE, 2, &trans_dimids[1], &imp_id);
-    nc_def_var(ncid, "DM_trans", NC_DOUBLE, 3, &trans_dimids[0], &DM_id);
-    nc_def_var(ncid, "np_trans", NC_DOUBLE, 3, &trans_dimids[0], &np_id);
+    nc_def_var(ncid, "inc_trans", NC_INT, 2, &trans_dimids[1], &inc_id);
+    nc_def_var(ncid, "imp_trans", NC_INT, 2, &trans_dimids[1], &imp_id);
+    nc_def_var(ncid, "DM_trans", NC_INT, 3, &trans_dimids[0], &DM_id);
+    nc_def_var(ncid, "np_trans", NC_INT, 3, &trans_dimids[0], &np_id);
 
     int alpha_raw_id, alpha_id, sigma_V_id;
     if (simP->mode_stats == 1)
@@ -436,10 +442,10 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
         nc_def_var(ncid, "entropy", NC_DOUBLE, 3, &dimids[0], &entropy_id);
         nc_def_var(ncid, "KL_entropy", NC_DOUBLE, 3, &dimids[0], &KL_entropy_id);
 
-        nc_def_var(ncid, "inc_trans_approx", NC_DOUBLE, 2, &trans_dimids[1], &inc_approx_id);
-        nc_def_var(ncid, "imp_trans_approx", NC_DOUBLE, 2, &trans_dimids[1], &imp_approx_id);
-        nc_def_var(ncid, "DM_trans_approx", NC_DOUBLE, 3, &trans_dimids[0], &DM_approx_id);
-        nc_def_var(ncid, "np_trans_approx", NC_DOUBLE, 3, &trans_dimids[0], &np_approx_id);
+        nc_def_var(ncid, "inc_trans_approx", NC_INT, 2, &trans_dimids[1], &inc_approx_id);
+        nc_def_var(ncid, "imp_trans_approx", NC_INT, 2, &trans_dimids[1], &imp_approx_id);
+        nc_def_var(ncid, "DM_trans_approx", NC_INT, 3, &trans_dimids[0], &DM_approx_id);
+        nc_def_var(ncid, "np_trans_approx", NC_INT, 3, &trans_dimids[0], &np_approx_id);
     }
 
     if (simP->mode_stats == 4)
@@ -463,7 +469,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
     //     nc_def_var(ncid, "p_approx", NC_DOUBLE, 4, &dimids[0], &p_approx_id);
     //     nc_def_var(ncid, "cdf_theory", NC_DOUBLE, 4, &dimids[0], &cdf_theory_id);
     // }
-
+    cout << "def done " << endl;
     nc_enddef(ncid);
 
     write_paras(ncid, para_dimID, simP);
@@ -471,21 +477,22 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
     // prepare trans-vectors for writing:
     Population_Results *popResP, *popResP_approx;
 
-    // cout << "transitions: " << modP->simulation.nTrans << endl;
-
     size_t start[] = {0,0,0}, count[] = {steps_1, steps_1, steps};
-
     // cout << "counts: " << count[0] << ", " << count[1] << ", " << count[2] << endl;
-
     count[0] = 1;
     for (unsigned s=0;s<steps_1;s++) {
         start[0] = s;
         start[1] = 0;
+
         count[1] = modP->results.trans_inc[s].size();
-        nc_put_vara(ncid, inc_id, start, count, &modP->results.trans_inc[s][0]);
-        count[1] = modP->results.trans_imp[s].size();
-        nc_put_vara(ncid, imp_id, start, count, &modP->results.trans_imp[s][0]);
+        if (count[1] > 0) {
+            nc_put_vara(ncid, inc_id, start, count, &modP->results.trans_inc[s][0]);
+            
+            count[1] = modP->results.trans_imp[s].size();
+            nc_put_vara(ncid, imp_id, start, count, &modP->results.trans_imp[s][0]);
+        }
     }
+
 
     if ((simP->mode_stats == 2) || (simP->mode_stats == 3)) {
         for (unsigned s=0;s<steps_1;s++) {
@@ -522,6 +529,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
                     start[1] = s;
                     count[2] = popResP_approx->trans_DM[s].size();
                     nc_put_vara(ncid, DM_approx_id, start, count, &popResP_approx->trans_DM[s][0]);
+                    count[2] = popResP_approx->trans_np[s].size();
                     nc_put_vara(ncid, np_approx_id, start, count, &popResP_approx->trans_np[s][0]);
                 }
             }
@@ -553,11 +561,13 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
                 }
                 if ((simP->mode_stats == 2) || (simP->mode_stats == 3))
                 {
+                    //cout << "writing: l=" << l << ", p=" << p << endl;
                     nc_put_vara(ncid, q_approx_id, start, count, &popResP_approx->q[rec][0]);
                     nc_put_vara(ncid, gamma_approx_id, start, count, &popResP_approx->gamma[rec][0]);
                     nc_put_vara(ncid, chi_approx_id, start, count, &popResP_approx->chi[rec][0]);
                     nc_put_vara(ncid, entropy_id, start, count, &popResP->entropy[rec][0]);
                     nc_put_vara(ncid, KL_entropy_id, start, count, &popResP->KL_entropy[rec][0]);
+                    //cout << "done!" << endl;
                 }
                 if (simP->mode_stats == 4)
                 {
@@ -587,7 +597,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
     }
 
     nc_close(ncid);
-    // cout << "done!" << endl;
+    PLOG_DEBUG << "writing results done!";
 }
 
 void write_prep_paras(int ncid, int *dimID, Simulation *simP)

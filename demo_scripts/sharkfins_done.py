@@ -1,11 +1,15 @@
+'''
+    Hier wird eigentlich nur noch der plotting part zur 
+    generierung von 2d-linien gebraucht und muss ins notebook übertragen werden
+
+'''
 import numpy as np
 import matplotlib.pyplot as plt
 import math
 
 from darkMatter import darkMatter
 
-from general.plot_statistics import *
-from general.utils import set_plot_params
+from utils.plots import *
 
 # def sharkfins(steps=10,rateWnt=None,alpha_0=None,tau_G=None,n=None,eps=None,eta=None,Npop=1,drive=0,tau_M=10.,tau_A=5.,kappa=1,mode_calc="exact",mode_stats=0,plot_ax3D=False,save=0,file_format='png',compile=True,rerun=False):
 def sharkfins(steps=10,Npop=1,plot_ax3D=True,save=0,file_format='png',rerun=False,compile=False):
@@ -17,28 +21,28 @@ def sharkfins(steps=10,Npop=1,plot_ax3D=True,save=0,file_format='png',rerun=Fals
 ####    2: compare exact vs. approx (single)
 ####    3: KL-phase-space (costly!)
 
-    steps = steps + 1       # correct for removal of first item
+    # steps = steps + 1       # correct for removal of first item
 
     ## general plot setup
-    set_plot_params()
+    # set_plot_params()
 
-    inpara = {}
+    # inpara = {}
 
     #### alpha vs nu (sharkfins)
-    para_order = ['rateWnt','alpha_0','tau_G','n','eps','eta']
-    tau_M = 0.01
-    inpara['tau_G'] = [[0.005],[0.01],[0.02],[0.04],[0.1]]
-    inpara['alpha_0'] = [[0,0.16],[0,0.12],[0,0.08],[0,0.05],[0,0.035]]
-    inpara['rateWnt'] = [[0,rate[0]] for rate in (1./(2.*math.pi*np.sqrt(tau_M*np.array(inpara['tau_G']))))]#[[0,20],[0,15],[0,10],[0,7],[0,6]]
+    # para_order = ['rateWnt','alpha_0','tau_G','n','eps','eta']
+    # tau_M = 0.01
+    # inpara['tau_G'] = [[0.005],[0.01],[0.02],[0.04],[0.1]]
+    # inpara['alpha_0'] = [[0,0.16],[0,0.12],[0,0.08],[0,0.05],[0,0.035]]
+    # inpara['rateWnt'] = [[0,rate[0]] for rate in (1./(2.*math.pi*np.sqrt(tau_M*np.array(inpara['tau_G']))))]#[[0,20],[0,15],[0,10],[0,7],[0,6]]
 
-    if Npop==1:
-        inpara['eta'] = [[0.],[0.],[0.],[0.],[0.]]
-        inpara['eps'] = [[0.],[0.],[0.],[0.],[0.]]
-        inpara['n'] = [[0],[0],[0],[0],[0]]
-    else:
-        inpara['eta'] = [[0.],[0.2],[0.5],[0.8],[0.9]]
-        inpara['eps'] = [[0.],[0.1],[0.3],[0.5],[math.sqrt(0.5)]]
-        inpara['n'] = [[0],[0],[0],[0],[0]]
+    # if Npop==1:
+    #     inpara['eta'] = [[0.],[0.],[0.],[0.],[0.]]
+    #     inpara['eps'] = [[0.],[0.],[0.],[0.],[0.]]
+    #     inpara['n'] = [[0],[0],[0],[0],[0]]
+    # else:
+    #     inpara['eta'] = [[0.],[0.2],[0.5],[0.8],[0.9]]
+    #     inpara['eps'] = [[0.],[0.1],[0.3],[0.5],[math.sqrt(0.5)]]
+    #     inpara['n'] = [[0],[0],[0],[0],[0]]
 
 
     #### tau vs nu
@@ -56,52 +60,52 @@ def sharkfins(steps=10,Npop=1,plot_ax3D=True,save=0,file_format='png',rerun=Fals
     # inpara['rateWnt'] = [[1],[2],[5]]
 
     ## brief sanity checks on provided parameters
-    sim_steps = 0
-    for key in para_order:
-        assert type(inpara[key]) == list, 'Please specify all parameters as lists of lists!'
-        assert type(inpara[key][0]) == list, 'Please specify all parameters as lists of lists!'
-        sim_steps = max(sim_steps,len(inpara[key]))
+    # sim_steps = 0
+    # for key in para_order:
+    #     assert type(inpara[key]) == list, 'Please specify all parameters as lists of lists!'
+    #     assert type(inpara[key][0]) == list, 'Please specify all parameters as lists of lists!'
+    #     sim_steps = max(sim_steps,len(inpara[key]))
 
-    for key in ['rateWnt','n','alpha_0','tau_G','eps','eta']:
-        if len(inpara[key]) == 1:
-            inpara[key]*=sim_steps
-        else:
-            assert sim_steps == len(inpara[key]), 'Make sure all parameters are specified as having the same length (%s has length %d / %d)' % (key,len(inpara[key]),sim_steps)
+    # for key in ['rateWnt','n','alpha_0','tau_G','eps','eta']:
+    #     if len(inpara[key]) == 1:
+    #         inpara[key]*=sim_steps
+    #     else:
+    #         assert sim_steps == len(inpara[key]), 'Make sure all parameters are specified as having the same length (%s has length %d / %d)' % (key,len(inpara[key]),sim_steps)
 
 
-    levs = range(20)
-    plt_para = {
-        'multi': sim_steps > 1,
-        'ax_label': [],
-        'const_label': []
-    }
+    # levs = range(20)
+    # plt_para = {
+    #     'multi': sim_steps > 1,
+    #     'ax_label': [],
+    #     'const_label': []
+    # }
 
-    if plt_para['multi']:
-        fig, ax = plt.subplots(sim_steps//2+1,
-                    2,
-                    figsize=(7.5,1+2.3*(sim_steps//2+1)))
-        big_ax = fig.add_axes([0.1,0.1,0.8,0.85])
-        big_ax.set_facecolor('none')
-        big_ax.tick_params(labelcolor='none',top=False,bottom=False,left=False,right=False)
-        big_ax.spines['top'].set_visible(False)
-        big_ax.spines['right'].set_visible(False)
-        big_ax.spines['bottom'].set_visible(False)
-        big_ax.spines['left'].set_visible(False)
-    else:
-        fig = plt.figure(figsize=(6,5) if Npop==1 else (6,10))
+    # if plt_para['multi']:
+    #     fig, ax = plt.subplots(sim_steps//2+1,
+    #                 2,
+    #                 figsize=(7.5,1+2.3*(sim_steps//2+1)))
+    #     big_ax = fig.add_axes([0.1,0.1,0.8,0.85])
+    #     big_ax.set_facecolor('none')
+    #     big_ax.tick_params(labelcolor='none',top=False,bottom=False,left=False,right=False)
+    #     big_ax.spines['top'].set_visible(False)
+    #     big_ax.spines['right'].set_visible(False)
+    #     big_ax.spines['bottom'].set_visible(False)
+    #     big_ax.spines['left'].set_visible(False)
+    # else:
+    #     fig = plt.figure(figsize=(6,5) if Npop==1 else (6,10))
 
 
     # return
     results = []
     for i in range(sim_steps):
         # print(i)
-        options = {}
-        for key in para_order:
-            options[key] = inpara[key][i]
+        # options = {}
+        # for key in para_order:
+        #     options[key] = inpara[key][i]
 
-        results.append(darkMatter(steps=steps,options=options,rerun=rerun,compile=compile))
+        # results.append(darkMatter(steps=steps,options=options,rerun=rerun,compile=compile))
 
-        set_labels(results[i],para_order,plt_para)
+        # set_labels(results[i],para_order,plt_para)
 
         for p in range(Npop):
             if plt_para['multi']:
@@ -112,19 +116,19 @@ def sharkfins(steps=10,Npop=1,plot_ax3D=True,save=0,file_format='png',rerun=Fals
                 if (Npop == 2):
                     ax_now = plt.axes([0.12,0.55-p*0.45,0.7,0.4])
 
-            for p in range(Npop):
-                plot_fins(ax_now,results[i][para_order[0]],results[i][para_order[1]],results[i]['gamma'][p,...],results[i]['chi'][p,...],results[i]['regions'][p,...],plt_para)
-                set_axes(ax_now,results[i],para_order[0],para_order[1])
+        for p in range(Npop):
+            # plot_fins(ax_now,results[i][para_order[0]],results[i][para_order[1]],results[i]['gamma'][p,...],results[i]['chi'][p,...],results[i]['regions'][p,...],plt_para)
+            set_axes(ax_now,results[i],para_order[0],para_order[1])
 
-                if (not plt_para['multi']):
-                    ax_now.set_title('%s' % (plt_para['const_label'][0]),fontsize=12)
+            if (not plt_para['multi']):
+                ax_now.set_title('%s' % (plt_para['const_label'][0]),fontsize=12)
 
-    if plt_para['multi']:
-        big_ax.set_xlabel(plt_para['ax_label'][1],fontsize=12)
-        big_ax.set_ylabel(plt_para['ax_label'][0],fontsize=12)
-    else:
-        ax_now.set_xlabel(plt_para['ax_label'][1],fontsize=12)
-        ax_now.set_ylabel(plt_para['ax_label'][0],fontsize=12)
+    # if plt_para['multi']:
+    #     big_ax.set_xlabel(plt_para['ax_label'][1],fontsize=12)
+    #     big_ax.set_ylabel(plt_para['ax_label'][0],fontsize=12)
+    # else:
+    #     ax_now.set_xlabel(plt_para['ax_label'][1],fontsize=12)
+    #     ax_now.set_ylabel(plt_para['ax_label'][0],fontsize=12)
 
     # if (steps > 1):
         # if (mode_stats == 0):

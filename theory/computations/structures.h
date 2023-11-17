@@ -12,7 +12,7 @@ class Model;
 
 struct Model_Results
 {
-    vector< vector<double> > trans_inc, trans_imp;
+    vector< vector<int> > trans_inc, trans_imp;
     // vector< vector<double> > trans_inc, trans_imp;
 
     void initiate(unsigned sim_steps_1, unsigned sim_steps_2, unsigned sim_mode);
@@ -41,7 +41,7 @@ struct Population_Results
     // vector<int> p_hist;
 
 
-    vector< vector<double> > trans_DM, trans_np;
+    vector< vector<int> > trans_DM, trans_np;
     // vector< vector<double> > trans_DM_approx, trans_np_approx;
 
     // double d_nu, max_prob, factor;
@@ -54,14 +54,13 @@ struct Population_Results
 
 struct Population_Simulation
 {
+    bool in_DM, in_np;
+    int trans_DM, trans_np;
     bool trans_DM_found = false, trans_np_found = false;
-
-    double trans_DM, trans_np;
 
     double rate, q;
     double sigma_V, alpha, alpha_raw;
     double I_balance, gamma, delta, rate_max, chi;
-    bool in_DM, in_np;
     double regions;
     double infoContent, KL, entropy;
     double max_prob;
@@ -76,7 +75,7 @@ struct Population_Simulation
 struct Model_Simulation
 {
     bool in_inc, in_imp;
-    double trans_inc, trans_imp;
+    int trans_inc, trans_imp;
     bool trans_inc_found = false, trans_imp_found = false;
     size_t nTrans = 0;
 };
@@ -231,6 +230,7 @@ class Model
         vector<double> infoContent;
 
         // void add_PSP(int p, double tau_I, double tau_norm, double tau_n);
+        void set_parameters();
         void set_rates();
         void set_weights();
         void set_mixture();
@@ -242,10 +242,10 @@ class Model
         bool q_border1(Population_Simulation *popSimP);
         bool q_border2(Population_Simulation *popSimP);
 
-        bool DM_border(Population_Simulation *popSimP);
-        bool no_peak(Population_Simulation *popSimP);
-        bool inconsistent(Model_Simulation *mSimP);
-        bool implausible(Model_Simulation *mSimP);
+        bool is_darkMatter(Population_Simulation *popSimP);
+        bool is_noPeak(Population_Simulation *popSimP);
+        bool is_inconsistent(Model_Simulation *mSimP);
+        bool is_implausible(Model_Simulation *mSimP);
 
         void integrate_information();
 

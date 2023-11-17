@@ -6,7 +6,7 @@ from sbi import analysis as analysis
 from sbi.inference.base import infer
 
 from empirical.read_data import *
-from darkMatter import *
+from darkMatter.darkMatter import *
 
 # create class with simulator method for sbi
 class sbi_darkmatter:
