@@ -15,5 +15,7 @@ theory/generate_measures
 
 notebooks/.ipynb_checkpoints/*
 notebooks/logs*
+.ipynb_checkpoints
+sbi-logs
 
 Pipfile.lock
