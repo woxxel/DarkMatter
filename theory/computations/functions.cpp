@@ -28,6 +28,7 @@ void Population_Results::initiate(unsigned sim_steps_1, unsigned sim_steps_2, un
     if ((sim_mode == 0) || (sim_mode == 3))
     {
         regions.resize(sim_steps_2,vector<double>(sim_steps_1));
+        implausible.resize(sim_steps_2,vector<double>(sim_steps_1));
         // if (sim_mode == 3)
             // regions_approx.resize(sim_steps_2,vector<double>(sim_steps_1));
     }
@@ -37,6 +38,7 @@ void Population_Results::initiate(unsigned sim_steps_1, unsigned sim_steps_2, un
     {
         // cout << "start q size : " << resP->q.size() << endl;
         regions.resize(sim_steps_2,vector<double>(sim_steps_1));
+        implausible.resize(sim_steps_2,vector<double>(sim_steps_1));
         alpha_raw.resize(sim_steps_2,vector<double>(sim_steps_1));
         alpha.resize(sim_steps_2,vector<double>(sim_steps_1));
         sigma_V.resize(sim_steps_2,vector<double>(sim_steps_1));

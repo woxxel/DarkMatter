@@ -704,8 +704,7 @@ bool Model::is_implausible(Model_Simulation *mSimP)
     //         }
             gsl_integration_workspace_free (ww);
 
-    //         cout << "result of integrating distribution over [" << lower << "," << upper << "]: " << res << endl;
-            // if (res > 0.1)
+            // cout << "result of integrating distribution over [" << lower << "," << upper << "]: " << res << endl;
             mSimP->in_imp = res > 0.1 || mSimP->in_imp;
             // return true;
         }
@@ -799,12 +798,17 @@ void Model::find_transitions(Simulation *simP)
 
         for (unsigned l = 0; l < L; l++) {
             for (unsigned p = 0; p < layer[l].nPop; p++)
-                layer[l].population[p].simulation.regions = 1;
+                layer[l].population[p].simulation.implausible = 1;
         }
-	}
+	} else if (simP->vars[0].iter==0) {
+        for (unsigned l = 0; l < L; l++) {
+            for (unsigned p = 0; p < layer[l].nPop; p++)
+                layer[l].population[p].simulation.implausible = 0;
+        }
+    }
 
 
-    if (!mSimP->in_inc) { // !mSimP->in_imp && 
+    if (!mSimP->in_inc) { // !mSimP->in_imp &&
         for (unsigned l = 0; l < L; l++) {
             for (unsigned p = 0; p < layer[l].nPop; p++) {
                 popSimP = &layer[l].population[p].simulation;

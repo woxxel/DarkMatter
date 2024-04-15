@@ -5,7 +5,7 @@ from numpy.ma import masked_array
 import matplotlib.colors as mcolors
 import matplotlib.ticker as ticker
 
-from DM_theory.network import network
+from DM_theory.network import network, distribution
 
 def set_plot_params():
     # plot parameters
@@ -45,6 +45,7 @@ def plot_q(ax,res,plt_para,bound='imp',idxs=None,approx=False,order=1):
         if (steps1 > 1):
             ax.plot(res[x_key],res['q_approx'][0,2,:],'r--')
 
+    ymax = 200
     plt.setp(ax,
         xlim=[0,plt_para['x']['lim']],
         ylim=[0,ymax*1.1],
@@ -73,10 +74,12 @@ def plot_q_zoom(ax,res,plt_para,bound='imp',idxs=None,approx=False,order=1):
         col = i/float(len(idxs)-1)
         ax.plot(res[x_key],res['q'][0,a,:],color=(col,0,0))
 
+
     if approx:
         ## plotting approximations
-        # ax.plot(res[x_key],res[x_key]**2,'k--',linewidth=0.5)
-        # ax.plot(res[x_key][:int(0.012*steps)],res[x_key][:int(0.012*steps)]*res['rateWnt'][-1]/np.sqrt(2),'r--',linewidth=0.5)
+        ax.plot(res[x_key],res[x_key]**2,'k--',linewidth=0.5)
+        ax.plot(res[x_key][:int(0.012*steps)],res['rateWnt'][:int(0.012*steps)]*res['rate_max'][-1]/np.sqrt(2),'r--',linewidth=0.5)
+        
         ax.plot(res[x_key],res['q_approx'][0,0,:],'k--')
         if (len(res[x_key]) > 1):
             ax.plot(res[x_key],res['q_approx'][0,2,:],'r--')
@@ -96,7 +99,7 @@ def plot_currents(ax,res,plt_para,bound='imp',idxs=None,approx=False,plot_option
     
     x_key = plt_para['x']['key']
     Npop,steps1,steps = res['q'].shape
-    print(steps1,steps)
+    # print(steps1,steps)
             
     ## plot constant lines
     ax.axhline(0,c='k',ls='--',lw=0.5)
@@ -111,7 +114,7 @@ def plot_currents(ax,res,plt_para,bound='imp',idxs=None,approx=False,plot_option
         if trans_idx:
             val = res[x_key][trans_idx]
             ax.axvline(val,color='k',ls=':')
-            # ax.text(val+0.5,0.2,r'$\displaystyle \nu_{DM}$',fontsize=10)
+            ax.text(val+0.5,0.2,r'$\displaystyle \bar{\nu}_{DM}$',fontsize=10)
         
         ## plotting temporal fluctuations
         trans_idx = get_trans_idx(res,bound,0,0,0)
@@ -123,11 +126,11 @@ def plot_currents(ax,res,plt_para,bound='imp',idxs=None,approx=False,plot_option
             col = i/float(len(idxs)-1)
             trans_idx = get_trans_idx(res,bound,i,0,0)
             
-            ax.plot(res[x_key][:trans_idx],res['alpha'][0,i,:trans_idx],color=(col,0,0),ls='-',label=r'$\displaystyle \alpha_k = \sqrt{\alpha_{I_k}^2 + \alpha_0^2}$')
+            ax.plot(res[x_key][:trans_idx],res['alpha'][0,i,:trans_idx],color=(col,0,0),ls='-')#,label=r'$\displaystyle \alpha_k = \sqrt{\alpha_{I_k}^2 + \alpha_0^2}$')
             ax.plot(res[x_key][trans_idx:],res['alpha'][0,i,trans_idx:],color=(col,0,0),ls=':')
 
-        ax.text(res[x_key][int(steps/2)],res['sigma_V'][0,0,int(steps/2)]*1.1,r'$\displaystyle \sigma_{V_k}$',fontsize=10)
-        ax.text(res[x_key][int(steps*2/3)],res['alpha'][0,0,int(steps*2/3)]*0.7,r'$\displaystyle \alpha_k = \sqrt{\alpha_{I_k}^2 + \alpha_0^2}$',fontsize=10)
+        ax.text(res[x_key][int(steps*1/3)],res['sigma_V'][0,0,int(steps*1/3)]+0.05,r'$\displaystyle \sigma_{V_k}$',fontsize=10)
+        ax.text(res[x_key][int(steps/2)],res['alpha'][0,0,int(steps/2)]-0.05,r'$\displaystyle \alpha_k = \sqrt{\alpha_{I_k}^2 + \alpha_0^2}$',fontsize=10)
 
         plt.setp(ax, ylim=[-0.02,0.15])
         
@@ -141,7 +144,7 @@ def plot_currents(ax,res,plt_para,bound='imp',idxs=None,approx=False,plot_option
             ax.plot(res[x_key],-res['I_balance'][0,i,:],':',color=[0.7,0,0],lw=0.8)
             ax.plot(res[x_key][:trans_idx],-res['I_balance'][0,i,:trans_idx],'-',color=(col,0,0),label=r'$\displaystyle I_{balance}$',lw=0.8)
 
-        ax.text(res[x_key][int(steps/2)],-res['I_balance'][0,0,int(steps/2)]*0.9,r'$\displaystyle \bar{I}_0-\Psi_0$',fontsize=10)
+        ax.text(res[x_key][int(steps*1/3)],-res['I_balance'][0,0,int(steps*1/3)]+0.05,r'$\displaystyle \bar{I}_0-\Psi_0$',fontsize=10)
 
         plt.setp(ax,
             ylim=[-0.3,0.02]
@@ -149,7 +152,7 @@ def plot_currents(ax,res,plt_para,bound='imp',idxs=None,approx=False,plot_option
 
     if 'var' in plot_options and 'I' in plot_options:
         plt.setp(ax,
-            ylim=[-0.3,0.3]
+            ylim=[-0.3,0.2]
         )
 
     plt.setp(ax,
@@ -173,9 +176,9 @@ def plot_gamma(ax,res,plt_para,bound='imp',idxs=None,approx=False,order=1):
         idxs = range(steps1)
 
     for i,a in enumerate(idxs):
-        col = i/float(len(idxs)-1)
         # if a!=1:
-        for p in range(Npop):
+        for p in range(Npop):   
+            col = i/float(len(idxs)-1) if len(idxs)>1 else (Npop-p-1)/(Npop-1)
             trans_idx = get_trans_idx(res,bound,a,0,0)
             ax.plot(res[x_key],res['gamma'][p,a,:]**2,color=(col,0,0),ls=':')
             ax.plot(res[x_key][:trans_idx],res['gamma'][p,a,:trans_idx]**2,color=(col,0,0))
@@ -203,19 +206,20 @@ def plot_chi(ax,res,plt_para,bound='imp',idxs=None,approx=False,order=1):
         idxs = range(steps1)
 
     for i,a in enumerate(idxs):
-        col = i/float(len(idxs)-1)
-        p=0
-        # for p in range(Npop):
-        trans_idx = get_trans_idx(res,bound,a,0,p)
-        ax.plot(res[x_key],res['chi'][p,a,:],color=(col,0,0),ls=':')
-        ax.plot(res[x_key][:trans_idx],res['chi'][p,a,:trans_idx],color=(col,0,0))
+        # p=0
+        for p in range(Npop):
+            col = i/float(len(idxs)-1) if len(idxs)>1 else (Npop-p-1)/(Npop-1)
 
-        if approx:
-            ax.plot(res[x_key],res['chi_approx'][p,a,:]**2,color=(col,0,0),ls='--')
+            trans_idx = get_trans_idx(res,bound,a,0,p)
+            ax.plot(res[x_key],res['chi'][p,a,:],color=(col,0,0),ls=':')
+            ax.plot(res[x_key][:trans_idx],res['chi'][p,a,:trans_idx],color=(col,0,0))
+
+            if approx:
+                ax.plot(res[x_key],res['chi_approx'][p,a,:]**2,color=(col,0,0),ls='--')
 
     plt.setp(ax,
         xlim=[0,plt_para['x']['lim']],
-        ylim=[0,15],
+        ylim=[0,10],
         xlabel=r'$\displaystyle \bar{\nu}\,$[Hz]',
         ylabel=r'$\displaystyle \chi$'
     )
@@ -228,20 +232,27 @@ def plot_regions(ax,res,plt_para,order=1):
 
     # Npop,steps1,steps = res['q'].shape
 
+    # mask_DM = get_trans_idx(res,'DM',0,0,0)
+    # print(mask_DM)
     mask_DM = ~res['DM_trans'][0,:,0].mask
+    # print(mask_DM)
     mask_no_peak = ~res['np_trans'][0,:,0].mask
     mask_inc = ~res['inc_trans'][:,0].mask if np.any(res['inc_trans'][:,0].mask) else np.ones_like(res['inc_trans'][:,0],'bool')
+    mask_imp = ~res['imp_trans'][:,0].mask if np.any(res['imp_trans'][:,0].mask) else np.ones_like(res['imp_trans'][:,0],'bool')
 
     x_arr = res[plt_para['x']['key']]
+
+    # print(x_arr[res['DM_trans'][0,mask_DM,0]])
+    # print(res['alpha_0'][mask_DM])
 
     ax.plot(x_arr[res['DM_trans'][0,mask_DM,0]],res['alpha_0'][mask_DM],'r-',label=r'$\displaystyle \bar{\nu}_{DM}$')
     ax.plot(x_arr[res['np_trans'][0,mask_no_peak,0]],res['alpha_0'][mask_no_peak],'k--',label=r'$\displaystyle \bar{\nu}_{no\,peak}$')
     ax.plot(x_arr[res['inc_trans'][mask_inc,0]],res['alpha_0'][mask_inc],'k',label=r'$\displaystyle \bar{\nu}_{inc}$')
-    #ax.plot(x_arr[res['imp_trans'][mask_imp,0]],res['alpha_0'][mask_imp],'k:',label=r'$\displaystyle \bar{\nu}_{imp}$')
+    ax.plot(x_arr[res['imp_trans'][mask_imp,0]],res['alpha_0'][mask_imp],'k:',label=r'$\displaystyle \bar{\nu}_{imp}$')
 
     plt.setp(ax,
         xlim=[0,plt_para['x']['lim']],
-        ylim=[0,0.12],
+        ylim=[0,0.2],
         xlabel=r'$\displaystyle \bar{\nu}\,$[Hz]',
         ylabel=r'$\displaystyle \alpha_0$'
     )
@@ -253,29 +264,11 @@ def plot_regions(ax,res,plt_para,order=1):
     if order:
         set_title(ax,order=order,title='boundaries')
 
-    # if x_key in ['eps','eta','n','tau_G']:
-    #     #print "eps: ", res['eps'][0]
-    #     #print "eta: ", res['eta'][0][0]
-    #     I_I_per_nu = np.sqrt(1-res['eps'][0]**2) - res['eps'][0]
-    #
-    #     eta = [0.9,0.6,0.2]
-    #     for i in range(len(eta)):
-    #         I_E_per_nu = np.sqrt(1-(eta[i]*res['eps'][0])**2) - eta[i]*res['eps'][0]
-    #         col = float(i)/len(eta)
-    #         ax.plot(res[x_key][0],I_E_per_nu,color=(col,col,col),label=r'$\displaystyle \eta = %3.1g$'%eta[i])
-    #
-    #     ax.plot(res[x_key][0],I_I_per_nu,'r')
-    #     ax.legend(prop={'size':10},loc='lower left')
-    #     ax.set_ylabel(r'$\displaystyle I^{ext} / \bar{\nu}$')
-    #
-    #     plt.setp(ax,xticks=np.linspace(0,0.8,5),yticks=np.linspace(0,1,3),xlim=[0,res[x_key][0][-1]])
-    #
-    #     ax.set_title(r'f)',position=(title_x,1.05))
 
-
-def plot_fins(ax,x_arr,y_arr,gamma,chi,regions,plt_para):
+def plot_fins(ax,x_arr,y_arr,gamma,chi,regions,implausible=False):
 
     levs = 20
+    plt_para = {}
     plt_para['cb_plotted'] = False
     plt_para['bnw'] = mcolors.LinearSegmentedColormap.from_list(name='black_n_white',colors=[(0,(0,0,0)),(1,(1,1,1))],N=levs-1)
     plt_para['heat'] = mcolors.LinearSegmentedColormap.from_list(name='heat',colors=[(0,'y'),(0.5,'r'),(1,(0.1,0.1,0.5))],N=levs-1)
@@ -283,7 +276,10 @@ def plot_fins(ax,x_arr,y_arr,gamma,chi,regions,plt_para):
 
     mask_inconsistent = (regions == 3)
     mask_no_peak = (regions == 2)
-    mask_implausible = (regions == 1)
+    if np.any(implausible==1):
+        mask_implausible = (implausible == 1)
+    else:
+        mask_implausible = np.zeros_like(regions,'bool')
 
     mask_dark_matter = (gamma**2 < 1)
 
@@ -306,7 +302,8 @@ def plot_fins(ax,x_arr,y_arr,gamma,chi,regions,plt_para):
     # if not plt_para['multi']:
     #
     #     #ax[i/2,i%2].pcolormesh(simulation[para_order[ax_list[1]]],simulation[para_order[ax_list[0]]],plot_no_peak,cmap=bnw,vmin=-1,vmax=2)
-    #     #ax[i/2,i%2].pcolormesh(simulation[para_order[ax_list[1]]],simulation[para_order[ax_list[0]]],plot_inconsistent,cmap=bnw,vmin=-1,vmax=2)
+        # ax[i/2,i%2].pcolormesh(simulation[para_order[ax_list[1]]],simulation[para_order[ax_list[0]]],plot_inconsistent,cmap=bnw,vmin=-1,vmax=2)
+        # ax.pcolormesh(x_arr,y_arr,plot_inconsistent,cmap=plt_para['bnw'],vmin=-1,vmax=2)
     #
     #     mask_DM = ~np.isnan(results['DM_trans'])
     #     mask_no_peak = ~np.isnan(results['no_peak_trans'])
@@ -319,38 +316,142 @@ def plot_fins(ax,x_arr,y_arr,gamma,chi,regions,plt_para):
     #
     #     # ax.set_xlabel(ax_labels[1],fontsize=12)
     #     # ax.set_ylabel(ax_labels[0],fontsize=12)
-
+    x_arr[0] = 0
+    y_arr[0] = 0
     ax.set_xlim([x_arr[0],x_arr[-1]])
     ax.set_ylim([y_arr[0],y_arr[-1]])
     return pchi,pgamma
 
-def plot_colorbar(pchi,pgamma,plt_para,x=[0.85,0.88],y=[0.1,0.95]):
 
-    if not plt_para['cb_plotted']:
-        plt_para['cb_plotted'] ^= True;
+def plot_3D(ax,results,para_order,sim_vals):
+    
+    ## initialize parameters and arrays
+    px,py,pz = para_order
+    
+    nP,steps,_ = results[0]['gamma'].shape
+    sim_steps = len(results)
+    
+    data_3D_inc = np.full([sim_steps,steps,3],np.nan)
+    data_3D_DM = np.full([sim_steps,steps,3],np.nan)
+    
+    cross_point = np.zeros((sim_steps,3))
 
-        xL = x[1]-x[0]
-        yL = y[1]-y[0]
+    p=0
+    
+    ## iterate through each of the results
+    for i,res in enumerate(results):
+        
+        ## define dark matter transition lines
+        DM_mask = ~res['DM_trans'][p,:,0].mask
+        # data_mask = ~res['DM_trans'][p,:,0].mask
+        N_DM_entries = DM_mask.sum()
+        DM_idxes = res['DM_trans'][p,DM_mask,0]
+        other_idxes = np.where(DM_mask)[0]
+        
+        data_3D_DM[i,:N_DM_entries,0] = res[px][DM_idxes]
+        data_3D_DM[i,:N_DM_entries,1] = sim_vals[i]
+        data_3D_DM[i,:N_DM_entries,2] = res[pz][other_idxes]
+        # data_3D_DM[i,:N_DM_entries,1] = res[py][other_idxes] if py in order else sim_vals[i]
+        # data_3D_DM[i,:N_DM_entries,2] = res[pz][other_idxes] if pz in order else sim_vals[i]
 
-        axcb1 = plt.axes([x[0],y[0]+yL*0.35,xL,yL*0.65])
-        axcb2 = plt.axes([x[0],y[0],xL,yL*0.25])
+        ## define inconsistency transition lines
+        inc_mask = ~res['inc_trans'][:,0].mask if np.any(res['inc_trans'].mask) else np.ones((steps),'bool')
+        N_inc_entries = inc_mask.sum()
+        inc_idxes = res['inc_trans'][inc_mask,0]
+        other_idxes = np.where(inc_mask)[0]
+        
+        data_3D_inc[i,:N_inc_entries,0] = res[px][inc_idxes]
+        data_3D_inc[i,:N_inc_entries,1] = sim_vals[i]
+        data_3D_inc[i,:N_inc_entries,2] = res[pz][other_idxes]
+        # data_3D_inc[i,:N_inc_entries,1] = res[py][other_idxes] if py in order else sim_vals[i]
+        # data_3D_inc[i,:N_inc_entries,2] = res[pz][other_idxes] if pz in order else sim_vals[i]
+        
+        
+        ## remove data above DM transition to maintain clean plots
+        cross_point[i,:] = data_3D_DM[i,:N_DM_entries,:][-1,:]
+        # data_3D_inc[i,data_3D_inc[i,:,2]>cross_point[i,2],:] = np.nan
+        
+        ## plot transition lines of DM and inc (only plot every 2nd data)
+        if i%2==0 and sim_steps>5:
+            ax.plot(data_3D_DM[i,:,0],data_3D_DM[i,:,1],data_3D_DM[i,:,2],'k-',lw=1)
+            ax.plot(data_3D_inc[i,:,0],data_3D_inc[i,:,1],data_3D_inc[i,:,2],'k-',lw=1)
+        else:
+            ax.plot(data_3D_DM[i,:,0],data_3D_DM[i,:,1],data_3D_DM[i,:,2],'k:',lw=0.5)
+            ax.plot(data_3D_inc[i,:,0],data_3D_inc[i,:,1],data_3D_inc[i,:,2],'k:',lw=0.5)
+    
+    ## plot connecting lines between different slices
+    ax.plot(data_3D_DM[:,0,0],data_3D_DM[:,0,1],data_3D_DM[:,0,2],'k-',lw=1)
+    ax.plot(data_3D_inc[:,0,0],data_3D_inc[:,0,1],data_3D_inc[:,0,2],'k-',lw=1)
+    ax.plot(cross_point[:,0],cross_point[:,1],cross_point[:,2],'k-')
+    
+    ## plot surface area of DM and inc transitions
+    for i in range(sim_steps-1):
+        
+        ## DM
+        X = np.concatenate((data_3D_DM[i,:,0],np.flipud(data_3D_DM[i+1,:,0])))
+        mask = ~np.isnan(X)
+        if np.any(mask):
+            Y = np.concatenate((data_3D_DM[i,:,1],np.flipud(data_3D_DM[i+1,:,1])))
+            Z = np.concatenate((data_3D_DM[i,:,2],np.flipud(data_3D_DM[i+1,:,2])))
+            X = np.pad(X[mask],1,mode='wrap')
+            Y = np.pad(Y[mask],1,mode='wrap')
+            Z = np.pad(Z[mask],1,mode='wrap')
+            ax.plot_trisurf(X,Y,Z,color='red',alpha=0.3)
+        
+        ## inc
+        X = np.concatenate((data_3D_inc[i,:,0],np.flipud(data_3D_inc[i+1,:,0])))
+        mask = ~np.isnan(X)
+        if np.any(mask):
+            Y = np.concatenate((data_3D_inc[i,:,1],np.flipud(data_3D_inc[i+1,:,1])))
+            Z = np.concatenate((data_3D_inc[i,:,2],np.flipud(data_3D_inc[i+1,:,2])))
+            X = np.pad(X[mask],1,mode='wrap')
+            Y = np.pad(Y[mask],1,mode='wrap')
+            Z = np.pad(Z[mask],1,mode='wrap')
+            # Z = np.pad(Z[mask],1,mode='constant',constant_values=0)
+            ax.plot_trisurf(X,Y,Z,color='grey',alpha=0.3)
+    
+    max_x_DM, max_y_DM, max_z_DM = np.nanmax(data_3D_DM,axis=(0,1))
+    max_x_inc, max_y_inc, max_z_inc = np.nanmax(data_3D_inc,axis=(0,1))
+    
+    max_x = max(max_x_DM,max_x_inc)
+    max_y = max(max_y_DM,max_y_inc)
+    max_z = max(max_z_DM,max_z_inc)
+    plt.setp(ax,
+         xticks=np.linspace(0,20,5),
+         yticks=np.linspace(0,0.1,3),yticklabels=np.linspace(0,100,3),
+         zticks=np.linspace(0,0.1,3),
+         xlim=[0,max_x],
+         ylim=[0,max_y],
+         zlim=[0,max_z],
+    )
 
-        axcb1.tick_params(axis='both', which='major', labelsize=12)
-        axcb2.tick_params(axis='both', which='major', labelsize=12)
 
-        plt.colorbar(pchi, cax = axcb1,boundaries=np.linspace(0,3,100),ticks=np.linspace(0,3,4))
-        plt.colorbar(pgamma, cax = axcb2,boundaries=np.linspace(0,1,10),ticks=np.linspace(0,1,2))
+def plot_colorbar(pchi,pgamma,x=[0.95,0.97],y=[0.1,0.95]):
 
-        #axcb2.set_yticks(np.linspace(1,0,3))
-        #axcb2.set_yticklabels(np.linspace(1,0,3))
-        axcb1.set_ylabel(r'$\displaystyle \chi$',fontsize=12)
-        axcb2.set_ylabel(r'$\displaystyle \gamma^2$',fontsize=12)
+    # if not plt_para['cb_plotted']:
+        # plt_para['cb_plotted'] ^= True
 
-        plt.subplots_adjust(left=0.12, bottom=0.1, right=0.8, top=0.95, wspace=0.35, hspace=0.3)
+    xL = x[1]-x[0]
+    yL = y[1]-y[0]
+
+    axcb1 = plt.axes([x[0],y[0]+yL*0.35,xL,yL*0.65])
+    axcb2 = plt.axes([x[0],y[0],xL,yL*0.25])
+
+    axcb1.tick_params(axis='both', which='major', labelsize=12)
+    axcb2.tick_params(axis='both', which='major', labelsize=12)
+
+    plt.colorbar(pchi, cax = axcb1,boundaries=np.linspace(0,3,100),ticks=np.linspace(0,3,4))
+    plt.colorbar(pgamma, cax = axcb2,boundaries=np.linspace(0,1,10),ticks=np.linspace(0,1,2))
+
+    #axcb2.set_yticks(np.linspace(1,0,3))
+    #axcb2.set_yticklabels(np.linspace(1,0,3))
+    axcb1.set_ylabel(r'$\displaystyle \chi$',fontsize=12)
+    axcb2.set_ylabel(r'$\displaystyle \gamma^2$',fontsize=12)
+
+    #plt.subplots_adjust(left=0.12, bottom=0.1, right=0.8, top=0.95, wspace=0.35, hspace=0.3)
 
 
 def plot_approx(ax_ex,ax_I,ax_alpha):
-    # print()
 
     res_approx = get_approximation(0.00)
     res_approx_hetero = get_approximation(0.04)
@@ -450,6 +551,410 @@ def plot_I(ax,res,ls):
     # ax_inset.plot(np.linspace(0,nu_lim,steps),I_approx,'r')
 
 
+# def plot_distr(alpha_0=[0,0.04],rateWnt=[0.5,2,10],tau_M=0.010,save=0,file_format='png'):
+def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var'],show_xticks=True,order=1):
+    '''
+        contains plotting routing for a single solution to the network firing rate distribution
+        shows...
+         ... input current distribution
+         ... f-I curve / firing rate response
+         ... firing rate distribution
+        
+        allows for plotting as "row" or "sketch" plt_style
+        annotate:
+            0: no annotations
+            1: highlight variances without labels
+            2: highlight variances and add labels
+    '''
+
+    steps = 10000
+    p = 0
+    rateWnt = res['rateWnt'][idx_rate]
+
+    ### define axes
+
+    ## get location from subplots
+    loc = ax.get_position().get_points()
+    ax.remove()
+    
+    ## define subaxes
+    if plt_style=='row':
+        y_offset = loc[0,1]
+        y_height = loc[1,1]-loc[0,1]
+
+        ax_fI = plt.axes(position=[0.1,y_offset,0.65,y_height])
+        ax_I = ax_fI.twinx()
+        ax_distr = plt.axes(position=[0.8,y_offset,0.15,y_height])
+
+        I_range = np.linspace(-0.35,0.05,steps+1)
+
+        ## set plot parameters
+        for axx in [ax_fI,ax_I,ax_distr]:
+            axx.spines[['top','right']].set_color('none')
+            axx.yaxis.set_ticks_position('left')
+            axx.xaxis.set_ticks_position('bottom')
+        
+    else:
+        x_offset = [0.02,0.3,0.98]
+        y_offset = [0.1,0.5,0.925]
+
+        x_width_right = x_offset[2] - x_offset[1]
+        x_width_left = x_offset[1] - x_offset[0] #- 0.05
+        y_height_top = y_offset[2] - y_offset[1]
+        y_height_bottom = y_offset[1] - y_offset[0]
+
+        ax_I = plt.axes(position=[x_offset[1],y_offset[0],x_width_right,y_height_bottom])
+        ax_fI = plt.axes(position=[x_offset[1],y_offset[1],x_width_right,y_height_top],sharex=ax_I)
+        ax_distr = plt.axes(position=[x_offset[0],y_offset[1],x_width_left,y_height_top])
+
+        ax_distr.spines[['top','left']].set_color('none')
+        # ax_distr.yaxis.set_ticks_position('right')
+        plt.setp(ax_distr,yticks=[])
+
+        for axx in [ax_fI,ax_I]:
+            axx.spines[['top','left','right']].set_color('none')
+            plt.setp(axx,xticks=[])
+
+        I_range = np.linspace(-0.45,0.3,steps+1)
+
+        marker_lineprops = {'color':'k','linewidth':0.7,'linestyle':'--'}
+        I_marked_position = 0.16
+        I_marked_interval = 0.015
+
+        I_marked = np.zeros((2,2))
+        for j,jj in enumerate([-1,1]):
+            for i,ii in enumerate([-1,1]):
+                I_marked[j,i] = jj*I_marked_position-jj*ii*I_marked_interval
+
+    ax_I.set_yticks([])
+    
+
+    ## set some general parameters
+    factor = 0.6
+    I_max = 1.
+    
+
+    
+    if not show_xticks:
+        plt.setp(ax_fI,xticklabels=[])
+
+    nu_range_max = 0
+
+    ## plot f-I curve / firing rate response
+    idxes = (p,0,idx_rate)
+    nu_max = res['rate_max'][idxes]
+    fI = nu_max * np.exp(-I_range**2/(2*res['sigma_V'][idxes]**2))
+    ax_fI.plot(I_range,fI,'k')
+    
+    ax_fI.plot([0,0],[0,nu_max],'k--',linewidth=0.5)
+
+    if 'highlight_var' in annotate:
+        ax_fI.plot([-res['sigma_V'][idxes],0],[factor*nu_max,factor*nu_max],'k',linewidth=2)
+
+        if 'highlight_var_text' in annotate:
+            ax_fI.text(0.005,1,r'$\displaystyle \Psi_0$',fontsize=12)
+            ax_fI.text(-res['sigma_V'][idxes]/2.-0.01,factor*nu_max-2,r'$\displaystyle \sigma_V$',fontsize=10)
+    
+    idxes_alpha = [0,2] if plt_style=='row' else [0]
+
+    for idx_alpha, alpha_0 in enumerate(res['alpha_0'][idxes_alpha]):
+        
+        idxes = (p,idx_alpha,idx_rate)
+
+        if idx_alpha==0:
+            lineprops = {'linewidth':1.5,'linestyle':'-'}
+            I_col = 'grey'
+        elif idx_alpha==1:
+            lineprops = {'linewidth':1.5,'linestyle':':'}
+            I_col = 'r'
+        
+        
+        ## plot input current distribution
+        I_balance = -res['I_balance'][idxes]
+        p_I = np.exp(-(I_range-I_balance)**2/(2*res['alpha'][idxes]**2))
+        ax_I.plot(I_range,p_I,color=I_col,**lineprops)
+        
+        ax_I.plot([I_balance,I_balance],[0,I_max],I_col,linewidth=1.,linestyle=':')
+        if 'highlight_var' in annotate:
+            ax_I.plot([I_balance-res['alpha'][idxes],I_balance],[factor*I_max,factor*I_max],I_col,**lineprops,label=r'$\displaystyle \alpha_I$')
+
+            if ('highlight_var_text' in annotate) and (idx_alpha==0):
+                ax_I.text(-res['I_balance'][idxes]-res['alpha'][idxes]/2.-0.01,factor*I_max - 0.15,r'$\displaystyle \alpha_I$',fontsize=10)
+                ax_I.text(-res['I_balance'][idxes]+0.005,0.05,r'$\displaystyle \bar{I}_0$',fontsize=10)
+        
+    
+        ## plot firing rate distribution
+        range_rate = np.linspace(0,nu_max,steps+1)
+        p_nu = distribution(range_rate,res['gamma'][idxes],res['delta'][idxes],res['rate_max'][idxes])
+        rho_at_mean = p_nu[np.argmin(abs(range_rate-rateWnt))]
+        
+        if plt_style=='row':
+            ax_distr.plot([0,rho_at_mean],[rateWnt,rateWnt],'k--')
+    
+        p_nu_max = np.nanmax(p_nu)
+        nu_range_max = max(nu_range_max,range_rate[np.where(p_nu>10**(-3)*p_nu_max)[0][-1]])*1.1
+        
+        ax_distr.plot(p_nu,range_rate,linewidth=1,linestyle='-',color='k' if idx_alpha==0 else 'r')
+
+        plt.setp(ax_distr,xlim=[0,p_nu_max*1.05])
+
+
+    if plt_style=='sketch':
+        
+        idxes_rate = np.zeros(2,'int')
+        for j,I_marked_row in enumerate(I_marked):
+
+
+            for i,I_mark in enumerate(I_marked_row):
+                ax_I.axvline(I_mark,**marker_lineprops)
+                
+                nu_marked = fI[np.argmin(abs(I_range-I_mark))]
+                ax_fI.plot([I_mark,I_mark],[0,nu_marked],**marker_lineprops)
+
+                if j==0:
+                    print(nu_marked)
+                    ax_I.text(I_mark-0.015+(i*0.02),-0.15,f'$I_{i+1}$',fontsize=8)
+                    ax_fI.text(I_range[0]+0.01,nu_marked-2.5+(i*4),'$\\nu(I_{%i})$'%(i+1),fontsize=8)
+                else:
+                    ax_fI.plot([I_range[0],I_mark],[nu_marked,nu_marked],**marker_lineprops)
+
+                    idxes_rate[i] = np.argmin(abs(range_rate-nu_marked))
+                    
+                    p_nu_marked = p_nu[idxes_rate[i]]
+                    ax_distr.plot([p_nu_marked,0],[nu_marked,nu_marked],**marker_lineprops)
+            
+            idxes_I = [np.argmin(abs(I_range-I_marked_row[0])),np.argmin(abs(I_range-I_marked_row[1]))]
+            idxes_I.sort()# = [min(idxes_I),max(idxes_I)]
+
+            ax_I.fill_between(I_range[idxes_I[0]:idxes_I[1]],0,p_I[idxes_I[0]:idxes_I[1]],color='grey',alpha=0.6)
+
+            ax_fI.fill_between(I_range[idxes_I[0]:idxes_I[1]],0,fI[idxes_I[0]:idxes_I[1]],color='grey',alpha=0.6)
+
+
+        idxes_rate.sort()
+        ax_distr.fill_betweenx(range_rate[idxes_rate[0]:idxes_rate[1]],0,p_nu[idxes_rate[0]:idxes_rate[1]],color='grey',alpha=0.6)
+    
+        ax_fI.plot([I_range[0],0],[nu_max,nu_max],linewidth=1.,linestyle=':',color='k')
+        ax_distr.plot([p_nu_max/2.,0],[nu_max,nu_max],linewidth=1.,linestyle=':',color='k')
+
+        ax_distr.text(p_nu_max/2.,nu_max+1,'$\\bar{\\nu}^{max}$',fontsize=10)
+        ax_distr.annotate('pole',xy=[0,nu_max],xytext=[p_nu_max/4.,nu_max-5],arrowprops=dict(arrowstyle="->"),fontsize=10)
+
+        ax_I.set_xlabel('$I$', loc="right")
+        ax_fI.set_ylabel('$\\nu$', loc="top", rotation=0)
+        ax_distr.set_xlabel('$\\rho(\\nu)$', loc="left")
+
+        ax_fI.yaxis.set_label_coords(0.0, 1.02)
+
+        
+        
+    plt.setp(ax_I,ylim=[0,1.1])
+    plt.setp(ax_distr,xticks=[],yticklabels=[])
+    
+
+    if plt_style=='row':
+        for axx in [ax_fI,ax_distr]:
+            plt.setp(axx,yticks=np.linspace(0,(nu_max//5)*5,5),ylim=[0,nu_range_max])
+    
+
+        ax_distr.text(0.3*p_nu_max,nu_range_max*3/4.,r'$\chi \approx %4.2f \rightarrow %4.2f $'%(res['chi'][p,0,idx_rate],res['chi'][p,1,idx_rate]),bbox={'facecolor':'white','alpha':0.9,'pad':5},fontsize=10)
+
+        plt.setp(ax_fI,xlim=I_range[[0,-1]],xticks=np.linspace(-0.3,0.0,4))
+    else:
+        for axx in [ax_fI,ax_distr]:
+            plt.setp(axx,ylim=[0,nu_max*1.05],yticks=[])
+
+        plt.setp(ax_fI,xlim=I_range[[0,-1]])
+        
+        xlim = ax_distr.get_xlim()
+        plt.setp(ax_distr,xlim=[xlim[1],0])
+
+
+    if 'title' in annotate:
+        ax_fI.text(I_range[int(steps*0.05)],nu_range_max*0.85,r'$\displaystyle \bar{\nu}=%g\,$Hz'%rateWnt,fontsize=12)
+
+    return 
+
+
+
+
+
+    # title_x = -0.1
+    # title_y = 1.05
+
+    
+
+    nu_border = [5,15,25]
+
+    for i in range(len(rateWnt)):
+        for j in range(len(alpha_0)):
+            results = get_samples_from_theory(tau_M=tau_M,T=1000,dftheory=0,dftime=0,p_theory=2,plot=1,rate=rateWnt[i],alpha_0=alpha_0[j])
+            #print results
+            #ax1 = plt.subplot(gs[2*i,0])
+            if (j == 0):
+                border_y = (len(rateWnt)-i-1)*v_plots + (len(rateWnt)-i-1)*v_spaces + v_bottom
+                #ax1 = plt.axes([0.1,border_y+(v_plots+v_spaces_small)/2.,0.33,(v_plots-v_spaces_small)/2.])
+                #ax2 = plt.axes([0.1,border_y,0.33,(v_plots-v_spaces_small)/2.])
+                ax2 = plt.axes([0.1,border_y,0.45,v_plots])
+                ax1 = ax2.twinx()
+                ax3 = plt.axes([0.6,border_y,0.15,v_plots])
+
+                ax2.set_xticks(np.linspace(-0.4,0.0,5))
+                ax2.set_yticks([])
+                ##ax2.set_xlabel(r'$\displaystyle I$')
+                #ax2.set_ylabel(r'$\displaystyle \rho(I)$')
+                ax2.spines['right'].set_color('none')
+                ax2.yaxis.set_ticks_position('left')
+                ax2.spines['top'].set_color('none')
+                ax2.xaxis.set_ticks_position('bottom')
+
+                #ax1.set_xticks([])
+                #ax1.set_ylabel(r'$\displaystyle \nu(I)\,$[Hz]')
+                ax1.spines['right'].set_color('none')
+                ax1.yaxis.set_ticks_position('left')
+                ax1.spines['top'].set_color('none')
+                ax1.xaxis.set_ticks_position('bottom')
+
+                ax3.set_xticks([])
+                ax3.set_yticks([])
+                #ax3.set_xlabel(r'$\displaystyle \nu\,$[Hz]')
+                #ax3.set_ylabel(r'$\displaystyle \rho(\nu)$')
+                ax3.spines['right'].set_color('none')
+                ax3.yaxis.set_ticks_position('left')
+                ax3.spines['top'].set_color('none')
+                ax3.xaxis.set_ticks_position('bottom')
+
+                #factor = 1-1./math.pi
+                factor = 0.6
+
+                nu_max = max(results['f_I'])
+                print(nu_max)
+                ax1.plot([-results['sigma_V'],0],[factor*nu_max,factor*nu_max],'k',linewidth=2)#,label=r'$\displaystyle \sigma_V$')
+                ax1.plot(results['I_range'],results['f_I'],'k')
+                ax1.plot([0,0],[0,nu_max],'k--',linewidth=0.5)
+
+                ax1.set_yticks(np.linspace(0,25,6))
+
+
+
+                #ax1.legend(prop={'size':10},loc=3)
+
+                I_max = max(results['I_distr'])
+                I_tmp = np.copy(I_max)
+                ax2.plot([results['I']-results['alpha'],results['I']],[factor*I_max,factor*I_max],'r',linewidth=2,label=r'$\displaystyle \alpha_I$')
+                ax2.plot(results['I_range'],results['I_distr'],'r')
+                ax2.plot([results['I'],results['I']],[0,I_tmp],'r--',linewidth=0.5)
+                #ax2.plot([results['I']-results['alpha'],results['I']],[factor*I_max,factor*I_max],'r',linewidth=2,label=r'$\displaystyle \alpha_I$')
+                #ax2.plot(results['I_range'],results['I_distr'],'k')
+                #ax2.plot([results['I'],results['I']],[0,I_max],'k--',linewidth=0.5)
+                #ax2.plot([0,0],[0,1.1*I_max],'k--',linewidth=0.5)
+
+
+
+
+                #ax2.legend(prop={'size':10},loc=4)
+
+                #print results['p_range']
+                rho_at_mean = results['p_exact'][np.argmin(abs(results['p_range']-rateWnt[i]))]
+                rho_max1 = max(results['p_exact'])
+
+                #ax3.plot([rateWnt[i],rateWnt[i]],[0,rho_at_mean],'k--')
+                #ax3.plot(results['p_range'],results['p_exact'],'k',label='exact solution')
+                #ax3.plot(results['p_range'],results['p_approx'],'r--',linewidth=1,label='approx. solution')
+                #ax3.set_xlim([0,nu_border[i]])
+                ax3.plot([0,rho_at_mean],[rateWnt[i],rateWnt[i]],'k--')
+                ax3.plot(results['p_exact'],results['p_range'],'k',label='exact solution')
+                ax3.plot(results['p_approx'],results['p_range'],'r--',linewidth=1,label='approx. solution')
+
+                chi1 = np.copy(results['chi'])
+                #print chi1
+                if (i==0):
+                    ax1.set_title(r'a)',position=(title_x,title_y))#,loc='left')
+                    ax3.set_title(r'b)',position=(title_x,title_y))# homog.: $\displaystyle \alpha_0 = 0$',loc='left')
+                    ax1.text(0.01,1,r'$\displaystyle \Psi$',fontsize=12)
+                    y_border = 12
+                else:
+                    y_border = 25
+
+                if (i==1):
+                    #if results['sigma_V'] > 0.05:
+                    ax1.text(-results['sigma_V']/2.-0.01,factor*nu_max*0.7,r'$\displaystyle \sigma_V$',fontsize=10)
+                    #if results['alpha'] > 0.05:
+                    ax2.text(results['I']-results['alpha']/2.-0.01,factor*I_max*0.7,r'$\displaystyle \alpha_I$',fontsize=10)
+
+                if (i==2):
+                    ax1.text(results['I']+0.01,1,r'$\displaystyle \bar{I}_0$',fontsize=10)
+
+                ax1.set_ylim([0,y_border])
+                ax2.set_ylim([0,1.1*I_max*y_border/25.])
+                ax3.set_ylim([0,y_border])
+
+                ax1.text(-0.45,0.9*y_border,r'$\displaystyle \bar{\nu}=%g\,$Hz'%rateWnt[i],fontsize=12)
+
+
+                    #ax3.text(rateWnt[i]+0.2,rho_at_mean,r'$\displaystyle \bar{\nu}$',fontsize=12)
+                #else:
+                #ax3.text(rho_at_mean,rateWnt[i]+0.05*nu_border[i],r'$\displaystyle \bar{\nu}$',fontsize=12)
+            if (j == 1):
+                #ax1.plot(results['I_range'],results['f_I'],'k')
+                I_max = max(results['I_distr'])
+                #ax2.plot(results['I_range'],results['I_distr']*I_tmp/I_max,'k:',linewidth=0.5)
+                ax2.plot(results['I_range'],results['I_distr']*I_tmp/I_max,'r:',linewidth=0.5)
+                ax2.plot([results['I'],results['I']],[0,I_tmp],'r:',linewidth=0.5)
+                #factor = (1-1./np.exp(1))*0.9
+                #ax2.plot([results['I']-results['alpha'],results['I']],[factor*I_max,factor*I_max],'r--',linewidth=2)
+                ax4 = plt.axes([0.8,border_y,0.15,v_plots])
+
+                ax4.set_xticks([])
+                ax4.set_yticks([])
+                #ax4.set_xlabel(r'$\displaystyle \nu\,$[Hz]')
+                #ax4.set_ylabel(r'$\displaystyle \rho(\nu)$')
+                ax4.spines['right'].set_color('none')
+                ax4.yaxis.set_ticks_position('left')
+                ax4.spines['top'].set_color('none')
+                ax4.xaxis.set_ticks_position('bottom')
+
+                rho_at_mean = results['p_approx'][np.argmin(abs(results['p_range']-rateWnt[i]))]
+                rho_max2 = max(results['p_exact'])
+                #print results['p_exact']
+                if (rho_max2 == results['p_exact'][1]):
+                    rho_max2 /= 3
+                rho_max = max(rho_max1,rho_max2)
+                #ax4.plot([rateWnt[i],rateWnt[i]],[0,rho_at_mean],'k--')
+                #ax4.plot(results['p_range'],results['p_exact'],'k')
+                #ax4.plot(results['p_range'],results['p_approx'],'r--')
+                #ax4.set_xlim([0,nu_border[i]])
+                ax4.plot([0,rho_at_mean],[rateWnt[i],rateWnt[i]],'k--')
+                ax4.plot(results['p_exact'],results['p_range'],'k')
+                ax4.plot(results['p_approx'],results['p_range'],'r--')
+
+                if (i==0):
+                    ax4.set_title(r'c)',position=(title_x,title_y))# inhom.: $\displaystyle \alpha_0 = 0.04$',loc='left')
+                    ax4.legend(prop={'size':10},bbox_to_anchor=(-0.4,0.85),loc='lower left')
+
+                ax4.set_ylim([0,y_border])
+
+                ax3.text(0.6*rho_max,y_border*3/4.,r'$\displaystyle \chi \approx %4.2f$'%chi1,bbox={'facecolor':'white','alpha':0.9,'pad':5},fontsize=10)
+                ax4.text(0.6*rho_max,y_border*3/4.,r'$\displaystyle \chi \approx %4.2f$'%results['chi'],bbox={'facecolor':'white','alpha':0.9,'pad':5},fontsize=10)
+
+                #else:
+                    #ax3.text(12.5,0.7*rho_max,r'$\displaystyle \chi \approx %4.2g$'%chi1,bbox={'facecolor':'white','alpha':0.9,'pad':5})
+                    #ax4.text(12.5,0.7*rho_max,r'$\displaystyle \chi \approx %4.2g$'%results['chi'],bbox={'facecolor':'white','alpha':0.9,'pad':5})
+                ax3.set_xlim([0,rho_max])
+                ax4.set_xlim([0,rho_max])
+
+
+            ax2.set_xlim([-0.5,0.1])
+            ax1.set_xlim([-0.5,0.1])
+            #ax2.set_xlim([-0.5,0.2])
+            ax1.set_ylim([0,y_border])
+
+
+    plt.show(block=False)
+
+
+
+
 def remove_frame(ax,positions=None):
 
     if positions is None:
@@ -500,7 +1005,7 @@ def get_trans_idx(res,bound,y,n=0,p=0):
         mask = res[bound+'_trans'].mask
         mask_val = mask if np.prod(mask.shape)==1 else mask[y,n]
         
-        mask = np.all(res[bound+'_trans'].mask)
+        # mask = np.all(res[bound+'_trans'].mask)
         return res[bound+'_trans'][y,n] if ~mask_val else None
     elif bound in ['DM','np']:
         mask = res[bound+'_trans'].mask

@@ -113,3 +113,17 @@ class network:
         distr = np.insert(distr,0,at_zero)
         rate_ratio = np.linspace(0,1,steps)
         return rate_ratio, distr
+
+
+def distribution(nu,gamma,delta,nu_max):
+
+    nu_ratio = nu/nu_max
+    distr = gamma/(nu_max*np.sqrt(-np.pi*np.log(nu_ratio)))* \
+            np.exp(-delta**2/2)*nu_ratio**(gamma**2-1)* \
+            np.cosh(gamma*delta*np.sqrt(-2*np.log(nu_ratio)))
+
+    at_zero = 0 if gamma > 1 else np.inf
+    distr[0] = at_zero
+    # distr = np.insert(distr,0,at_zero)
+    # nu_ratio = np.linspace(0,1,steps)
+    return distr

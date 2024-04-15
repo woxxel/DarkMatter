@@ -20,7 +20,7 @@ struct Model_Results
 
 struct Population_Results
 {
-    vector<vector<double> > rate, q, alpha_raw, alpha, sigma_V, gamma, delta, rate_max, chi, I_balance, regions, entropy, KL_entropy;
+    vector<vector<double> > rate, q, alpha_raw, alpha, sigma_V, gamma, delta, rate_max, chi, I_balance, regions, implausible, entropy, KL_entropy;
 
 
     vector<vector<double> > infoContent;
@@ -61,7 +61,7 @@ struct Population_Simulation
     double rate, q;
     double sigma_V, alpha, alpha_raw;
     double I_balance, gamma, delta, rate_max, chi;
-    double regions;
+    double regions, implausible;
     double infoContent, KL, entropy;
     double max_prob;
 

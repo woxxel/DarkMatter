@@ -286,11 +286,16 @@ void Simulation::store_results(Model * modP, Model * modP_approx)
                 popResP->regions[vars[1].iter][vars[0].iter] = popSimP->regions;
                 if ((mode_stats == 2) || (mode_stats == 3))
                     popResP_approx->regions[vars[1].iter][vars[0].iter] = popSimP_approx->regions;
+                
+                popResP->implausible[vars[1].iter][vars[0].iter] = popSimP->implausible;
+                if ((mode_stats == 2) || (mode_stats == 3))
+                    popResP_approx->implausible[vars[1].iter][vars[0].iter] = popSimP_approx->implausible;
             }
 
             if (mode_stats == 1)
             {
                 popResP->regions[vars[1].iter][vars[0].iter] = popSimP->regions;
+                popResP->implausible[vars[1].iter][vars[0].iter] = popSimP->implausible;
                 popResP->alpha_raw[vars[1].iter][vars[0].iter] = popSimP->alpha_raw;
                 popResP->alpha[vars[1].iter][vars[0].iter] = popSimP->alpha;
                 popResP->sigma_V[vars[1].iter][vars[0].iter] = popSimP->sigma_V;

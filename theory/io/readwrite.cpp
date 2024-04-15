@@ -405,7 +405,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
 
     int DM_id, np_id, inc_id, imp_id;
     int DM_approx_id, np_approx_id, inc_approx_id, imp_approx_id;
-    int q_id, gamma_id, delta_id, rate_max_id, chi_id, I_balance_id, regions_id, regions_approx_id;
+    int q_id, gamma_id, delta_id, rate_max_id, chi_id, I_balance_id, regions_id, regions_approx_id, implausible_id, implausible_approx_id;
     int info_id;
     nc_def_var(ncid, "q", NC_DOUBLE, 3, &dimids[0], &q_id);
     nc_def_var(ncid, "gamma", NC_DOUBLE, 3, &dimids[0], &gamma_id);
@@ -418,6 +418,10 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
         nc_def_var(ncid, "regions", NC_DOUBLE, 3, &dimids[0], &regions_id);
         if (simP->mode_stats == 3)
             nc_def_var(ncid, "regions_approx", NC_DOUBLE, 3, &dimids[0], &regions_approx_id);
+        
+        nc_def_var(ncid, "implausible", NC_DOUBLE, 3, &dimids[0], &implausible_id);
+        if (simP->mode_stats == 3)
+            nc_def_var(ncid, "implausible_approx", NC_DOUBLE, 3, &dimids[0], &implausible_approx_id);
     }
     nc_def_var(ncid, "inc_trans", NC_INT, 2, &trans_dimids[1], &inc_id);
     nc_def_var(ncid, "imp_trans", NC_INT, 2, &trans_dimids[1], &imp_id);
@@ -428,6 +432,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
     if (simP->mode_stats == 1)
     {
         nc_def_var(ncid, "regions", NC_DOUBLE, 3, &dimids[0], &regions_id);
+        nc_def_var(ncid, "implausible", NC_DOUBLE, 3, &dimids[0], &implausible_id);
         nc_def_var(ncid, "alpha_raw", NC_DOUBLE, 3, &dimids[0], &alpha_raw_id);
         nc_def_var(ncid, "alpha", NC_DOUBLE, 3, &dimids[0], &alpha_id);
         nc_def_var(ncid, "sigma_V", NC_DOUBLE, 3, &dimids[0], &sigma_V_id);
@@ -469,7 +474,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
     //     nc_def_var(ncid, "p_approx", NC_DOUBLE, 4, &dimids[0], &p_approx_id);
     //     nc_def_var(ncid, "cdf_theory", NC_DOUBLE, 4, &dimids[0], &cdf_theory_id);
     // }
-    cout << "def done " << endl;
+    // cout << "def done " << endl;
     nc_enddef(ncid);
 
     write_paras(ncid, para_dimID, simP);
@@ -551,10 +556,15 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
                     nc_put_vara(ncid, regions_id, start, count, &popResP->regions[rec][0]);
                     if (simP->mode_stats == 3)
                         nc_put_vara(ncid, regions_approx_id, start, count, &popResP_approx->regions[rec][0]);
+
+                    nc_put_vara(ncid, implausible_id, start, count, &popResP->implausible[rec][0]);
+                    if (simP->mode_stats == 3)
+                        nc_put_vara(ncid, implausible_approx_id, start, count, &popResP_approx->implausible[rec][0]);
                 }
                 if (simP->mode_stats == 1)
                 {
                     nc_put_vara(ncid, regions_id, start, count, &popResP->regions[rec][0]);
+                    nc_put_vara(ncid, implausible_id, start, count, &popResP->implausible[rec][0]);
                     nc_put_vara(ncid, alpha_raw_id, start, count, &popResP->alpha_raw[rec][0]);
                     nc_put_vara(ncid, alpha_id, start, count, &popResP->alpha[rec][0]);
                     nc_put_vara(ncid, sigma_V_id, start, count, &popResP->sigma_V[rec][0]);
