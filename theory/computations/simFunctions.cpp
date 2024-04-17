@@ -142,16 +142,14 @@ void Simulation::initialize(Model *modP)
                     psp = s[ss];
                     // cout << "psp (" << ss << ") " << psp << endl;
 
-                    // cout << "layer|population|synapse: " << layer << "|" << population << "|" << psp << endl;
+                    PLOG_DEBUG << "layer|population|synapse: " << layer << "|" << population << "|" << psp << endl;
 
                     set_vars(modP,i,layer,population,psp);
                 }
             }
         }
 
-
         // cout << "this variable iterates layer|population|synapse: " << l << "|" << p << "|" << s << endl;
-
 
     }
     // cout << "init done "<< endl;

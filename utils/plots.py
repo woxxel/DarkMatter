@@ -33,9 +33,9 @@ def plot_q(ax,res,plt_para,bound='imp',idxs=None,approx=False,order=1):
         ymax = max(res['q'][0,a,:].max(),ymax)
         if trans_idx:
             ax.plot(res[x_key],res['q'][0,a,:],color=(col,0,0),ls=':')
-            ax.plot(res[x_key][:trans_idx],res['q'][0,a,:trans_idx],color=(col,0,0),label=r'$\displaystyle \alpha_0 = %g$'%res['alpha_0'][a])
+            ax.plot(res[x_key][:trans_idx],res['q'][0,a,:trans_idx],color=(col,0,0),label=r'$\alpha_0 = %g$'%res['alpha_0'][a])
         else:
-            ax.plot(res[x_key],res['q'][0,a,],color=(col,0,0),label=r'$\displaystyle \alpha_0 = %g$'%res['alpha_0'][a])
+            ax.plot(res[x_key],res['q'][0,a,],color=(col,0,0),label=r'$\alpha_0 = %g$'%res['alpha_0'][a])
 
     if approx:
         ## plotting approximations
@@ -50,8 +50,8 @@ def plot_q(ax,res,plt_para,bound='imp',idxs=None,approx=False,order=1):
         xlim=[0,plt_para['x']['lim']],
         ylim=[0,ymax*1.1],
         # ylim=[0,20],
-        xlabel=r'$\displaystyle \bar{\nu}\,$[Hz]',
-        ylabel=r'$\displaystyle q\,$[Hz$\displaystyle ^2$]'
+        xlabel=r'$\bar{\nu}\,$[Hz]',
+        ylabel=r'$q\,$[Hz$^2$]'
     )
 
     if order:
@@ -87,12 +87,12 @@ def plot_q_zoom(ax,res,plt_para,bound='imp',idxs=None,approx=False,order=1):
     plt.setp(ax,
         xlim=[0,plt_para['x']['lim']],
         ylim=[0,5],
-        xlabel=r'$\displaystyle \bar{\nu}\,$[Hz]',
-        ylabel=r'$\displaystyle q\,$[Hz$\displaystyle ^2$]'
+        xlabel=r'$\bar{\nu}\,$[Hz]',
+        ylabel=r'$q\,$[Hz$^2$]'
     )
 
     if order:
-        set_title(ax,order=order,title=r'the low $\displaystyle \bar{\nu}$ limit')
+        set_title(ax,order=order,title=r'the low $\bar{\nu}$ limit')
 
 
 def plot_currents(ax,res,plt_para,bound='imp',idxs=None,approx=False,plot_options=['var','I'],order=1):
@@ -114,11 +114,11 @@ def plot_currents(ax,res,plt_para,bound='imp',idxs=None,approx=False,plot_option
         if trans_idx:
             val = res[x_key][trans_idx]
             ax.axvline(val,color='k',ls=':')
-            ax.text(val+0.5,0.2,r'$\displaystyle \bar{\nu}_{DM}$',fontsize=10)
+            ax.text(val+0.5,0.2,r'$\bar{\nu}_{DM}$',fontsize=10)
         
         ## plotting temporal fluctuations
         trans_idx = get_trans_idx(res,bound,0,0,0)
-        ax.plot(res[x_key][:trans_idx],res['sigma_V'][0,0,:trans_idx],color='k',ls='--',label=r'$\displaystyle \sigma_V$')
+        ax.plot(res[x_key][:trans_idx],res['sigma_V'][0,0,:trans_idx],color='k',ls='--',label=r'$\sigma_V$')
         ax.plot(res[x_key][trans_idx:],res['sigma_V'][0,0,trans_idx:],color='k',ls=':')
         
         ## plotting quenched fluctuations
@@ -126,11 +126,11 @@ def plot_currents(ax,res,plt_para,bound='imp',idxs=None,approx=False,plot_option
             col = i/float(len(idxs)-1)
             trans_idx = get_trans_idx(res,bound,i,0,0)
             
-            ax.plot(res[x_key][:trans_idx],res['alpha'][0,i,:trans_idx],color=(col,0,0),ls='-')#,label=r'$\displaystyle \alpha_k = \sqrt{\alpha_{I_k}^2 + \alpha_0^2}$')
+            ax.plot(res[x_key][:trans_idx],res['alpha'][0,i,:trans_idx],color=(col,0,0),ls='-')#,label=r'$\alpha_k = \sqrt{\alpha_{I_k}^2 + \alpha_0^2}$')
             ax.plot(res[x_key][trans_idx:],res['alpha'][0,i,trans_idx:],color=(col,0,0),ls=':')
 
-        ax.text(res[x_key][int(steps*1/3)],res['sigma_V'][0,0,int(steps*1/3)]+0.05,r'$\displaystyle \sigma_{V_k}$',fontsize=10)
-        ax.text(res[x_key][int(steps/2)],res['alpha'][0,0,int(steps/2)]-0.05,r'$\displaystyle \alpha_k = \sqrt{\alpha_{I_k}^2 + \alpha_0^2}$',fontsize=10)
+        ax.text(res[x_key][int(steps*1/3)],res['sigma_V'][0,0,int(steps*1/3)]+0.05,r'$\sigma_{V_k}$',fontsize=10)
+        ax.text(res[x_key][int(steps/2)],res['alpha'][0,0,int(steps/2)]-0.05,r'$\alpha_k = \sqrt{\alpha_{I_k}^2 + \alpha_0^2}$',fontsize=10)
 
         plt.setp(ax, ylim=[-0.02,0.15])
         
@@ -142,9 +142,9 @@ def plot_currents(ax,res,plt_para,bound='imp',idxs=None,approx=False,plot_option
             trans_idx = get_trans_idx(res,bound,i,0,0)
             
             ax.plot(res[x_key],-res['I_balance'][0,i,:],':',color=[0.7,0,0],lw=0.8)
-            ax.plot(res[x_key][:trans_idx],-res['I_balance'][0,i,:trans_idx],'-',color=(col,0,0),label=r'$\displaystyle I_{balance}$',lw=0.8)
+            ax.plot(res[x_key][:trans_idx],-res['I_balance'][0,i,:trans_idx],'-',color=(col,0,0),label=r'$I_{balance}$',lw=0.8)
 
-        ax.text(res[x_key][int(steps*1/3)],-res['I_balance'][0,0,int(steps*1/3)]+0.05,r'$\displaystyle \bar{I}_0-\Psi_0$',fontsize=10)
+        ax.text(res[x_key][int(steps*1/3)],-res['I_balance'][0,0,int(steps*1/3)]+0.05,r'$\bar{I}_0-\Psi_0$',fontsize=10)
 
         plt.setp(ax,
             ylim=[-0.3,0.02]
@@ -157,8 +157,8 @@ def plot_currents(ax,res,plt_para,bound='imp',idxs=None,approx=False,plot_option
 
     plt.setp(ax,
         xlim=[0,plt_para['x']['lim']],
-        xlabel=r'$\displaystyle \bar{\nu}\,$[Hz]',
-        ylabel=r'$\displaystyle I$'
+        xlabel=r'$\bar{\nu}\,$[Hz]',
+        ylabel=r'$I$'
     )
 
     if order:
@@ -187,13 +187,13 @@ def plot_gamma(ax,res,plt_para,bound='imp',idxs=None,approx=False,order=1):
                 ax.plot(res[x_key],res['gamma_approx'][p,a,:]**2,color=(col,0,0),ls='--')
 
     if order:
-        set_title(ax,order=order,title='$\displaystyle\quad$ DM exponent $\displaystyle \gamma$')
+        set_title(ax,order=order,title=r'$\quad$ DM exponent $\gamma$')
 
     plt.setp(ax,
         xlim=[0,plt_para['x']['lim']],
         ylim=[0,7],
-        xlabel=r'$\displaystyle \bar{\nu}\,$[Hz]',
-        ylabel=r'$\displaystyle \gamma^2$'
+        xlabel=get_displayString(plt_para['x']['key']),
+        ylabel=r'$\gamma^2$'
     )
 
 
@@ -220,12 +220,12 @@ def plot_chi(ax,res,plt_para,bound='imp',idxs=None,approx=False,order=1):
     plt.setp(ax,
         xlim=[0,plt_para['x']['lim']],
         ylim=[0,10],
-        xlabel=r'$\displaystyle \bar{\nu}\,$[Hz]',
-        ylabel=r'$\displaystyle \chi$'
+        xlabel=get_displayString(plt_para['x']['key']),
+        ylabel=r'$\chi$'
     )
 
     if order:
-        set_title(ax,order=order,title='skewness coeff. $\displaystyle \chi$')
+        set_title(ax,order=order,title=r'skewness coeff. $\chi$')
 
 
 def plot_regions(ax,res,plt_para,order=1):
@@ -245,16 +245,16 @@ def plot_regions(ax,res,plt_para,order=1):
     # print(x_arr[res['DM_trans'][0,mask_DM,0]])
     # print(res['alpha_0'][mask_DM])
 
-    ax.plot(x_arr[res['DM_trans'][0,mask_DM,0]],res['alpha_0'][mask_DM],'r-',label=r'$\displaystyle \bar{\nu}_{DM}$')
-    ax.plot(x_arr[res['np_trans'][0,mask_no_peak,0]],res['alpha_0'][mask_no_peak],'k--',label=r'$\displaystyle \bar{\nu}_{no\,peak}$')
-    ax.plot(x_arr[res['inc_trans'][mask_inc,0]],res['alpha_0'][mask_inc],'k',label=r'$\displaystyle \bar{\nu}_{inc}$')
-    ax.plot(x_arr[res['imp_trans'][mask_imp,0]],res['alpha_0'][mask_imp],'k:',label=r'$\displaystyle \bar{\nu}_{imp}$')
+    ax.plot(x_arr[res['DM_trans'][0,mask_DM,0]],res['alpha_0'][mask_DM],'r-',label=r'$\bar{\nu}_{DM}$')
+    ax.plot(x_arr[res['np_trans'][0,mask_no_peak,0]],res['alpha_0'][mask_no_peak],'k--',label=r'$\bar{\nu}_{no\,peak}$')
+    ax.plot(x_arr[res['inc_trans'][mask_inc,0]],res['alpha_0'][mask_inc],'k',label=r'$\bar{\nu}_{inc}$')
+    ax.plot(x_arr[res['imp_trans'][mask_imp,0]],res['alpha_0'][mask_imp],'k:',label=r'$\bar{\nu}_{imp}$')
 
     plt.setp(ax,
         xlim=[0,plt_para['x']['lim']],
         ylim=[0,0.2],
-        xlabel=r'$\displaystyle \bar{\nu}\,$[Hz]',
-        ylabel=r'$\displaystyle \alpha_0$'
+        xlabel=r'$\bar{\nu}\,$[Hz]',
+        ylabel=r'$\alpha_0$'
     )
 
     # ax.set_yticks(np.linspace(0,0.2,6))
@@ -309,10 +309,10 @@ def plot_fins(ax,x_arr,y_arr,gamma,chi,regions,implausible=False):
     #     mask_no_peak = ~np.isnan(results['no_peak_trans'])
     #     mask_inc = ~np.isnan(results['inc_trans'])
     #
-    #     ax.plot(results['DM_trans'][mask_DM],y_arr[mask_DM],'r-',linewidth=2,label=r'$\displaystyle \bar{\nu}_{DM}$')
-    #     ax.plot(results['no_peak_trans'][mask_no_peak],y_arr[mask_no_peak],'k--',linewidth=2,label=r'$\displaystyle \bar{\nu}_{no\,peak}$')
-    #     ax.plot(results['inc_trans'][mask_inc],y_arr[mask_inc],'k',linewidth=2,label=r'$\displaystyle \bar{\nu}_{inc}$')
-    #     ax.plot(results['nu_implausible'][mask_inc],y_arr[mask_inc],'k:',linewidth=2,label=r'$\displaystyle \bar{\nu}_{imp}$')
+    #     ax.plot(results['DM_trans'][mask_DM],y_arr[mask_DM],'r-',linewidth=2,label=r'$\bar{\nu}_{DM}$')
+    #     ax.plot(results['no_peak_trans'][mask_no_peak],y_arr[mask_no_peak],'k--',linewidth=2,label=r'$\bar{\nu}_{no\,peak}$')
+    #     ax.plot(results['inc_trans'][mask_inc],y_arr[mask_inc],'k',linewidth=2,label=r'$\bar{\nu}_{inc}$')
+    #     ax.plot(results['nu_implausible'][mask_inc],y_arr[mask_inc],'k:',linewidth=2,label=r'$\bar{\nu}_{imp}$')
     #
     #     # ax.set_xlabel(ax_labels[1],fontsize=12)
     #     # ax.set_ylabel(ax_labels[0],fontsize=12)
@@ -445,8 +445,8 @@ def plot_colorbar(pchi,pgamma,x=[0.95,0.97],y=[0.1,0.95]):
 
     #axcb2.set_yticks(np.linspace(1,0,3))
     #axcb2.set_yticklabels(np.linspace(1,0,3))
-    axcb1.set_ylabel(r'$\displaystyle \chi$',fontsize=12)
-    axcb2.set_ylabel(r'$\displaystyle \gamma^2$',fontsize=12)
+    axcb1.set_ylabel(r'$\chi$',fontsize=12)
+    axcb2.set_ylabel(r'$\gamma^2$',fontsize=12)
 
     #plt.subplots_adjust(left=0.12, bottom=0.1, right=0.8, top=0.95, wspace=0.35, hspace=0.3)
 
@@ -471,11 +471,11 @@ def plot_approx(ax_ex,ax_I,ax_alpha):
     min_idx = np.nanargmin(abs(np.sqrt(net.I_squared_q(nu,q,p))-np.sqrt(net.I_squared_nu(nu,q,p))))
 
     ax_ex.axvline(nu**2,ymax=y_is_transformed,color=[0.6,0.6,0.6],lw=2,ls='--')
-    ax_ex.axhline(-np.sqrt(net.I_squared_nu(nu,nu**2,p)),color=[0.6,0.6,0.6],lw=2,ls='--')#,label=r"approx.: $\displaystyle q=\bar{\nu}^2$")
-    ax_ex.plot(q,-np.sqrt(net.I_squared_nu(nu,q,p)),'k-',label=r"solution for $\displaystyle \bar{\nu}$")
-    ax_ex.plot(q,-np.sqrt(net.I_squared_q(nu,q,p)),'k--',label=r"solution for $\displaystyle q$")
-    ax_ex.annotate(r'$\displaystyle q = \bar{\nu}^2$',xy=[nu**2,-np.sqrt(net.I_squared_nu(nu,nu**2,p))],xytext=[nu**2-22,-0.18],arrowprops=dict(arrowstyle="->"),fontsize=10)
-    ax_ex.annotate(r'$\displaystyle (\bar{\nu}^{\star},q^{\star})$',xy=[q[min_idx],-np.sqrt(net.I_squared_nu(nu,q[min_idx],p))],xytext=[nu**2+15,-0.18],arrowprops=dict(arrowstyle="->"),fontsize=10)
+    ax_ex.axhline(-np.sqrt(net.I_squared_nu(nu,nu**2,p)),color=[0.6,0.6,0.6],lw=2,ls='--')#,label=r"approx.: $q=\bar{\nu}^2$")
+    ax_ex.plot(q,-np.sqrt(net.I_squared_nu(nu,q,p)),'k-',label=r"solution for $\bar{\nu}$")
+    ax_ex.plot(q,-np.sqrt(net.I_squared_q(nu,q,p)),'k--',label=r"solution for $q$")
+    ax_ex.annotate(r'$q = \bar{\nu}^2$',xy=[nu**2,-np.sqrt(net.I_squared_nu(nu,nu**2,p))],xytext=[nu**2-22,-0.18],arrowprops=dict(arrowstyle="->"),fontsize=10)
+    ax_ex.annotate(r'$(\bar{\nu}^{\star},q^{\star})$',xy=[q[min_idx],-np.sqrt(net.I_squared_nu(nu,q[min_idx],p))],xytext=[nu**2+15,-0.18],arrowprops=dict(arrowstyle="->"),fontsize=10)
 
     plt.setp(ax_ex, ylim=ylims)
     ax_ex.legend(prop={'size':10},bbox_to_anchor=(1.2,0.0),loc='lower right',frameon=False)
@@ -484,7 +484,7 @@ def plot_approx(ax_ex,ax_I,ax_alpha):
     plot_I(ax_I,res_approx,'k')
     plot_I(ax_I,res_approx_hetero,'r')
 
-    plt.setp(ax_I,xlabel=r'$\displaystyle \bar{\nu}$ [Hz]',ylabel=r'$\displaystyle \frac{|\Delta I|}{\Psi_0 - I_0}$')
+    plt.setp(ax_I,xlabel=r'$\bar{\nu}$ [Hz]',ylabel=r'$\frac{|\Delta I|}{\Psi_0 - I_0}$')
 
     ax_alpha.plot(res_approx['nu'],res_approx['alpha'][:,0],'k')
     ax_alpha.plot(res_approx['nu'],res_approx['alpha'][:,1],'k--')
@@ -652,8 +652,8 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
         ax_fI.plot([-res['sigma_V'][idxes],0],[factor*nu_max,factor*nu_max],'k',linewidth=2)
 
         if 'highlight_var_text' in annotate:
-            ax_fI.text(0.005,1,r'$\displaystyle \Psi_0$',fontsize=12)
-            ax_fI.text(-res['sigma_V'][idxes]/2.-0.01,factor*nu_max-2,r'$\displaystyle \sigma_V$',fontsize=10)
+            ax_fI.text(0.005,1,r'$\Psi_0$',fontsize=12)
+            ax_fI.text(-res['sigma_V'][idxes]/2.-0.01,factor*nu_max-2,r'$\sigma_V$',fontsize=10)
     
     idxes_alpha = [0,2] if plt_style=='row' else [0]
 
@@ -676,11 +676,11 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
         
         ax_I.plot([I_balance,I_balance],[0,I_max],I_col,linewidth=1.,linestyle=':')
         if 'highlight_var' in annotate:
-            ax_I.plot([I_balance-res['alpha'][idxes],I_balance],[factor*I_max,factor*I_max],I_col,**lineprops,label=r'$\displaystyle \alpha_I$')
+            ax_I.plot([I_balance-res['alpha'][idxes],I_balance],[factor*I_max,factor*I_max],I_col,**lineprops,label=r'$\alpha_I$')
 
             if ('highlight_var_text' in annotate) and (idx_alpha==0):
-                ax_I.text(-res['I_balance'][idxes]-res['alpha'][idxes]/2.-0.01,factor*I_max - 0.15,r'$\displaystyle \alpha_I$',fontsize=10)
-                ax_I.text(-res['I_balance'][idxes]+0.005,0.05,r'$\displaystyle \bar{I}_0$',fontsize=10)
+                ax_I.text(-res['I_balance'][idxes]-res['alpha'][idxes]/2.-0.01,factor*I_max - 0.15,r'$\alpha_I$',fontsize=10)
+                ax_I.text(-res['I_balance'][idxes]+0.005,0.05,r'$\bar{I}_0$',fontsize=10)
         
     
         ## plot firing rate distribution
@@ -771,7 +771,7 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
 
 
     if 'title' in annotate:
-        ax_fI.text(I_range[int(steps*0.05)],nu_range_max*0.85,r'$\displaystyle \bar{\nu}=%g\,$Hz'%rateWnt,fontsize=12)
+        ax_fI.text(I_range[int(steps*0.05)],nu_range_max*0.85,r'$\bar{\nu}=%g\,$Hz'%rateWnt,fontsize=12)
 
     return 
 
@@ -801,15 +801,15 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
 
                 ax2.set_xticks(np.linspace(-0.4,0.0,5))
                 ax2.set_yticks([])
-                ##ax2.set_xlabel(r'$\displaystyle I$')
-                #ax2.set_ylabel(r'$\displaystyle \rho(I)$')
+                ##ax2.set_xlabel(r'$I$')
+                #ax2.set_ylabel(r'$\rho(I)$')
                 ax2.spines['right'].set_color('none')
                 ax2.yaxis.set_ticks_position('left')
                 ax2.spines['top'].set_color('none')
                 ax2.xaxis.set_ticks_position('bottom')
 
                 #ax1.set_xticks([])
-                #ax1.set_ylabel(r'$\displaystyle \nu(I)\,$[Hz]')
+                #ax1.set_ylabel(r'$\nu(I)\,$[Hz]')
                 ax1.spines['right'].set_color('none')
                 ax1.yaxis.set_ticks_position('left')
                 ax1.spines['top'].set_color('none')
@@ -817,8 +817,8 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
 
                 ax3.set_xticks([])
                 ax3.set_yticks([])
-                #ax3.set_xlabel(r'$\displaystyle \nu\,$[Hz]')
-                #ax3.set_ylabel(r'$\displaystyle \rho(\nu)$')
+                #ax3.set_xlabel(r'$\nu\,$[Hz]')
+                #ax3.set_ylabel(r'$\rho(\nu)$')
                 ax3.spines['right'].set_color('none')
                 ax3.yaxis.set_ticks_position('left')
                 ax3.spines['top'].set_color('none')
@@ -829,7 +829,7 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
 
                 nu_max = max(results['f_I'])
                 print(nu_max)
-                ax1.plot([-results['sigma_V'],0],[factor*nu_max,factor*nu_max],'k',linewidth=2)#,label=r'$\displaystyle \sigma_V$')
+                ax1.plot([-results['sigma_V'],0],[factor*nu_max,factor*nu_max],'k',linewidth=2)#,label=r'$\sigma_V$')
                 ax1.plot(results['I_range'],results['f_I'],'k')
                 ax1.plot([0,0],[0,nu_max],'k--',linewidth=0.5)
 
@@ -841,10 +841,10 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
 
                 I_max = max(results['I_distr'])
                 I_tmp = np.copy(I_max)
-                ax2.plot([results['I']-results['alpha'],results['I']],[factor*I_max,factor*I_max],'r',linewidth=2,label=r'$\displaystyle \alpha_I$')
+                ax2.plot([results['I']-results['alpha'],results['I']],[factor*I_max,factor*I_max],'r',linewidth=2,label=r'$\alpha_I$')
                 ax2.plot(results['I_range'],results['I_distr'],'r')
                 ax2.plot([results['I'],results['I']],[0,I_tmp],'r--',linewidth=0.5)
-                #ax2.plot([results['I']-results['alpha'],results['I']],[factor*I_max,factor*I_max],'r',linewidth=2,label=r'$\displaystyle \alpha_I$')
+                #ax2.plot([results['I']-results['alpha'],results['I']],[factor*I_max,factor*I_max],'r',linewidth=2,label=r'$\alpha_I$')
                 #ax2.plot(results['I_range'],results['I_distr'],'k')
                 #ax2.plot([results['I'],results['I']],[0,I_max],'k--',linewidth=0.5)
                 #ax2.plot([0,0],[0,1.1*I_max],'k--',linewidth=0.5)
@@ -870,31 +870,31 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
                 #print chi1
                 if (i==0):
                     ax1.set_title(r'a)',position=(title_x,title_y))#,loc='left')
-                    ax3.set_title(r'b)',position=(title_x,title_y))# homog.: $\displaystyle \alpha_0 = 0$',loc='left')
-                    ax1.text(0.01,1,r'$\displaystyle \Psi$',fontsize=12)
+                    ax3.set_title(r'b)',position=(title_x,title_y))# homog.: $\alpha_0 = 0$',loc='left')
+                    ax1.text(0.01,1,r'$\Psi$',fontsize=12)
                     y_border = 12
                 else:
                     y_border = 25
 
                 if (i==1):
                     #if results['sigma_V'] > 0.05:
-                    ax1.text(-results['sigma_V']/2.-0.01,factor*nu_max*0.7,r'$\displaystyle \sigma_V$',fontsize=10)
+                    ax1.text(-results['sigma_V']/2.-0.01,factor*nu_max*0.7,r'$\sigma_V$',fontsize=10)
                     #if results['alpha'] > 0.05:
-                    ax2.text(results['I']-results['alpha']/2.-0.01,factor*I_max*0.7,r'$\displaystyle \alpha_I$',fontsize=10)
+                    ax2.text(results['I']-results['alpha']/2.-0.01,factor*I_max*0.7,r'$\alpha_I$',fontsize=10)
 
                 if (i==2):
-                    ax1.text(results['I']+0.01,1,r'$\displaystyle \bar{I}_0$',fontsize=10)
+                    ax1.text(results['I']+0.01,1,r'$\bar{I}_0$',fontsize=10)
 
                 ax1.set_ylim([0,y_border])
                 ax2.set_ylim([0,1.1*I_max*y_border/25.])
                 ax3.set_ylim([0,y_border])
 
-                ax1.text(-0.45,0.9*y_border,r'$\displaystyle \bar{\nu}=%g\,$Hz'%rateWnt[i],fontsize=12)
+                ax1.text(-0.45,0.9*y_border,r'$\bar{\nu}=%g\,$Hz'%rateWnt[i],fontsize=12)
 
 
-                    #ax3.text(rateWnt[i]+0.2,rho_at_mean,r'$\displaystyle \bar{\nu}$',fontsize=12)
+                    #ax3.text(rateWnt[i]+0.2,rho_at_mean,r'$\bar{\nu}$',fontsize=12)
                 #else:
-                #ax3.text(rho_at_mean,rateWnt[i]+0.05*nu_border[i],r'$\displaystyle \bar{\nu}$',fontsize=12)
+                #ax3.text(rho_at_mean,rateWnt[i]+0.05*nu_border[i],r'$\bar{\nu}$',fontsize=12)
             if (j == 1):
                 #ax1.plot(results['I_range'],results['f_I'],'k')
                 I_max = max(results['I_distr'])
@@ -907,8 +907,8 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
 
                 ax4.set_xticks([])
                 ax4.set_yticks([])
-                #ax4.set_xlabel(r'$\displaystyle \nu\,$[Hz]')
-                #ax4.set_ylabel(r'$\displaystyle \rho(\nu)$')
+                #ax4.set_xlabel(r'$\nu\,$[Hz]')
+                #ax4.set_ylabel(r'$\rho(\nu)$')
                 ax4.spines['right'].set_color('none')
                 ax4.yaxis.set_ticks_position('left')
                 ax4.spines['top'].set_color('none')
@@ -929,17 +929,17 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
                 ax4.plot(results['p_approx'],results['p_range'],'r--')
 
                 if (i==0):
-                    ax4.set_title(r'c)',position=(title_x,title_y))# inhom.: $\displaystyle \alpha_0 = 0.04$',loc='left')
+                    ax4.set_title(r'c)',position=(title_x,title_y))# inhom.: $\alpha_0 = 0.04$',loc='left')
                     ax4.legend(prop={'size':10},bbox_to_anchor=(-0.4,0.85),loc='lower left')
 
                 ax4.set_ylim([0,y_border])
 
-                ax3.text(0.6*rho_max,y_border*3/4.,r'$\displaystyle \chi \approx %4.2f$'%chi1,bbox={'facecolor':'white','alpha':0.9,'pad':5},fontsize=10)
-                ax4.text(0.6*rho_max,y_border*3/4.,r'$\displaystyle \chi \approx %4.2f$'%results['chi'],bbox={'facecolor':'white','alpha':0.9,'pad':5},fontsize=10)
+                ax3.text(0.6*rho_max,y_border*3/4.,r'$\chi \approx %4.2f$'%chi1,bbox={'facecolor':'white','alpha':0.9,'pad':5},fontsize=10)
+                ax4.text(0.6*rho_max,y_border*3/4.,r'$\chi \approx %4.2f$'%results['chi'],bbox={'facecolor':'white','alpha':0.9,'pad':5},fontsize=10)
 
                 #else:
-                    #ax3.text(12.5,0.7*rho_max,r'$\displaystyle \chi \approx %4.2g$'%chi1,bbox={'facecolor':'white','alpha':0.9,'pad':5})
-                    #ax4.text(12.5,0.7*rho_max,r'$\displaystyle \chi \approx %4.2g$'%results['chi'],bbox={'facecolor':'white','alpha':0.9,'pad':5})
+                    #ax3.text(12.5,0.7*rho_max,r'$\chi \approx %4.2g$'%chi1,bbox={'facecolor':'white','alpha':0.9,'pad':5})
+                    #ax4.text(12.5,0.7*rho_max,r'$\chi \approx %4.2g$'%results['chi'],bbox={'facecolor':'white','alpha':0.9,'pad':5})
                 ax3.set_xlim([0,rho_max])
                 ax4.set_xlim([0,rho_max])
 
@@ -980,19 +980,19 @@ def set_title(ax,order=1,title='',offset=(-0.1,0.1),pad=0):
 def get_displayString(key):
     
     if key == 'rateWnt':
-        return r'$\displaystyle \bar{\nu}\,$[Hz]'
+        return r'$\bar{\nu}\,$[Hz]'
     elif key == 'alpha_0':
-        return r'$\displaystyle \alpha_0$'
+        return r'$\alpha_0$'
     elif key == 'tau_I':
-        return r'$\displaystyle \tau_I\,$[ms]'
+        return r'$\tau_I\,$[ms]'
     elif key == 'eps':
-        return r'$\displaystyle \varepsilon$'
+        return r'$\varepsilon$'
     elif key == 'eta':
-        return r'$\displaystyle \eta$'
-    elif key == 'n':
-        return r'$\displaystyle n$'
+        return r'$\eta$'
+    elif key == 'tau_n':
+        return r'$\tau_n$'
     elif key == 'Psi_0':
-        return r'$\displaystyle \Psi_0$'
+        return r'$\Psi_0$'
     else:
         return r''
 
