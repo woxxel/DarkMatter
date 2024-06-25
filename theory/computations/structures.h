@@ -295,7 +295,7 @@ class Simulation
 
         info_paras infoParas;
 
-        bool in_imp, in_inc;
+        // bool in_imp, in_inc;
         bool trans_imp_found, trans_inc_found, trans_imp_found_approx, trans_inc_found_approx;
         double trans_inc, trans_imp;
 

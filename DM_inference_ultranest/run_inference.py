@@ -117,8 +117,7 @@ class Inference:
     def setPriorTransform(self):
         def prior_transform(cube):
             # transforms random variables from uniform [0,1] distribution into actual priors
-
-
+            
             params = np.zeros_like(cube)
             for i,var in enumerate(self.prior.keys()):
                 mu = self.prior[var]['mu']
@@ -159,7 +158,7 @@ class Inference:
                 if loop:
                     p_N_AP_arr = np.zeros(self.N_AP.shape[0])
                     for j,N in enumerate(self.N_AP):
-                        p_N_AP_arr[j],_ = quad(f,0,nu_max,args=(gamma,delta,nu_max,N,self.T_total))
+                        p_N_AP_arr[j],_ = quadpy.quad(f,0,nu_max,args=(gamma,delta,nu_max,N,self.T_total))
                 else:
                     eps_pow = -8
                     while True:
@@ -218,7 +217,7 @@ class Inference:
         logl = self.setLogLikelihood(loop=False)
         priorTrafo = self.setPriorTransform()
 
-        for i in range(0,I.data_df.shape[1]):
+        for i in range(0,self.data_df.shape[1]):
             time_start = time.time()
             self.prepare_data(i,withZeros=False)
             sampler = ultranest.ReactiveNestedSampler(
@@ -241,6 +240,6 @@ class Inference:
 
 
 
-I = Inference()
-I.load_data('empirical',filePath='../../data/BuscheLab/2P_data.xlsx',include_silent=True)
-result, sampler = I.run_on_data()
+#I = Inference()
+#I.load_data('empirical',filePath='../../data/BuscheLab/2P_data.xlsx',include_silent=True)
+#result, sampler = I.run_on_data()

@@ -83,3 +83,38 @@ def create_population_values(I_val,nI,E_val,nE):
     val = I_val*nI
     val.extend(E_val*nE)
     return val
+
+
+def get_J(eta,eps,tau_M,p_pre,p_post):
+
+    if p_post=='E' and p_pre=='E':
+        return eta*eps*tau_M
+    elif p_post=='E' and p_pre=='I':
+        return np.sqrt(1-(eta*eps)**2)*tau_M
+    elif p_post=='I' and p_pre=='E':
+        return eps*tau_M
+    elif p_post=='I' and p_pre=='I':
+        return np.sqrt(1-eps**2)*tau_M
+
+
+def get_var_V(J_from_E,J_from_I,rateWnt,tau_A,tau_N,tau_G,tau_M,n):
+    ## variance of the membrane potential
+    ## from excitatory AMPA synapses
+
+    var = {}
+    var['V_A'] = J_from_E**2 * rateWnt / (tau_A + tau_M) * ( (1-n)**2/2 + (1-n)*n*tau_A / (tau_A + tau_N) )
+    ## from excitatory NMDA synapses
+    var['V_N'] = J_from_E**2 * rateWnt / (tau_N + tau_M) * (n**2/2 + (1-n)*n*tau_N / (tau_A + tau_N) )
+    ## from inhibitory GABA synapses
+    var['V_G'] = J_from_I**2 * rateWnt * 0.5 / (tau_G + tau_M)
+
+    N = 1
+    for key in var.keys():
+        N = max(N,var[key].shape[0] if isinstance(var[key],np.ndarray) else 1)
+    
+    for key in var.keys():
+        if not isinstance(var[key],np.ndarray):
+            var[key] = np.full(N,var[key])
+        # print(var)
+    
+    return var['V_A'],var['V_N'],var['V_G']

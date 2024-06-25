@@ -1,3 +1,13 @@
+
+#include <plog/Log.h>
+#include <plog/Init.h>
+
+#include <plog/Formatters/CsvFormatter.h> 
+#include <plog/Appenders/RollingFileAppender.h> 
+#include <plog/Formatters/TxtFormatter.h>
+#include <plog/Appenders/ConsoleAppender.h> 
+
+
 #include "./computations/structures.h"
 #include "./computations/functions.h"
 #include "./computations/functions.cpp"
@@ -9,12 +19,37 @@
 int main(int argc, char** argv)
 {
 
+	static plog::ConsoleAppender<plog::TxtFormatter> consoleAppender;
+	static plog::RollingFileAppender<plog::CsvFormatter> fileAppender("MultiAppender.csv", 8000, 3);
+	static plog::Severity sev = plog::warning; 
+
 	// spdlog::set_level(spdlog::level::info);
-	if ((argc < 4) or (argc > 4))
+	if (argc==5) {
+		// set up logger to write to console
+		switch (atoi(argv[4])) {
+			case 5:	//'debug':
+				sev = plog::debug;
+				break;
+			case 4:	//'info':
+				sev = plog::info;
+				break;
+			case 3: //'warning':
+				sev = plog::warning;
+				break;
+			case 2:	//'error':
+				sev = plog::error;
+				break;
+		}	
+	}
+	
+	plog::init(sev, &consoleAppender);//.addAppender(&fileAppender);
+
+	if ((argc < 4) or (argc > 5))
 	{
-		cout << "Please specify (only) the input and output file names!" << endl;
+		PLOG_ERROR << "Please specify (only) the input and output file names!" << endl;
 		return 1;
 	}
+
 
 	string fileModel = argv[1];
     string fileCom = argv[2];
@@ -43,11 +78,14 @@ int main(int argc, char** argv)
 
 	// cout << "drawing firing rates from theoretical distribution..." << endl;
 	for (unsigned p=0; p<mod.layer[0].nPop; p++) {
+		PLOG_DEBUG << "population " << p << ": drawing firing rates from theoretical distribution..." << endl;
 		Population_Simulation *popSimP = &mod.layer[0].population[p].simulation;
 		mes.rates[p].resize(com.N);
 		mes.rates_T[p].resize(com.N);
 
 		for (unsigned n=0; n<com.N; n++) {
+
+			PLOG_DEBUG << "population " << p << ", neuron " << n << ": drawing firing rates from theoretical distribution..." << endl;
 			mes.rates[p][n].resize(com.draw_from_theory);
 			mes.rates_T[p][n].resize(com.draw_from_theory);
 
@@ -57,7 +95,7 @@ int main(int argc, char** argv)
 
 				for (unsigned t=0; t<com.draw_finite_time; t++) {
 					mes.rates_T[p][n][k][t] = popSimP->draw_sample(rng,mes.rates[p][n][k],com.T);
-					// cout << "neuron n with rate " << mes.rates[n][k] << ", drew rate: " << mes.rates_T[n][k][t] << endl;
+					PLOG_DEBUG << "neuron n with rate " << mes.rates[p][n][k] << ", drew rate: " << mes.rates_T[p][n][k][t] << endl;
 				}
 			}
 		}
@@ -86,7 +124,7 @@ int main(int argc, char** argv)
     //     }
     // }
 
-	write_measures(fileOut,comP,mesP);
+	write_measures(fileOut, comP, modP, mesP);
 
     return 0;
 }

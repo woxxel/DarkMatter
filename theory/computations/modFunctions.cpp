@@ -789,7 +789,7 @@ void Model::find_transitions(Simulation *simP)
     }
 
     // checking whether solutions are implausible
-	if (is_implausible(mSimP) && (simP->vars[0].iter>0)) {
+	if (is_implausible(mSimP)) { //} && (simP->vars[0].iter>0)) {
         // mSimP->trans_imp = *simP->vars[0].paraP[0];
         mSimP->trans_imp = simP->vars[0].iter;
         mSimP->trans_imp_found = true;

@@ -102,11 +102,13 @@ def plot_currents(ax,res,plt_para,bound='imp',idxs=None,approx=False,plot_option
     # print(steps1,steps)
             
     ## plot constant lines
-    ax.axhline(0,c='k',ls='--',lw=0.5)
+    # ax.axhline(0,c='k',ls='--',lw=0.5)
 
     if not idxs:
         idxs = range(steps1)
 
+    idx_2 = np.argmin(np.abs(plt_para['x']['lim']/2-res[x_key]))
+    idx_3 = np.argmin(np.abs(plt_para['x']['lim']/3-res[x_key]))
     if 'var' in plot_options:
     
         ## plot dark-matter transitions for one of the solutions
@@ -114,7 +116,7 @@ def plot_currents(ax,res,plt_para,bound='imp',idxs=None,approx=False,plot_option
         if trans_idx:
             val = res[x_key][trans_idx]
             ax.axvline(val,color='k',ls=':')
-            ax.text(val+0.5,0.2,r'$\bar{\nu}_{DM}$',fontsize=10)
+            ax.text(val+0.2,0.2,r'$\bar{\nu}_{DM}$',fontsize=10)
         
         ## plotting temporal fluctuations
         trans_idx = get_trans_idx(res,bound,0,0,0)
@@ -125,12 +127,13 @@ def plot_currents(ax,res,plt_para,bound='imp',idxs=None,approx=False,plot_option
         for i,a in enumerate(idxs):
             col = i/float(len(idxs)-1)
             trans_idx = get_trans_idx(res,bound,i,0,0)
+            print(trans_idx)
             
             ax.plot(res[x_key][:trans_idx],res['alpha'][0,i,:trans_idx],color=(col,0,0),ls='-')#,label=r'$\alpha_k = \sqrt{\alpha_{I_k}^2 + \alpha_0^2}$')
             ax.plot(res[x_key][trans_idx:],res['alpha'][0,i,trans_idx:],color=(col,0,0),ls=':')
 
-        ax.text(res[x_key][int(steps*1/3)],res['sigma_V'][0,0,int(steps*1/3)]+0.05,r'$\sigma_{V_k}$',fontsize=10)
-        ax.text(res[x_key][int(steps/2)],res['alpha'][0,0,int(steps/2)]-0.05,r'$\alpha_k = \sqrt{\alpha_{I_k}^2 + \alpha_0^2}$',fontsize=10)
+        ax.text(res[x_key][idx_3],res['sigma_V'][0,0,idx_3]+0.05,r'$\sigma_{V_k}$',fontsize=10)
+        ax.text(res[x_key][idx_2],res['alpha'][0,0,idx_2]-0.05,r'$\alpha_k = \sqrt{\alpha_{I_k}^2 + \alpha_0^2}$',fontsize=10)
 
         plt.setp(ax, ylim=[-0.02,0.15])
         
@@ -144,7 +147,7 @@ def plot_currents(ax,res,plt_para,bound='imp',idxs=None,approx=False,plot_option
             ax.plot(res[x_key],-res['I_balance'][0,i,:],':',color=[0.7,0,0],lw=0.8)
             ax.plot(res[x_key][:trans_idx],-res['I_balance'][0,i,:trans_idx],'-',color=(col,0,0),label=r'$I_{balance}$',lw=0.8)
 
-        ax.text(res[x_key][int(steps*1/3)],-res['I_balance'][0,0,int(steps*1/3)]+0.05,r'$\bar{I}_0-\Psi_0$',fontsize=10)
+        ax.text(res[x_key][idx_3],-res['I_balance'][0,0,idx_3]+0.05,r'$\bar{I}_0-\Psi_0$',fontsize=10)
 
         plt.setp(ax,
             ylim=[-0.3,0.02]
@@ -963,7 +966,7 @@ def remove_frame(ax,positions=None):
     for p in positions:
         ax.spines[p].set_visible(False)
 
-def set_title(ax,order=1,title='',offset=(-0.1,0.1),pad=0):
+def set_title(ax,order=1,title='',offset=(-0.1,1.1),pad=0,fontsize=10):
 
     # pos_box = ax.get_position()
     # print(pos_box)
@@ -973,7 +976,8 @@ def set_title(ax,order=1,title='',offset=(-0.1,0.1),pad=0):
     # y = pos[1]+offset[1]
     #
     # print(pos)
-    ax.set_title(r'%s) %s'%(chr(96+order),title),position=offset,pad=pad)#,loc='left')#,fontsize=12)
+    # ax.set_title(r'%s) %s'%(chr(96+order),title),position=offset,pad=pad,fontsize=fontsize)#,loc='left')#,fontsize=12)
+    ax.set_title(r'%s) %s'%(chr(96+order),title),x=offset[0],y=offset[1],pad=pad,fontsize=fontsize)#,loc='left')#,fontsize=12)
     # ax.text(x=x,y=y,s=r'%s) %s'%(chr(96+order),title),ha='center',va='center',transform=ax.transAxes)#,loc='left')#,fontsize=12)
 
 
@@ -985,12 +989,14 @@ def get_displayString(key):
         return r'$\alpha_0$'
     elif key == 'tau_I':
         return r'$\tau_I\,$[ms]'
+    elif key == 'tau_G':
+        return r'$\tau_G\,$[ms]'
     elif key == 'eps':
         return r'$\varepsilon$'
     elif key == 'eta':
         return r'$\eta$'
     elif key == 'tau_n':
-        return r'$\tau_n$'
+        return r'$n$'
     elif key == 'Psi_0':
         return r'$\Psi_0$'
     else:

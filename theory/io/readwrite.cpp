@@ -309,7 +309,7 @@ void read_computation(string fileComp, Computation *comP)
 
 
 
-void write_measures(string fileOut, Computation *comP, Measures *mesP)
+void write_measures(string fileOut, Computation *comP, Model *modP, Measures *mesP)
 {
     // cout << "writing measures (results) to " << fileOut << "..." << endl;
 
@@ -322,7 +322,7 @@ void write_measures(string fileOut, Computation *comP, Measures *mesP)
     // int p_Sz = resP->steps;//, bin_Sz = resP->p_hist.size();
 
     // nc_def_dim(ncid, "one", 1, &one_dim);
-    nc_def_dim(ncid, "P", 2, &P_dim);
+    nc_def_dim(ncid, "P", modP->layer[0].nPop, &P_dim);
     nc_def_dim(ncid, "N", comP->N, &N_dim);
     nc_def_dim(ncid, "rates_dim", nK, &rates_dim);
     nc_def_dim(ncid, "rates_T_dim", nT, &rates_T_dim);
@@ -341,7 +341,7 @@ void write_measures(string fileOut, Computation *comP, Measures *mesP)
     //
     // write_to_ncid(ncid,"d_nu", NC_DOUBLE, 1, &one_dim, &resP->d_nu);
 
-    for (unsigned p=0; p<2; p++) {
+    for (unsigned p=0; p<modP->layer[0].nPop; p++) {
 
         for (unsigned n=0; n<comP->N; n++) {
             start[0] = p;

@@ -29,7 +29,7 @@ int main(int argc, char** argv)
 	// check, if proper number of arguments was provided
 
 	static plog::ConsoleAppender<plog::TxtFormatter> consoleAppender;
-	// static plog::RollingFileAppender<plog::CsvFormatter> fileAppender("MultiAppender.csv", 8000, 3);
+	static plog::RollingFileAppender<plog::CsvFormatter> fileAppender("MultiAppender.csv", 8000, 3);
 	static plog::Severity sev = plog::warning; 
 
 	if (argc==5) {

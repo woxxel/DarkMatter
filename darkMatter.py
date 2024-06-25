@@ -233,7 +233,7 @@ def set_computation(fileComputation,options):
     com = parameters('computation')
 
     ### parameters for layers
-    com.set_para('N',10,options)
+    com.set_para('N',10.,options)
     com.set_para('T',100.,options)
     com.set_para('draw_from_theory',100,options)
     com.set_para('draw_finite_time',100,options)
@@ -257,7 +257,7 @@ def set_computation(fileComputation,options):
         Var[:] = val
     ncid.close()
 
-    # com.print_parameter()
+    com.print_parameter()
 
     return com, sv_str
 

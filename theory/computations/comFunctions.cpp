@@ -38,6 +38,7 @@ double Population_Simulation::draw_rate(gsl_rng *rng)
 double Population_Simulation::draw_sample(gsl_rng *rng, double rate, double T)
 {
     // int N_AP = gsl_ran_poisson(rng,rate*T);
+    // cout << "rate: " << rate << ", T: " << T << endl;
     return gsl_ran_poisson(rng,rate*T)/T;     // generating a random number of spikes from this
 }
 

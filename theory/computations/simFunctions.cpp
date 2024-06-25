@@ -117,6 +117,7 @@ void Simulation::initialize(Model *modP)
             for (unsigned ll=0; ll<modP->L; ll++) l[ll] = ll;
         }
         for (unsigned ll=0; ll<l.size(); ll++) {
+        
             layer = l[ll];
 
             // cout << "layer (" << ll << ")" << layer << endl;
@@ -138,6 +139,7 @@ void Simulation::initialize(Model *modP)
                     s.resize(modP->layer[layer].population[population].nPSP);
                     for (unsigned ss=0; ss<modP->layer[layer].population[population].nPSP; ss++) s[ss] = ss;
                 }
+                // cout << " bla" << endl;
                 for (unsigned ss=0; ss<s.size(); ss++) {
                     psp = s[ss];
                     // cout << "psp (" << ss << ") " << psp << endl;
@@ -176,10 +178,10 @@ bool Simulation::run_iteration(Model *modP, Model *modP_approx)
             if (i>0)  // whenever an outer loop is iterated, all inner loops are reset to true
                 iter_status[i-1] = true;
             
-            // else if (vars[i].iter==0) { // reset axes when loop is at start
-                // initiate_y_axis(modP);
-                // initiate_y_axis(modP_approx);
-            // }
+            else if (vars[i].iter==0) { // reset axes when loop is at start
+                initiate_y_axis(modP);
+                initiate_y_axis(modP_approx);
+            }
 
             // if iteration is done and iter_status is still true, don't jump to next variable
             if (iter_status[i])
@@ -192,29 +194,31 @@ bool Simulation::run_iteration(Model *modP, Model *modP_approx)
     return loops!=nVar;
 };
 
-// void Simulation::initiate_y_axis(Model *modP)
-// {
-//     Population_Simulation *popSimP;
-//     // cout << "initiating y-axis..." << endl;
-//     for (unsigned l = 0; l < modP->L; l++) {
-//         for (unsigned p = 0; p < modP->layer[l].nPop; p++) {
+void Simulation::initiate_y_axis(Model *modP)
+{
+    Model_Simulation *mSimP = &modP->simulation;
+    // Population_Simulation *popSimP;
 
-//             popSimP = &modP->layer[l].population[p].simulation;
+    // // cout << "initiating y-axis..." << endl;
+    // for (unsigned l = 0; l < modP->L; l++) {
+    //     for (unsigned p = 0; p < modP->layer[l].nPop; p++) {
 
-//             // popSimP->trans_DM_found = false;
-//             // popSimP->trans_np_found = false;
+    //         popSimP = &modP->layer[l].population[p].simulation;
 
-//             // popSimP->trans_DM = NAN;
-//             // popSimP->trans_np = NAN;
-//         }
-//     }
+    //         // popSimP->trans_DM_found = false;
+    //         // popSimP->trans_np_found = false;
 
-//     // modP->simulation.trans_inc = NAN;
-//     // modP->simulation.trans_imp = NAN;
+    //         // popSimP->trans_DM = NAN;
+    //         // popSimP->trans_np = NAN;
+    //     }
+    // }
 
-//     // modP->simulation.trans_inc_found = false;
-//     // modP->simulation.trans_imp_found = false;
-// }
+    mSimP->in_inc = false;
+    mSimP->in_imp = false;
+
+    // modP->simulation.trans_inc_found = false;
+    // modP->simulation.trans_imp_found = false;
+}
 
 
 void Simulation::store_results(Model * modP, Model * modP_approx)

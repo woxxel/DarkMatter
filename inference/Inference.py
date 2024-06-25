@@ -8,6 +8,15 @@ from empirical import *
 
 class Inference:
 
+    '''
+        wrapper class to run inference of the self-consistent model on given data
+
+
+        Input:
+            mouse data provided by
+            
+    '''
+
     dataLoaded = False
     paras = {}
 
