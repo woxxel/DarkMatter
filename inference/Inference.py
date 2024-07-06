@@ -12,7 +12,7 @@ class Inference:
         wrapper class to run inference of the self-consistent model on given data
 
 
-        Input:
+        Input:  
             mouse data provided by
             
     '''
@@ -36,18 +36,18 @@ class Inference:
                 paras = {
                     'gamma':{'mu':1.5, 'sigma':1.0, 'sigma_animal':1.0,'prior':'Normal'},
                     'delta':{'mu':4.,'sigma':2., 'sigma_animal':1.0,'prior':'Normal'},
-                    'nu_max':{'mu':60.,'sigma':20., 'sigma_animal':5.0,'prior':'Normal'}
+                    'nu_max':{'mu':60.,'sigma':10., 'sigma_animal':5.0,'prior':'Normal'}
                 }
             assert all(key in paras for key in ("gamma","delta","nu_max")), "Please provide all necessary parameters!"
             def logp(data,gamma,delta,nu_max):
 
-                if type(data)==np.array:
+                # if type(data)==np.array:
 
-                    data_silent = data==0
-                    N_silent = data_silent.sum()
-                    data = data[data_silent]
+                #     data_silent = data==0
+                #     N_silent = data_silent.sum()
+                #     data = data[data_silent]
 
-                    p_silent = integrate.quad(lambda nu : p_nu(nu,gamma,delta,nu_max)*np.exp(-nu*T),0,10)
+                #     p_silent = integrate.quad(lambda nu : p_nu(nu,gamma,delta,nu_max)*np.exp(-nu*T),0,10)
 
                 scaled_NU = tt.log(data / nu_max)
                 return - tt.log( nu_max / gamma * tt.sqrt( -np.pi * scaled_NU ) ) - delta**2 / 2 + \
@@ -141,7 +141,7 @@ class Inference:
             sha if is_hierarchical[p] else 1
             for p,sha in enumerate(self.mP.data_shape)
         ]
-        # print(hierarchical_shape)
+        print(hierarchical_shape)
 
         # create top-level distribution for prior mean-values
         prior_mean = self.paras[name]['mu'] + \
@@ -150,7 +150,7 @@ class Inference:
                 sigma=self.paras[name]['sigma'],
                 shape=hierarchical_shape
             )
-        # tt.printing.Print('prior mean shape')(tt.shape(prior_mean))
+        tt.printing.Print('prior mean shape')(tt.shape(prior_mean))
 
         # create real distribution, from which values are drawn
         prior_animal = pm.Normal(f'{name}',
@@ -159,10 +159,10 @@ class Inference:
             shape=self.mP.data_shape
         )
 
-        # tt.printing.Print('prior animal')(tt.shape(prior_animal))
+        tt.printing.Print('prior animal')(tt.shape(prior_animal))
         prior_animal = prior_animal.reshape((1,-1))
 
-        # tt.printing.Print('prior animal')(tt.shape(prior_animal))
+        tt.printing.Print('prior animal')(tt.shape(prior_animal))
 
         # broadcast distribution to draw values for each neuron
         prior_animal = tt.tile(
@@ -197,6 +197,7 @@ class Inference:
 
             priors = {}
             for para in self.paras:
+                print(para)
                 priors[para] = self.construct_model_hierarchical(para)
                 priors[para] = priors[para][self.data_mask]
 

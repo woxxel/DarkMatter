@@ -1,0 +1,25 @@
+Collecting package metadata (current_repodata.json): ...working... done
+Solving environment: ...working... done
+
+## Package Plan ##
+
+  environment location: /home/wollex/anaconda3/envs/inference
+
+  added / updated specs:
+    - pandas
+
+
+The following packages will be downloaded:
+
+    package                    |            build
+    ---------------------------|-----------------
+    ca-certificates-2024.7.4   |       hbcca054_0         151 KB  conda-forge
+    ------------------------------------------------------------
+                                           Total:         151 KB
+
+The following packages will be UPDATED:
+
+  ca-certificates                       2024.6.2-hbcca054_0 --> 2024.7.4-hbcca054_0
+
+
+Proceed ([y]/n)? 

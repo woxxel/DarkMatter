@@ -29,5 +29,6 @@ def get_alpha_0(gamma,delta,nu_max,tau_m=0.01,J_0=-1):
     nu_mean = get_nu_bar(gamma,delta,nu_max)
     tau_I = get_tau_I(nu_max,tau_m)
 
-    q = nu_max**2 * gamma / np.sqrt(gamma**2 + 2) * np.exp(-delta**2 / (2+gamma**2))
+    q = get_q(gamma,delta,nu_max)
+    print(nu_mean,tau_I,q)
     return np.sqrt(J_0**2 * ( nu_mean/ (2 * gamma**2 * (tau_I + tau_m)) - q))

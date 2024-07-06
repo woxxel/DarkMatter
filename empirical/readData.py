@@ -1,11 +1,16 @@
 import pandas as pd
 import numpy as np
-import os, sys
+import os
+
+from matplotlib import pyplot as plt
 
 # root_dir = os.path.dirname(os.path.abspath(''))
 # if not root_dir in sys.path: sys.path.append(root_dir)
 
-from .readData_mat import *
+# from .readData_mat import *
+from darkMatter import darkMatter
+from DM_theory.functions import *
+
 #from empirical.readData_xls import *
 
 class ModelParams:
@@ -20,10 +25,11 @@ class ModelParams:
                 self.mat_data(filePath)
             elif ext=='.xlsx':
                 self.xlsx_data(**kwargs)
+        
         if mode=='artificial':
-            self.artificial_data(filePath)
+            self.artificial_data(**kwargs)
 
-        pass
+        # pass
 
     # def initialize_rate_df(self,mouse_types,nMice,n_layer=1,n_cluster=1):
     #
@@ -107,7 +113,8 @@ class ModelParams:
         self.mask = ~np.isnan(self.rates)
         self.rates = self.rates[self.mask]
 
-    def xlsx_data(self, filePath='../../data/BuscheLab/2P_data.xlsx',sheets=None,population_keys=['mouse type']):
+
+    def xlsx_data(self, filePath='../../data/BuscheLab/2P_data.xlsx',sheets=None,population_keys=['mouse type','mouse_ID']):
 
         """
             function to turn xlsx sheets into a properly structured pandas-DataFrame
@@ -130,29 +137,98 @@ class ModelParams:
         data = pd.ExcelFile(filePath)
         sheets = sheets if sheets else data.sheet_names
 
-        # create dictionary to preformat data to be written into dataframe
-        rate_dict = {}
+
+        self.rates = pd.DataFrame(
+            columns=pd.MultiIndex(levels=[[],[]],codes=[[],[]],names=population_keys)
+        )
+
         for sheet in sheets:        # iterate through specified sheets
 
             input_df = data.parse(sheet,header=list(range(len(population_keys)-1)))
-
             for col in input_df.columns:    # iterate through each column in sheet
+                
+                self.rates = add_column_to_dataframe(self.rates,new_data=np.array(input_df[col]),name=col,population=sheet,population_keys=population_keys)
 
-                # create column keys from header-rows
-                key = (sheet,*col) if isinstance(col,tuple) else (sheet,col)
-                rate_dict[key] = pd.Series(input_df[col])
-
-        self.rates = pd.DataFrame(rate_dict)
-        column_names = [[str(entry) for entry in col] for col in self.rates.columns]
-        print(f'column names: {column_names}')
-        self.rates.columns = pd.MultiIndex.from_tuples(column_names, names=population_keys)
-        max_shape = self.get_data_shape()
+        self.get_data_shape()
 
         self.types = np.unique(self.rates.columns.get_level_values(population_keys[0]))
 
         self.animal_mask = np.zeros(np.prod(self.data_shape),dtype='bool')
         for i,c in enumerate(self.types):
             self.animal_mask[i*self.data_shape[1]:i*self.data_shape[1]+self.rates[c].shape[1]] = True
+
+
+    def artificial_data(self,gamma,delta,nu_max,population_keys=['rates','mouse ID'],T=600.,N=100):
+        
+        self._num_layers = 1
+        self._num_clusters = 2
+
+        self.gamma = gamma
+        self.delta = delta
+        self.nu_max = nu_max
+
+        self.N = N
+        self.T = float(T)
+
+        # arr_rateWnt = [1.]
+        # arr_alpha_0 = [0.0,0.02,0.06]
+
+        # self.spike_counts = pd.DataFrame(columns=arr_rateWnt)
+        # print(self.rates)
+
+        self.spike_counts = pd.DataFrame(
+            columns=pd.MultiIndex(levels=[[],[]],codes=[[],[]],names=population_keys)
+        )
+
+        # for r,rate in enumerate(arr_rateWnt):
+        options = {
+            'L': 1,
+            'P': 1,
+            'S': [1],
+
+            'tau_m': 0.01,
+            'J_0': -1,
+            'computation': {
+                'N': self.N,
+                'T': self.T,
+                'draw_from_theory': 5,
+                'draw_finite_time': 1,
+            }
+        }
+
+        options['rateWnt'] = get_nu_bar(gamma=gamma,delta=delta,nu_max=nu_max)
+        options['tau_I'] = [get_tau_I(nu_max=nu_max,tau_m=options['tau_m'])]
+        options['alpha_0'] = get_alpha_0(gamma=gamma,delta=delta,nu_max=nu_max,tau_m=options['tau_m'],J_0=options['J_0'])
+
+        print(f"inferred parameters: {options['rateWnt']=}, {options['tau_I']=}, {options['alpha_0']=}")
+
+        res = darkMatter(steps=200,mode=1,options=options,cleanup=False,rerun=True,compile=False,logging=2)
+
+        for d,rate_draw in enumerate(res['rates_T'][0,...,0].T):
+            self.spike_counts = add_column_to_dataframe(self.spike_counts,rate_draw,d,population=f'{gamma=}',population_keys=population_keys)
+        
+        self.plot_rates()
+        
+        # return res
+            # res = create_measures(L=1,S=[1,2],N=100,rerun=True,rateWnt=1.,alpha_0=0.02)
+
+
+    def plot_rates(self):
+
+
+        fig,ax = plt.subplots(1,1,figsize=(10,5))
+
+        NU = np.linspace(0,self.nu_max,51)
+        ## plot histogram of empirical or artificial rates
+        ax.hist(self.spike_counts/self.T,bins=NU,density=True)
+
+
+
+        ## plot underlying original distribution
+        NU = np.linspace(0,self.nu_max,1001)
+        ax.plot(NU,p_nu(NU,self.gamma,self.delta,self.nu_max),label='original distribution')
+
+        plt.show(block=False)
 
 
     def regularize_rates(self):
@@ -222,6 +298,7 @@ class ModelParams:
         """
 
         population_names = list(self.rates.columns.names)
+        print(population_names)
 
         max_shape = {}
         for name in population_names:
@@ -249,13 +326,37 @@ class ModelParams:
 
 
 
-    def artificical_data(self,):
+def add_column_to_dataframe(df,new_data,name,population=None,population_keys=None):
+    
+    """
+        function to add a column to a pandas dataframe
+        with multicolumn structure
 
-        self._num_layers = 1
-        self._num_clusters = 2
+        Input:
+            df: pandas DataFrame
+                DataFrame to which the column is added
+            data: np.array
+                data to be added
+            name: string
+                name of the column
+            population: string
+                name of the population (if provided, introduces hierarchical level)
+    """
 
-        arr_rateWnt = [1.,2.,5.]
-        arr_alpha_0 = [0.0,0.02,0.06]
+    # construct index to multicolumn
+    if population:
+        idx = (population,name)
+    else:
+        idx = name
 
-        for L in range(arr_rateWnt):
-            res = create_measures(L=1,S=[1,2],N=100,rerun=True,rateWnt=1.,alpha_0=0.02)
+    new_data_df = pd.DataFrame(
+        new_data,
+        columns=pd.MultiIndex.from_tuples([idx],names=population_keys)
+    )
+    
+    if (df is None) or df.empty:
+        return new_data_df
+    else:
+        if len(new_data_df) > len(df):
+            df = df.reindex(new_data_df.index)
+        return pd.concat([df,new_data_df],axis=1)
