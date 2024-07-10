@@ -157,6 +157,8 @@ class ModelParams:
         for i,c in enumerate(self.types):
             self.animal_mask[i*self.data_shape[1]:i*self.data_shape[1]+self.rates[c].shape[1]] = True
 
+        self.T = 1200
+        
 
     def artificial_data(self,gamma,delta,nu_max,population_keys=['rates','mouse ID'],T=600.,N=100):
         
@@ -205,6 +207,7 @@ class ModelParams:
         res = darkMatter(steps=200,mode=1,options=options,cleanup=False,rerun=True,compile=False,logging=2)
 
         for d,rate_draw in enumerate(res['rates_T'][0,...,0].T):
+        # for d,rate_draw in enumerate(res['rates'][0,...].T):
             self.spike_counts = add_column_to_dataframe(self.spike_counts,rate_draw,d,population=f'{gamma=}',population_keys=population_keys)
         
         self.plot_rates()
@@ -213,21 +216,35 @@ class ModelParams:
             # res = create_measures(L=1,S=[1,2],N=100,rerun=True,rateWnt=1.,alpha_0=0.02)
 
 
-    def plot_rates(self):
+    def plot_rates(self,key,gamma=None,delta=None,nu_max=None):
 
+        fig,ax = plt.subplots(1,2,figsize=(10,5))
 
-        fig,ax = plt.subplots(1,1,figsize=(10,5))
+        gamma = gamma if gamma else self.gamma
+        delta = delta if delta else self.delta
+        nu_max = nu_max if nu_max else self.nu_max
 
-        NU = np.linspace(0,self.nu_max,51)
+        bins = np.linspace(0,nu_max,51)
         ## plot histogram of empirical or artificial rates
-        ax.hist(self.spike_counts/self.T,bins=NU,density=True)
-
-
+        ax[0].hist(self.rates[key],bins=bins,density=True)
+        # ax[0].set_xscale('log')
 
         ## plot underlying original distribution
-        NU = np.linspace(0,self.nu_max,1001)
-        ax.plot(NU,p_nu(NU,self.gamma,self.delta,self.nu_max),label='original distribution')
+        NU = np.linspace(0,nu_max,10**6+1)
+        p_NU = p_nu(NU,gamma,delta,nu_max)
+        ax[0].plot(NU,p_NU,label='original distribution')
+        
+        bins = 10**np.linspace(-4,2,101)
+        p_NU[-1] = 0
+        p_NU_cum = np.nancumsum(p_NU)
+        p_NU_cum /= p_NU_cum[-1]
+        # print(p_NU,p_NU_cum)
 
+        ax[1].hist(self.rates[key],bins=bins,density=True,cumulative=True,histtype='step')
+        ax[1].plot(NU,p_NU_cum,label='original distribution',color='r',linestyle='--')
+
+        plt.setp(ax[0],xlim=[10**(-4),nu_max])
+        plt.setp(ax[1],xlim=[10**(-4),nu_max])
         plt.show(block=False)
 
 

@@ -851,7 +851,7 @@ void Model::find_transitions(Simulation *simP)
 void Model::get_max_prob()
 {
     Population_Simulation *popSimP;
-    unsigned steps = 1000;
+    unsigned steps = 1000000;
     double d_nu;
     for (unsigned l = 0; l < L; l++) {
         for (unsigned p = 0; p < layer[l].nPop; p++) {
