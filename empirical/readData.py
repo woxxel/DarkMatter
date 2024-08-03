@@ -210,13 +210,15 @@ class ModelParams:
         # for d,rate_draw in enumerate(res['rates'][0,...].T):
             self.spike_counts = add_column_to_dataframe(self.spike_counts,rate_draw,d,population=f'{gamma=}',population_keys=population_keys)
         
-        self.plot_rates()
+        self.rates = self.spike_counts/self.T
+        print(self.rates)
+        self.plot_rates(key=f'{gamma=}')
         
         # return res
             # res = create_measures(L=1,S=[1,2],N=100,rerun=True,rateWnt=1.,alpha_0=0.02)
 
 
-    def plot_rates(self,key,gamma=None,delta=None,nu_max=None):
+    def plot_rates(self,key=None,gamma=None,delta=None,nu_max=None):
 
         fig,ax = plt.subplots(1,2,figsize=(10,5))
 
@@ -224,9 +226,11 @@ class ModelParams:
         delta = delta if delta else self.delta
         nu_max = nu_max if nu_max else self.nu_max
 
-        bins = np.linspace(0,nu_max,51)
+        rates = self.rates[key] if key else self.rates
+
+        bins = np.linspace(0,nu_max,101)
         ## plot histogram of empirical or artificial rates
-        ax[0].hist(self.rates[key],bins=bins,density=True)
+        ax[0].hist(rates,bins=bins,density=True)
         # ax[0].set_xscale('log')
 
         ## plot underlying original distribution
@@ -234,17 +238,17 @@ class ModelParams:
         p_NU = p_nu(NU,gamma,delta,nu_max)
         ax[0].plot(NU,p_NU,label='original distribution')
         
-        bins = 10**np.linspace(-4,2,101)
+        # bins = 10**np.linspace(-4,2,101)
         p_NU[-1] = 0
         p_NU_cum = np.nancumsum(p_NU)
         p_NU_cum /= p_NU_cum[-1]
         # print(p_NU,p_NU_cum)
 
-        ax[1].hist(self.rates[key],bins=bins,density=True,cumulative=True,histtype='step')
+        ax[1].hist(rates,bins=bins,density=True,cumulative=True,histtype='step')
         ax[1].plot(NU,p_NU_cum,label='original distribution',color='r',linestyle='--')
 
-        plt.setp(ax[0],xlim=[10**(-4),nu_max])
-        plt.setp(ax[1],xlim=[10**(-4),nu_max])
+        plt.setp(ax[0],xlim=[10**(-4),nu_max],ylim=[0,2])
+        plt.setp(ax[1],xlim=[10**(-4),nu_max],ylim=[0,1.1])
         plt.show(block=False)
 
 

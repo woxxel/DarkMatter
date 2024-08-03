@@ -319,8 +319,8 @@ def plot_fins(ax,x_arr,y_arr,gamma,chi,regions,implausible=False):
     #
     #     # ax.set_xlabel(ax_labels[1],fontsize=12)
     #     # ax.set_ylabel(ax_labels[0],fontsize=12)
-    x_arr[0] = 0
-    y_arr[0] = 0
+    # x_arr[0] = 0
+    # y_arr[0] = 0
     ax.set_xlim([x_arr[0],x_arr[-1]])
     ax.set_ylim([y_arr[0],y_arr[-1]])
     return pchi,pgamma

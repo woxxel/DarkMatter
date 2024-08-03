@@ -139,25 +139,25 @@ int selfconsistency_from_currents_f (const gsl_vector * vars, void * params, gsl
     double sigma_V = popP->simulation.sigma_V;
     
     // define the two selfconsistency equations:
-    double alpha_I_sq = gsl_vector_get(vars,0);
-    double I_0 = gsl_vector_get(vars,1);
+    long double alpha_I_sq = gsl_vector_get(vars,0);
+    long double I_0 = gsl_vector_get(vars,1);
     if (isnan(I_0)) {
         return GSL_FAILURE;
     }
 
     
     
-    double alpha_1 = sqrt(alpha_I_sq + gsl_pow_2(modP->layer[0].population[idx_pop[0]].alpha_0));
-    double alpha_2 = sqrt(alpha_I_sq + gsl_pow_2(modP->layer[0].population[idx_pop[1]].alpha_0));
+    long double alpha_1 = sqrt(alpha_I_sq + gsl_pow_2(modP->layer[0].population[idx_pop[0]].alpha_0));
+    long double alpha_2 = sqrt(alpha_I_sq + gsl_pow_2(modP->layer[0].population[idx_pop[1]].alpha_0));
 
-    double selfcon_nu = 1./2. * (
+    long double selfcon_nu = 1./2. * (
         calc_first_moment(rate_max,sigma_V,alpha_1,I_0,modP->layer[0].population[idx_pop[0]].Psi_0) + 
         calc_first_moment(rate_max,sigma_V,alpha_2,I_0,modP->layer[0].population[idx_pop[1]].Psi_0)
         ) - rate;
 
-    double selfcon_alpha = gsl_pow_2(popP->J[idx_pop[0]])/2. * (
+    long double selfcon_alpha = gsl_pow_2(popP->J[idx_pop[0]])/2. * (
         calc_second_moment(rate_max,sigma_V,alpha_1,I_0,modP->layer[0].population[idx_pop[0]].Psi_0) + 
-        calc_second_moment(rate_max,sigma_V,alpha_2,I_0,modP->layer[0].population[idx_pop[0]].Psi_0)
+        calc_second_moment(rate_max,sigma_V,alpha_2,I_0,modP->layer[0].population[idx_pop[1]].Psi_0)
         ) - alpha_I_sq;
 
     // cout << "nu: (" << calc_first_moment(rate_max,sigma_V,alpha_1,I_0,modP->layer[0].population[0].Psi_0) << " , " << calc_first_moment(rate_max,sigma_V,alpha_2,I_0,modP->layer[0].population[1].Psi_0) << ")" << endl;
@@ -175,12 +175,12 @@ int selfconsistency_from_currents_f (const gsl_vector * vars, void * params, gsl
     return GSL_SUCCESS;
 }
 
-double calc_first_moment(double rate_max, double sigma_V, double alpha, double I_0, double Psi_0)
+long double calc_first_moment(double rate_max, double sigma_V, long double alpha, long double I_0, double Psi_0)
 {
     return rate_max * sigma_V / sqrt(gsl_pow_2(alpha) + gsl_pow_2(sigma_V)) * exp(- gsl_pow_2(I_0 - Psi_0)/(2*(gsl_pow_2(alpha) + gsl_pow_2(sigma_V))));
 }
 
-double calc_second_moment(double rate_max, double sigma_V, double alpha, double I_0, double Psi_0)
+long double calc_second_moment(double rate_max, double sigma_V, long double alpha, long double I_0, double Psi_0)
 {
     return gsl_pow_2(rate_max) * sigma_V / sqrt(2*gsl_pow_2(alpha) + gsl_pow_2(sigma_V)) * exp(- gsl_pow_2(I_0 - Psi_0)/(2*gsl_pow_2(alpha) + gsl_pow_2(sigma_V)));
 }

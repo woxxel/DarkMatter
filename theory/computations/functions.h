@@ -12,8 +12,8 @@ double I_squared_q(double alpha, double sigma_V, double q, double rate_max);
 double selfcon(double alpha, double sigma_V, double rateWnt, double q, double rate_max);
 double selfcon_split(double rate_1, double rate_2, double psi_1, double psi_2, double alpha, double sigma_V, double rate_max);
 
-double calc_first_moment(double rate_max, double sigma_V, double alpha, double I_0, double Psi_0);
-double calc_second_moment(double rate_max, double sigma_V, double alpha, double I_0, double Psi_0);
+long double calc_first_moment(double rate_max, double sigma_V, long double alpha, long double I_0, double Psi_0);
+long double calc_second_moment(double rate_max, double sigma_V, long double alpha, long double I_0, double Psi_0);
 
 
 double int_distribution_exact(double nu, void *params);
