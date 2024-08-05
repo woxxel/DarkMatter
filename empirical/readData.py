@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 
 # from .readData_mat import *
 from darkMatter import darkMatter
-from DM_theory.functions import *
+from DM_theory.functions import get_nu_bar,get_tau_I,get_alpha_0
 
 #from empirical.readData_xls import *
 
@@ -160,7 +160,7 @@ class ModelParams:
         self.T = 1200
         
 
-    def artificial_data(self,gamma,delta,nu_max,population_keys=['rates','mouse ID'],T=600.,N=100):
+    def artificial_data(self,gamma,delta,nu_max,population_keys=['rates','mouse ID'],T=600.,N=100,nAnimals=5,plot=False):
         
         self._num_layers = 1
         self._num_clusters = 2
@@ -193,7 +193,7 @@ class ModelParams:
             'computation': {
                 'N': self.N,
                 'T': self.T,
-                'draw_from_theory': 5,
+                'draw_from_theory': nAnimals,
                 'draw_finite_time': 1,
             }
         }
@@ -211,8 +211,9 @@ class ModelParams:
             self.spike_counts = add_column_to_dataframe(self.spike_counts,rate_draw,d,population=f'{gamma=}',population_keys=population_keys)
         
         self.rates = self.spike_counts/self.T
-        print(self.rates)
-        self.plot_rates(key=f'{gamma=}')
+        # print(self.rates)
+        if plot:
+            self.plot_rates(key=f'{gamma=}')
         
         # return res
             # res = create_measures(L=1,S=[1,2],N=100,rerun=True,rateWnt=1.,alpha_0=0.02)
@@ -228,13 +229,15 @@ class ModelParams:
 
         rates = self.rates[key] if key else self.rates
 
-        bins = np.linspace(0,nu_max,101)
+        xlim = 25.
+
+        bins = np.linspace(0,xlim,101)
         ## plot histogram of empirical or artificial rates
         ax[0].hist(rates,bins=bins,density=True)
         # ax[0].set_xscale('log')
 
         ## plot underlying original distribution
-        NU = np.linspace(0,nu_max,10**6+1)
+        NU = np.linspace(0,xlim,10**6+1)
         p_NU = p_nu(NU,gamma,delta,nu_max)
         ax[0].plot(NU,p_NU,label='original distribution')
         
@@ -247,8 +250,8 @@ class ModelParams:
         ax[1].hist(rates,bins=bins,density=True,cumulative=True,histtype='step')
         ax[1].plot(NU,p_NU_cum,label='original distribution',color='r',linestyle='--')
 
-        plt.setp(ax[0],xlim=[10**(-4),nu_max],ylim=[0,2])
-        plt.setp(ax[1],xlim=[10**(-4),nu_max],ylim=[0,1.1])
+        plt.setp(ax[0],xlim=[10**(-4),xlim],ylim=[0,2])
+        plt.setp(ax[1],xlim=[10**(-4),xlim],ylim=[0,1.1])
         plt.show(block=False)
 
 

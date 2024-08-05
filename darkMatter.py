@@ -257,7 +257,7 @@ def set_computation(fileComputation,options):
         Var[:] = val
     ncid.close()
 
-    com.print_parameter()
+    # com.print_parameter()
 
     return com, sv_str
 
