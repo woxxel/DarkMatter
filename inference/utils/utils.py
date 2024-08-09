@@ -30,8 +30,8 @@ def p_nu(NU,p,two_pop=False,log=False):
     if two_pop:
         # return (p['weight_dark'] * p_nu_single(NU,p['gamma_dark'],p['delta_dark'],p['nu_max']) + \
         # (1-p['weight_dark']) * p_nu_single(NU,p['gamma'],p['delta'],p['nu_max']))
-        return (p['weight_dark'] * p_nu_single(NU,p['gamma_dark'],p['delta_dark'],p['nu_max'],log=log) + \
-        (1-p['weight_dark']) * p_nu_single(NU,p['gamma'],p['delta'],p['nu_max'],log=log))
+        return (p['p'] * p_nu_single(NU,p['gamma'],p['delta'],p['nu_max'],log=log) + \
+        (1-p['p']) * p_nu_single(NU,p['gamma2'],p['delta2'],p['nu_max2'],log=log))
 
     else:
         return p_nu_single(NU,p['gamma'],p['delta'],p['nu_max'],log=log)

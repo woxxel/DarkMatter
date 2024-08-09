@@ -47,7 +47,7 @@ def darkMatter(steps=100,mode=0,options={},logging=3,cleanup=True,rerun=False,co
 
     # fileResults = './data/results.nc'
     fileResults = os.path.join(path,'data/results_%s_%s.nc' % (sv_str,sv_str_const))
-
+    print(fileResults)
     if not os.path.exists(fileResults) or rerun:
         if mode==0:
             program = os.path.join(path,'theory/sharkfins')
@@ -156,9 +156,9 @@ def set_model(fileModel,options):
     for key in model.paras:
         val = getattr(model,key)
         if np.isscalar(val):#or 
-            sv_str += '_%s=%g' % (key,val)
+            sv_str += f'_{key}={val:.2g}'
         elif (len(val) == 1 or val[0]==val[-1]):
-            sv_str += '_%s=%g' % (key,val[0])
+            sv_str += f'_{key}={val[0]:.2g}'
 
 
 
@@ -198,7 +198,7 @@ def set_simulation(fileSim,options,steps):
         val = getattr(sim,key)
         if len(val) > 1:
             # sv_str += '_%s=%g' %^(key,val[-1])
-            sv_str += '_%s' % key
+            sv_str += f'_{key}'
 
     #write simulation parameters to netcdf file
     ncid = Dataset(fileSim, "w")
@@ -243,7 +243,7 @@ def set_computation(fileComputation,options):
     for key in com.paras:
         val = getattr(com,key)
         if (type(val)!=list and type(val)!=np.ndarray):
-            sv_str += '_%s=%g' % (key,val)
+            sv_str += f'_{key}={val:.2g}'
 
     com.set_para('seed',np.random.randint(0,2**16),options)
 

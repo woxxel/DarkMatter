@@ -11,6 +11,9 @@ from matplotlib import pyplot as plt
 from darkMatter import darkMatter
 from DM_theory.functions import get_nu_bar,get_tau_I,get_alpha_0
 
+from utils.parameters import set_options
+from inference.utils.utils import *
+
 #from empirical.readData_xls import *
 
 class ModelParams:
@@ -160,14 +163,12 @@ class ModelParams:
         self.T = 1200
         
 
-    def artificial_data(self,gamma,delta,nu_max,population_keys=['rates','mouse ID'],T=600.,N=100,nAnimals=5,plot=False):
+    def artificial_data(self,parameter,two_pop=False,population_keys=['rates','mouse ID'],T=600.,N=100,nAnimals=5,plot=False):
         
         self._num_layers = 1
         self._num_clusters = 2
 
-        self.gamma = gamma
-        self.delta = delta
-        self.nu_max = nu_max
+        self.params = parameter
 
         self.N = N
         self.T = float(T)
@@ -182,50 +183,73 @@ class ModelParams:
             columns=pd.MultiIndex(levels=[[],[]],codes=[[],[]],names=population_keys)
         )
 
-        # for r,rate in enumerate(arr_rateWnt):
-        options = {
-            'L': 1,
-            'P': 1,
-            'S': [1],
+        options = set_options(nI=2,nE=0)
+        options['eps'] = 0.
 
-            'tau_m': 0.01,
-            'J_0': -1,
-            'computation': {
+        # for r,rate in enumerate(arr_rateWnt):
+        options['computation'] = {
                 'N': self.N,
                 'T': self.T,
                 'draw_from_theory': nAnimals,
                 'draw_finite_time': 1,
             }
-        }
 
-        options['rateWnt'] = get_nu_bar(gamma=gamma,delta=delta,nu_max=nu_max)
-        options['tau_I'] = [get_tau_I(nu_max=nu_max,tau_m=options['tau_m'])]
-        options['alpha_0'] = get_alpha_0(gamma=gamma,delta=delta,nu_max=nu_max,tau_m=options['tau_m'],J_0=options['J_0'])
-
-        print(f"inferred parameters: {options['rateWnt']=}, {options['tau_I']=}, {options['alpha_0']=}")
+        options['rateWnt'] = [
+            get_nu_bar(gamma=self.params['gamma'],delta=self.params['delta'],nu_max=self.params['nu_max'])
+        ]
+        options['tau_I'] = [
+            get_tau_I(nu_max=self.params['nu_max'],tau_m=options['tau_M'])
+        ]
+        options['alpha_0'] = [
+            get_alpha_0(gamma=self.params['gamma'],delta=self.params['delta'],nu_max=self.params['nu_max'],tau_m=options['tau_M'],J_0=options['J0'][0])
+        ]
+        if two_pop:
+            options['rateWnt'].append(
+                get_nu_bar(gamma=self.params['gamma2'],delta=self.params['delta2'],nu_max=self.params['nu_max2'])
+            )
+            options['tau_I'].append(
+                get_tau_I(nu_max=self.params['nu_max2'],tau_m=options['tau_M'])
+            )
+            options['alpha_0'].append(
+                get_alpha_0(gamma=self.params['gamma2'],delta=self.params['delta2'],nu_max=self.params['nu_max2'],tau_m=options['tau_M'],J_0=options['J0'][0])
+            )
+        options['mode_selfcon'] = 0
+        # print(f"inferred parameters: {options['rateWnt']=}, {options['tau_I']=}, {options['alpha_0']=}")
 
         res = darkMatter(steps=200,mode=1,options=options,cleanup=False,rerun=True,compile=False,logging=2)
+        # return res
+        self.res = res
+        for d,_rate_draw in enumerate(np.transpose(res['rates_T'][...,0],(2,0,1))):
 
-        for d,rate_draw in enumerate(res['rates_T'][0,...,0].T):
-        # for d,rate_draw in enumerate(res['rates'][0,...].T):
-            self.spike_counts = add_column_to_dataframe(self.spike_counts,rate_draw,d,population=f'{gamma=}',population_keys=population_keys)
+            # should take rate_T[0 and 1], with fraction according to 'p'
+            if two_pop:
+                rate_draw = np.concatenate([
+                    np.random.choice(_rate_draw[0,:],int(self.params['p']*_rate_draw.shape[1])),
+                    np.random.choice(_rate_draw[1,:],int((1-self.params['p'])*_rate_draw.shape[1]))
+                ],axis=0)
+            else:
+                rate_draw = _rate_draw
+
+            # print(rate_draw,rate_draw.shape)
+            self.spike_counts = add_column_to_dataframe(self.spike_counts,rate_draw,d,population=f"{self.params['gamma']=}",population_keys=population_keys)
         
         self.rates = self.spike_counts/self.T
         # print(self.rates)
         if plot:
-            self.plot_rates(key=f'{gamma=}')
+            self.plot_rates(key=f"{self.params['gamma']=}")
         
         # return res
             # res = create_measures(L=1,S=[1,2],N=100,rerun=True,rateWnt=1.,alpha_0=0.02)
 
 
-    def plot_rates(self,key=None,gamma=None,delta=None,nu_max=None):
+    def plot_rates(self,key=None,param_in=None):
 
         fig,ax = plt.subplots(1,2,figsize=(10,5))
 
-        gamma = gamma if gamma else self.gamma
-        delta = delta if delta else self.delta
-        nu_max = nu_max if nu_max else self.nu_max
+        # gamma = gamma if gamma else self.params['gamma']
+        # delta = delta if delta else self.params['delta']
+        # nu_max = nu_max if nu_max else self.params['nu_max']
+        param = param_in if param_in else self.params
 
         rates = self.rates[key] if key else self.rates
 
@@ -238,7 +262,7 @@ class ModelParams:
 
         ## plot underlying original distribution
         NU = np.linspace(0,xlim,10**6+1)
-        p_NU = p_nu(NU,gamma,delta,nu_max)
+        p_NU = p_nu(NU,param,two_pop=True)
         ax[0].plot(NU,p_NU,label='original distribution')
         
         # bins = 10**np.linspace(-4,2,101)
