@@ -1,20 +1,18 @@
-import os, logging, time
+import os, logging
 import numpy as np
 
-from scipy.stats import truncnorm
 from scipy.special import binom as sp_binom, erfinv
-from scipy.special import gammaln#factorial as sp_factorial
-from scipy.integrate import quad
+
+from .HierarchicalModelDefinition import HierarchicalModel
 
 from collections import Counter
-import quadpy
 
 from matplotlib import pyplot as plt
 
 import ultranest
 import ultranest.stepsampler
-from ultranest.plot import cornerplot
-from dynesty import DynamicNestedSampler, pool as dypool, utils, plotting as dyplot
+import ultranest.plot as ultraplot
+from dynesty import NestedSampler, DynamicNestedSampler, pool as dypool, utils, plotting as dyplot
 
 from .utils.utils import adaptive_integration, p_nu, f
 
@@ -27,8 +25,7 @@ warnings.filterwarnings("ignore")
 logging.basicConfig(level=logging.INFO)
 
 
-
-class BayesModel:
+class BayesModel(HierarchicalModel):
 
 
     def __init__(self,modelParams,mode='rates',logLevel=logging.ERROR):
@@ -116,14 +113,6 @@ class BayesModel:
 
 
 
-    # def flatten_parameters(self, params):
-    #     return params.reshape((params.shape[0],-1),order='F')
-    
-
-    # def unflatten_parameters(self, params):
-    #     return params.reshape((params.shape[0],-1,self.nParams),order='F')
-
-
     def set_priors(self,hierarchical=[],two_pop=False):
 
         '''
@@ -139,7 +128,6 @@ class BayesModel:
         
         self.priors_init = {
             'gamma': {
-                # 'hierarchical':     False,
                 'hierarchical': {
                     'function':     norm_ppf,
                     'params':       {'loc': 'mean', 'scale': 'sigma'},
@@ -155,7 +143,6 @@ class BayesModel:
                 },
             },
             'delta': {
-                # 'hierarchical':     False,
                 'hierarchical': {
                     'function':     norm_ppf,
                     'params':       {'loc': 'mean', 'scale': 'sigma'},
@@ -171,7 +158,6 @@ class BayesModel:
                 },
             },
             'nu_max': {
-                # 'hierarchical':     False,
                 'hierarchical':     {
                     'function':     norm_ppf,
                     'params':       {'loc': 'mean', 'scale': 'sigma'},
@@ -199,11 +185,11 @@ class BayesModel:
                 
                 'mean': {
                     'params':       {},
-                    'function':     lambda x : x,
+                    'function':     lambda x : x*0.5,
                 },
                 'sigma': {
                     'params':       {'loc': 0., 'scale': 0.1},
-                    'function':     norm_ppf,
+                    'function':     halfnorm_ppf,
                 },
             }
 
@@ -242,130 +228,8 @@ class BayesModel:
 
         '''
             translating the above specified priors into a format that can be used by the model
-
-            TODO:
-                * this part of the function can be moved to a general function, that can be used for any model
-
         '''
-        self.paraNames = []
-        self.priors = {}
-        # self.pTC = {}
-        
-        
-        ct = 0
-        for key in self.priors_init:
-
-            if key in hierarchical:
-                # self.priors_init[key]['hierarchical']:
-                
-                ## add the mean and sigma parameters for the hierarchical prior
-                for var in self.priors_init[key]['hierarchical']['params'].values():
-                    
-                    paraName = f"{key}_{var}"
-                    # print(paraName)
-                    self.priors[paraName] = {}
-                
-                    self.paraNames.append(paraName)
-                    
-                    self.priors[paraName]['idx'] = ct
-                    self.priors[paraName]['n'] = 1
-                    self.priors[paraName]['meta'] = True
-
-                    self.priors[paraName]['transform'] = \
-                        lambda x,params=self.priors_init[key][var]['params'],fun=self.priors_init[key][var]['function']: fun(x,**params)
-                    
-                    ct += 1
-
-                ## then, add the actual parameters for the hierarchical prior
-                paraName = f"{key}"
-                self.priors[paraName] = {}
-                # print(paraName)
-                for i in range(self.nSamples):
-                    self.paraNames.append(f'{key}_{i}')
-                self.priors[paraName]['idx'] = ct
-                # get indexes of hierarchical parameters for quick access later on
-                self.priors[paraName]['idx_mean'] = self.priors[f"{key}_{self.priors_init[key]['hierarchical']['params']['loc']}"]['idx']
-                self.priors[paraName]['idx_sigma'] = self.priors[f"{key}_{self.priors_init[key]['hierarchical']['params']['scale']}"]['idx']
-                
-                self.priors[paraName]['n'] = self.nSamples
-                self.priors[paraName]['meta'] = False
-
-                self.priors[paraName]['transform'] = \
-                    lambda x,params,fun=self.priors_init[key]['hierarchical']['function']: fun(x,**params)
-
-                ct += self.nSamples
-            
-            else:
-                var = "mean"
-                paraName = f"{key}"
-
-                self.paraNames.append(paraName)
-                # print(paraName)
-                self.priors[paraName] = {}
-
-                self.priors[paraName]['idx'] = ct
-                self.priors[paraName]['n'] = 1
-                self.priors[paraName]['meta'] = False
-
-                self.priors[paraName]['transform'] = \
-                    lambda x,params=self.priors_init[key][var]['params'],fun=self.priors_init[key][var]['function']: fun(x,**params)
-                ct += 1
-        
-        self.nParams = len(self.paraNames)
-        self.wrap = np.zeros(self.nParams).astype('bool')
-        # for key in self.priors:
-        #     print(key)
-        #     key_root, key_var = key.split('_')
-        #     if 'hierarchical' in self.priors_init[key_root]:
-        #         self.priors['wrap'][self.priors[key]['idx']:self.priors[key]['idx']+self.priors[key]['n']] = self.priors_init[key_root][key_var]['wrap']
-        
-
-    
-    def set_prior_transform(self,vectorized=True,mode='vectorized'):
-        '''
-            sets the prior transform function for the model, 
-            which transforms the random variables from the unit hypercube to the actual priors
-
-            only takes as input the mode, which can be either of
-            - 'vectorized': vectorized prior transform function
-            - 'scalar': scalar prior transform function
-            - 'tensor': tensor prior transform function
-        '''
-
-    # def prior_transform(self,p_in,vectorized=True):
-        def prior_transform(p_in):
-
-            # def transform_p(self,p_in,vectorized=True):
-        
-            if len(p_in.shape)==1:
-                p_in = p_in[np.newaxis,...]
-            p_out = np.zeros_like(p_in)
-            
-            for key in self.priors:
-                
-                if self.priors[key]['n']==1:
-                
-                    p_out[:,self.priors[key]['idx']:self.priors[key]['idx']+self.priors[key]['n']] = self.priors[key]['transform'](p_in[:,self.priors[key]['idx']:self.priors[key]['idx']+self.priors[key]['n']])
-
-                else:
-                    params = {
-                        'loc':          p_out[:,self.priors[key]['idx_mean'],np.newaxis],
-                        'scale':        p_out[:,self.priors[key]['idx_sigma'],np.newaxis],
-                        # 'loc':          0,
-                        # 'scale':        1,
-                    }
-                    # print(key,self.priors[key])
-                    # print(params)
-                    # print(p_in[:,self.priors[key]['idx']:self.priors[key]['idx']+self.priors[key]['n']])
-                    p_out[:,self.priors[key]['idx']:self.priors[key]['idx']+self.priors[key]['n']] = self.priors[key]['transform'](p_in[:,self.priors[key]['idx']:self.priors[key]['idx']+self.priors[key]['n']],params=params)
-                    # print(p_out[:,self.priors[key]['idx']:self.priors[key]['idx']+self.priors[key]['n']])
-            
-            if vectorized:
-                return p_out
-            else:
-                return p_out[0,:]
-            
-        return prior_transform
+        super().set_priors(self.priors_init,hierarchical=hierarchical)
         
 
     def set_logl(self,vectorized=False,withZeros=False,N_low_counts=1):
@@ -503,14 +367,10 @@ class BayesModel:
             # define dimensions
             if len(params.shape)==1:
                 params = params[np.newaxis,:]
-            
-            
 
             ## should be done somewhere else
             max_spike_count = np.nanmax(self.spike_counts,axis=0).astype('int')
             # print(max_spike_count)
-
-
 
             nChain = params.shape[0]
             
@@ -542,8 +402,8 @@ class BayesModel:
                     if self.two_pop:
                         p['nu_max2'] = p['nu_max']
 
-                        if p['gamma'] < p['gamma2']:
-                            logl[i,a] += -10**6 * (p['gamma2'] - p['gamma'])
+                        # if p['gamma'] < p['gamma2']:
+                        #     logl[i,a] += -10**6 * (p['gamma2'] - p['gamma'])
                         # p['weight_dark'] = 0.5
 
                         # p['delta_dark'] = np.sqrt(- (1+p['gamma_dark']**2) * np.log(p['gamma']**2/p['gamma_dark']**2) - (1 + p['gamma_dark']**2) * np.log((1+p['gamma_dark']**2)/(1+p['gamma']**2)) + (1+p['gamma_dark']**2)/(1+p['gamma']**2) * p['delta']**2)
@@ -666,11 +526,11 @@ class BayesModel:
             self.log.debug(logl)
 
             
-            # if vectorized:
-                # logl_sum = logl.sum(axis=1)
-            return logl.sum(axis=1)
-            # else:
-                # return logl[0,:].sum()
+            if vectorized:
+                return logl.sum(axis=1)
+            # return logl.sum(axis=1)
+            else:
+                return logl[0,:].sum()
         
         return loglikelihood
 
@@ -697,15 +557,24 @@ def run_sampling(mP,mode='ultranest',two_pop=False,withZeros=True):
         print('running nested sampling')
         # print(np.where(hbm.pTC['wrap'])[0])
         with dypool.Pool(8,my_likelihood,my_prior_transform) as pool:
-            sampler = DynamicNestedSampler(pool.loglike,pool.prior_transform,BM.nParams,
+            # sampler = DynamicNestedSampler(pool.loglike,pool.prior_transform,BM.nParams,
+            #         pool=pool,
+            #         # periodic=np.where(BM.wrap)[0],
+            #         sample='slice'
+            #     )
+            print('idx of p: ',BM.priors['p']['idx'])
+            sampler = NestedSampler(pool.loglike,pool.prior_transform,BM.nParams,
                     pool=pool,
+                    nlive=400,
+                    bound='single',
+                    reflective=[BM.priors['p']['idx']] if two_pop else False,
                     # periodic=np.where(BM.wrap)[0],
-                    sample='slice'
+                    # sample='slice'
                 )
-            sampler.run_nested()
+            sampler.run_nested(dlogz=1.)
 
         sampling_result = sampler.results
-        print(sampling_result)
+        # print(sampling_result)
         return BM, sampling_result, sampler
     else:
         # print(hbm.paraNames)

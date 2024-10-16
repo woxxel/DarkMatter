@@ -26,27 +26,29 @@ def test_inference(n_repeat=5,ref_values=None,iter_key='N',iter_vals=[10,20,50,1
             'delta': 4.5,
             'nu_max': 25.,
             'T': 1200,
-            'N': 100,
+            'N': 1000,
             'nAnimals': 5
         }
     ## test N
 
-    res = {}
+    # res = {}
     for val in iter_vals:
         
         ref_values[iter_key] = val
 
-        res[val] = {
-            'mean': np.zeros((n_repeat,3)),
-            'stdev': np.zeros((n_repeat,3)),
-            'KL': np.zeros(n_repeat),
-            'KS': np.zeros(n_repeat),
-            'ref': ref_values
-        }
+        # res[val] = {
+        #     'mean': np.zeros((n_repeat,3)),
+        #     'stdev': np.zeros((n_repeat,3)),
+        #     'KL': np.zeros(n_repeat),
+        #     'KS': np.zeros(n_repeat),
+        #     'ref': ref_values
+        # }
 
 
         for n in range(n_repeat):
-            mP = ModelParams(mode='artificial',**ref_values)
+            mP = ModelParams(mode='artificial',parameter=ref_values,T=ref_values['T'],N=ref_values['N'],nAnimals=ref_values['nAnimals'])
+            if mP.rates is False:
+                continue
 
             BM = BayesModel(mP)
             BM.set_logLevel(logging.ERROR)
@@ -58,7 +60,7 @@ def test_inference(n_repeat=5,ref_values=None,iter_key='N',iter_vals=[10,20,50,1
             my_likelihood = BM.set_logl(withZeros=True)
 
             sampler = ultranest.ReactiveNestedSampler(
-                BM.paraNames, 
+                BM.paraNames,
                 my_likelihood, my_prior_transform,
                 wrapped_params=BM.wrap,
                 vectorized=True,num_bootstraps=20
@@ -75,11 +77,16 @@ def test_inference(n_repeat=5,ref_values=None,iter_key='N',iter_vals=[10,20,50,1
                 show_status=True,viz_callback=False)
             
 
-            res[val]['mean'][n,:] = sampling_result['posterior']['mean']
-            res[val]['stdev'][n,:] = sampling_result['posterior']['stdev']
+            # res[val]['mean'][n,:] = sampling_result['posterior']['mean']
+            # res[val]['stdev'][n,:] = sampling_result['posterior']['stdev']
+            res = {}
+            res['mean'] = sampling_result['posterior']['mean']
+            res['stdev'] = sampling_result['posterior']['stdev']
 
-            res[val]['KL'][n], res[val]['KS'][n] = distribution_tests(BM,ref_values,sampling_result)
+            # res[val]['KL'][n], res[val]['KS'][n] = distribution_tests(BM,ref_values,sampling_result)
+            res['KL'], res['KS'] = distribution_tests(BM,ref_values,sampling_result)
 
+            pickle.dump(res,open(f'./results/test_inference_results_{iter_key}={val}_{n}.pkl','wb'))
 
             ## add additional parameter: duration for each run
             ## number of animals "pooled"
@@ -88,24 +95,41 @@ def test_inference(n_repeat=5,ref_values=None,iter_key='N',iter_vals=[10,20,50,1
             ## maybe adjust drawing samples: compute integral differently?!
 
             ## store cdf / KS-difference along with it?!
-    
-    pickle.dump(res,open('test_inference_results_'+iter_key+'.pkl','wb'))
+
     return res
 
-def distribution_tests(BM,ref_values,results):
+def distribution_tests(BM,ref_values,results,plotting=False):
     ## compute KL-divergence and KS-test
 
     N_max = 100*BM.T
 
-    nu_array = np.arange(0,N_max)
+    N_array = np.arange(0,N_max)
 
-    p_nu_res = p_nu((nu_array+0.5)/BM.T,*results['posterior']['mean'])
+    # res_values
+    params_dict = {}
+    for i,key in enumerate(BM.paraNames):
+        params_dict[key] = results['posterior']['mean'][i]
+
+    p_nu_res = p_nu((N_array+0.5)/BM.T,params_dict)
     p_nu_res[~np.isfinite(p_nu_res)] = np.nan
     cum_res = np.nancumsum(p_nu_res)/np.nansum(p_nu_res)
     
-    p_nu_ref = p_nu((nu_array+0.5)/BM.T,ref_values['gamma'],ref_values['delta'],ref_values['nu_max'])
+    p_nu_ref = p_nu((N_array+0.5)/BM.T,ref_values)
     p_nu_ref[~np.isfinite(p_nu_ref)] = np.nan
     cum_ref = np.nancumsum(p_nu_ref)/np.nansum(p_nu_ref)
+    
+    if plotting:
+        fig,ax = plt.subplots(2,1)
+        ax[0].plot(N_array/BM.T,p_nu_ref,'k-',linewidth=2.5)
+        ax[0].plot(N_array/BM.T,p_nu_res,'r--')
+
+        ax[1].plot(N_array/BM.T,cum_ref,'k-',linewidth=2.5)
+        ax[1].plot(N_array/BM.T,cum_res,'r--')
+
+        plt.setp(ax[0],ylabel='probability')
+        plt.setp(ax[1],xlim=ax[0].get_xlim(),xlabel='rate [Hz]',ylabel='cumulative probability')
+
+        plt.show(block=False)
 
     KL = np.nansum(p_nu_res*np.log(p_nu_res/p_nu_ref))
 

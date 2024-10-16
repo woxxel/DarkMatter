@@ -169,6 +169,7 @@ class ModelParams:
         self._num_clusters = 2
 
         self.params = parameter
+        self.two_pop = two_pop
 
         self.N = N
         self.T = float(T)
@@ -183,7 +184,7 @@ class ModelParams:
             columns=pd.MultiIndex(levels=[[],[]],codes=[[],[]],names=population_keys)
         )
 
-        options = set_options(nI=2,nE=0)
+        options = set_options(nI=2 if self.two_pop else 1,nE=0)
         options['eps'] = 0.
 
         # for r,rate in enumerate(arr_rateWnt):
@@ -214,7 +215,12 @@ class ModelParams:
                 get_alpha_0(gamma=self.params['gamma2'],delta=self.params['delta2'],nu_max=self.params['nu_max2'],tau_m=options['tau_M'],J_0=options['J0'][0])
             )
         options['mode_selfcon'] = 0
-        # print(f"inferred parameters: {options['rateWnt']=}, {options['tau_I']=}, {options['alpha_0']=}")
+        print(f"input parameters: {self.params['gamma']=}, {self.params['delta']=}, {self.params['nu_max']=}")
+        print(f"inferred parameters: {options['rateWnt']=}, {options['tau_I']=}, {options['alpha_0']=}")
+        if np.isnan(options['rateWnt']).any() or np.isnan(options['tau_I']).any() or np.isnan(options['alpha_0']).any():
+            print('inferred parameters contain NaNs - breaking!')
+            self.rates = False
+            return
 
         res = darkMatter(steps=200,mode=1,options=options,cleanup=False,rerun=True,compile=False,logging=2)
         # return res
@@ -228,7 +234,7 @@ class ModelParams:
                     np.random.choice(_rate_draw[1,:],int((1-self.params['p'])*_rate_draw.shape[1]))
                 ],axis=0)
             else:
-                rate_draw = _rate_draw
+                rate_draw = _rate_draw[0,:]
 
             # print(rate_draw,rate_draw.shape)
             self.spike_counts = add_column_to_dataframe(self.spike_counts,rate_draw,d,population=f"{self.params['gamma']=}",population_keys=population_keys)
@@ -262,13 +268,14 @@ class ModelParams:
 
         ## plot underlying original distribution
         NU = np.linspace(0,xlim,10**6+1)
-        p_NU = p_nu(NU,param,two_pop=True)
+        p_NU = p_nu(NU,param,two_pop=self.two_pop)
+        print(p_NU)
         ax[0].plot(NU,p_NU,label='original distribution')
         
         # bins = 10**np.linspace(-4,2,101)
         p_NU[-1] = 0
         p_NU_cum = np.nancumsum(p_NU)
-        p_NU_cum /= p_NU_cum[-1]
+        p_NU_cum /= np.nanmax(p_NU_cum)
         # print(p_NU,p_NU_cum)
 
         ax[1].hist(rates,bins=bins,density=True,cumulative=True,histtype='step')

@@ -47,7 +47,6 @@ def darkMatter(steps=100,mode=0,options={},logging=3,cleanup=True,rerun=False,co
 
     # fileResults = './data/results.nc'
     fileResults = os.path.join(path,'data/results_%s_%s.nc' % (sv_str,sv_str_const))
-    print(fileResults)
     if not os.path.exists(fileResults) or rerun:
         if mode==0:
             program = os.path.join(path,'theory/sharkfins')
