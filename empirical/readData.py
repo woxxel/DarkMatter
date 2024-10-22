@@ -18,8 +18,9 @@ from inference.utils.utils import *
 
 class ModelParams:
 
-    def __init__(self,mode,**kwargs):
+    def __init__(self,mode,results_path=None,**kwargs):
 
+        self.results_path = results_path
         if mode=='empirical':
 
             filePath = kwargs['filePath']
@@ -269,7 +270,7 @@ class ModelParams:
         ## plot underlying original distribution
         NU = np.linspace(0,xlim,10**6+1)
         p_NU = p_nu(NU,param,two_pop=self.two_pop)
-        print(p_NU)
+        # print(p_NU)
         ax[0].plot(NU,p_NU,label='original distribution')
         
         # bins = 10**np.linspace(-4,2,101)

@@ -184,7 +184,7 @@ void Model::get_sigma_V()
     }
 }
 
-vector< vector<double> > Model::calc_alpha(vector<vector<double>> q)
+vector< vector<double> > Model::calc_alpha(vector<vector<double> > q)
 {
     double J;
     double alpha_sq, alpha_sq_external, tmp_alpha_sq;

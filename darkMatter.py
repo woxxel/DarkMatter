@@ -1,5 +1,6 @@
 import numpy as np
 import os
+from pathlib import Path
 # from utils.parameters import parameters
 from netCDF4 import Dataset, stringtochar
 
@@ -30,28 +31,28 @@ from netCDF4 import Dataset, stringtochar
         * add overall comment (written by, at, ...)
 """
 
-def darkMatter(steps=100,mode=0,options={},logging=3,cleanup=True,rerun=False,compile=False):
+def darkMatter(steps=100,mode=0,options={},path=None,logging=3,cleanup=True,rerun=False,compile=False):
 
     # set model parameters
-    path = os.path.dirname(__file__)
-    fileModel = os.path.join(path,'data/modPara.nc')
+    path = os.path.dirname(__file__) if path is None else path
+    fileModel = Path(path,'data','modPara.nc')
 
     model,sv_str_const = set_model(fileModel,options)
     if mode==0:
         # print('hello')
-        filePara = os.path.join(path,'data/simPara.nc')
+        filePara = Path(path,'data','simPara.nc')
         sim, sv_str = set_simulation(filePara,options,steps)
     elif mode==1:
-        filePara = os.path.join(path,'data/comPara.nc')
+        filePara = Path(path,'data','comPara.nc')
         com, sv_str = set_computation(filePara,options['computation'])
 
-    # fileResults = './data/results.nc'
-    fileResults = os.path.join(path,'data/results_%s_%s.nc' % (sv_str,sv_str_const))
-    if not os.path.exists(fileResults) or rerun:
+    # fileResults = './.data/results.nc'
+    fileResults = Path(path,'data',f'results_{sv_str}_{sv_str_const}.nc')
+    if not fileResults.is_file() or rerun:
         if mode==0:
-            program = os.path.join(path,'theory/sharkfins')
+            program = Path(path,'theory','sharkfins')
         elif mode==1:
-            program = os.path.join(path,'theory/generate_measures')
+            program = Path(path,'theory','generate_measures')
 
         if (compile):
             compile_code(program)
@@ -154,10 +155,17 @@ def set_model(fileModel,options):
     sv_str = '_const'
     for key in model.paras:
         val = getattr(model,key)
-        if np.isscalar(val):#or 
-            sv_str += f'_{key}={val:.2g}'
-        elif (len(val) == 1 or val[0]==val[-1]):
-            sv_str += f'_{key}={val[0]:.2g}'
+        print(key,val)
+        if np.isscalar(val) and isinstance(val,int):#or 
+            sv_str += f'_{key}={val:d}'
+        elif np.isscalar(val):
+            sv_str += f'_{key}={val:.3g}'
+        elif (len(val) == 1 or val[0]==val[-1]) and isinstance(val[0],float):
+            print("isfloat")
+            sv_str += f'_{key}={val[0]:.3g}'
+        elif (len(val) == 1 or val[0]==val[-1]):# and (isinstance(val[0],int) or val[0]%1==0):
+            print("isint")
+            sv_str += f'_{key}={val[0]:d}'
 
 
 
@@ -242,7 +250,7 @@ def set_computation(fileComputation,options):
     for key in com.paras:
         val = getattr(com,key)
         if (type(val)!=list and type(val)!=np.ndarray):
-            sv_str += f'_{key}={val:.2g}'
+            sv_str += f'_{key}={val:.0f}'
 
     com.set_para('seed',np.random.randint(0,2**16),options)
 
@@ -351,12 +359,16 @@ def prepare_ncid_var(ncid,sim,key,val):
 
 def compile_code(program):
     ## prepare code by compiling, if needed
+    path = 'theory/src/3rdParty/'
+    
     modes = '-g -Wall -ansi'
-    libs = ' -lgsl -lgslcblas -lnetcdf -std=c++17' # or rather 11? (beta function requires 17)
+    manual_libs = f'-I{path}include -L{path}lib'
+    module_libs = ' -lgsl -lgslcblas -lnetcdf -std=c++17' # or rather 11? (beta function requires 17)
 
-    print(f"g++ {modes} -o {program} {program}.cpp {libs}")
+    cmd = f"g++ {modes} -o {program} {program}.cpp {manual_libs} {module_libs}"
 
-    os.system(f"g++ {modes} -o {program} {program}.cpp {libs}")
+    print(cmd)
+    os.system(cmd)
 
     ## ---------------------------------------
     ## this is left just as an example of how to set paths (as I always forget...)

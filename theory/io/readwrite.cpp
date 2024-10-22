@@ -195,7 +195,7 @@ void read_simulation(string fileSim, Simulation *simP)
     status = status && get_from_ncid(ncid, "mode_selfcon", &simP->mode_selfcon);
 
     // reading string... quite bulky - isn't there a better solution?
-    vector<vector<char>> order(simP->orderSz, vector<char> (simP->charSz));
+    vector<vector<char> > order(simP->orderSz, vector<char> (simP->charSz));
     int varid;
     status = status && nc_inq_varid(ncid, "order", &varid);
     size_t start[2] = {0,0}, count[2] = {1,simP->charSz};

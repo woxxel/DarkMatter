@@ -1,14 +1,13 @@
 from pathlib import Path
-import time
+# import time, inspect
 from inference.utils.utils import adaptive_integration, p_nu, f
-from inference.BayesModel import *
-from empirical.readData import *
 
 import pickle
+from .utils.connections import *
 
 
 
-def test_inference(n_repeat=5,ref_values=None,iter_key='N',iter_vals=[10,20,50,100,200,500,1000]):
+def test_inference(n_repeat=5,ref_values=None,iter_key='N',iter_vals=[10,20,50,100,200,500,1000],ssh_config_file_name='id_ed25519_GWDG'):
 
     '''
         for each set of data, create artificial data, run inference on it and store relevant information (which one is that?)
@@ -31,79 +30,77 @@ def test_inference(n_repeat=5,ref_values=None,iter_key='N',iter_vals=[10,20,50,1
             'T': 1200,
             'N': 1000,
         }
+    
+    cpus = 8
+    # mouse = os.path.basename(path_source)
 
-    ## test N
+    # if suffix:
+    #     suffix = f'_{suffix}' if not suffix.startswith('_') else suffix
+    path_results = '/scratch/users/schmidt124/DarkMatter/inference'
+    path_code = '~/program_code/DarkMatter'
+    submit_file = f"{path_code}/sbatch_submit.sh"
 
-    # res = {}
+    # if path_target is None:
+    #     path_target = path_source
+
+    ## setting up connection to server
+    username = 'schmidt124'
+    proxyServerName = 'login.gwdg.de'
+    serverName = 'login-dbn02.hpc.gwdg.de'
+    
+    ssh_key_file = f'/home/wollex/.ssh/{ssh_config_file_name}'
+
+    client = establish_connection(serverName,username,ssh_key_file,proxyJump=proxyServerName)
+    sftp_client = client.open_sftp()
+
+    inference_script = f'{path_code}/run_inference.py'
+
+    ## first, write the neuron detection script to the server
+    with open('inference/hpc_run_inference_main.py','r') as f_open:
+        lines = f_open.readlines()
+    _, stdout, stderr = client.exec_command(f"""cat > {inference_script} <<- EOF
+{("").join(lines)}
+    EOF
+    """)
+    
+    ## iterate through specified parameters
     for val in iter_vals:
-        
         ref_values[iter_key] = val
 
-        for n in range(n_repeat):
+        # for _ in range(n_repeat):
             
-            # from inference.BayesModel import *
-            # from empirical.readData import *
+#SBATCH -o {path_code}/logs/inference_%A_%a.log
+#SBATCH -e {path_code}/logs/inference_%A_%a.log
+        _, stdout, stderr = client.exec_command(f"""cat > {submit_file} <<- EOF
+#!/bin/bash -l
+#SBATCH -J distribution_inference
+#SBATCH -a 1-{n_repeat}
+#SBATCH -A cidbn_legacy
+#SBATCH -p cidbn
+#SBATCH -c {cpus}
+#SBATCH -t 01:00:00
+#SBATCH -o {path_results}/logs/inference_%A_%a.log
+#SBATCH -e {path_results}/logs/inference_%A_%a.log
+#SBATCH --mem=16000
 
-            t_start = time.time()
+# module load gsl
+# module load netcdf-c
 
-            mP = ModelParams(mode='artificial',parameter=ref_values,T=ref_values['T'],N=ref_values['N'],nAnimals=nAnimals)
+export MKL_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
+export VECLIB_MAXIMUM_THREADS=1
+export OMP_NUM_THREADS=1
 
-            if mP.rates is False:
-                continue
-
-            BM = BayesModel(mP)
-            BM.set_logLevel(logging.ERROR)
-            BM.prepare_data(mP,mode='rates')
-            BM.set_priors(hierarchical=[],two_pop=False)
-
-            my_prior_transform = BM.set_prior_transform(vectorized=True)
-            my_likelihood = BM.set_logl(vectorized=True,withZeros=True)
-
-            sampler = ultranest.ReactiveNestedSampler(
-                BM.paramNames, 
-                my_likelihood, my_prior_transform,
-                wrapped_params=BM.wrap,
-                vectorized=True,num_bootstraps=20,
-                ndraw_min=512
-            )
-
-            logger = logging.getLogger('ultranest')
-            logger.setLevel(logging.ERROR)
-
-            num_samples = 100
-
-            sampling_result = sampler.run(
-                min_num_live_points=num_samples,
-                max_iters=20000,cluster_num_live_points=20,max_num_improvement_loops=3,
-                show_status=True,viz_callback=False)
-            
-
-            KL, KS = distribution_tests(BM,ref_values,sampling_result)
-            res = {
-                'empirical': {
-                    'parameters': ref_values,
-                    'mean_rates': mP.rates.mean(axis=0),
-                    'max_rates': mP.rates.max(axis=0),
-                },
-                'mean': sampling_result['posterior']['mean'],
-                'stdev': sampling_result['posterior']['stdev'],
-                'KL': KL,
-                'KS': KS,
-                'time_taken': time.time()-t_start
-            }
-
-            pickle.dump(res,open(f'.data/results/test_inference_results_{iter_key}={val}_{n}.pkl','wb'))
+python3 {inference_script} {ref_values['gamma']} {ref_values['delta']} {ref_values['nu_max']} {ref_values['T']} {ref_values['N']} {path_results}/data
+EOF
+""")
+        _, stdout, stderr = client.exec_command(f'/usr/local/slurm/current/install/bin/sbatch {submit_file}')
+        print(stdout.read(),stderr.read())
 
 
-            ## add additional parameter: duration for each run
-            ## number of animals "pooled"
-            ## maybe also: store maximum value of rates (and mean?)
+        ## maybe adjust drawing samples: compute integral differently?!
 
-            ## maybe adjust drawing samples: compute integral differently?!
-
-            ## store cdf / KS-difference along with it?!
-
-    return res
+    # return res
 
 
 def load_results(iter_key,iter_val,n_repeat):
@@ -115,46 +112,6 @@ def load_results(iter_key,iter_val,n_repeat):
     else:
         print('file not found')
     
-
-
-def distribution_tests(BM,ref_values,results,plotting=False):
-    ## compute KL-divergence and KS-test
-
-    N_max = 100*BM.T
-
-    N_array = np.arange(0,N_max)
-
-    # res_values
-    params_dict = {}
-    for i,key in enumerate(BM.paramNames):
-        params_dict[key] = results['posterior']['mean'][i]
-
-    p_nu_res = p_nu((N_array+0.5)/BM.T,params_dict)
-    p_nu_res[~np.isfinite(p_nu_res)] = np.nan
-    cum_res = np.nancumsum(p_nu_res)/np.nansum(p_nu_res)
-    
-    p_nu_ref = p_nu((N_array+0.5)/BM.T,ref_values)
-    p_nu_ref[~np.isfinite(p_nu_ref)] = np.nan
-    cum_ref = np.nancumsum(p_nu_ref)/np.nansum(p_nu_ref)
-    
-    if plotting:
-        fig,ax = plt.subplots(2,1)
-        ax[0].plot(N_array/BM.T,p_nu_ref,'k-',linewidth=2.5)
-        ax[0].plot(N_array/BM.T,p_nu_res,'r--')
-
-        ax[1].plot(N_array/BM.T,cum_ref,'k-',linewidth=2.5)
-        ax[1].plot(N_array/BM.T,cum_res,'r--')
-
-        plt.setp(ax[0],ylabel='probability')
-        plt.setp(ax[1],xlim=ax[0].get_xlim(),xlabel='rate [Hz]',ylabel='cumulative probability')
-
-        plt.show(block=False)
-
-    KL = np.nansum(p_nu_res*np.log(p_nu_res/p_nu_ref))
-
-    KS = np.nanmax(np.abs(cum_res-cum_ref))
-
-    return KL, KS
 
 
 def plot_results(iter_key,iter_vals,n_repeat,log=False):

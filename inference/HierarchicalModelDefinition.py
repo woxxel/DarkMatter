@@ -134,7 +134,7 @@ class HierarchicalModel:
                     }
 
                     p_out[:,self.priors[key]['idx']:self.priors[key]['idx']+self.priors[key]['n']] = self.priors[key]['transform'](p_in[:,self.priors[key]['idx']:self.priors[key]['idx']+self.priors[key]['n']],params=params)
-            
+            # print('proposed:',p_out)
             if vectorized:
                 return p_out
             else:

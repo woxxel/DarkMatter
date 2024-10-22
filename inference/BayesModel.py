@@ -9,14 +9,11 @@ from collections import Counter
 
 from matplotlib import pyplot as plt
 
-import ultranest
-import ultranest.stepsampler
-import ultranest.plot as ultraplot
-from dynesty import NestedSampler, DynamicNestedSampler, pool as dypool, utils, plotting as dyplot
+
 
 from .utils.utils import adaptive_integration, p_nu, f
 
-from DM_theory.functions import get_nu_bar, get_q
+from DM_theory.functions import get_nu_bar, get_q, get_tau_I, get_alpha_0
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -134,12 +131,12 @@ class BayesModel(HierarchicalModel):
                 },
 
                 'mean': {
-                    'params':       {'loc': 2., 'scale': 0.5},
                     'function':     norm_ppf,
+                    'params':       {'loc': 2., 'scale': 0.5},
                 },
                 'sigma': {
-                    'params':       {'loc': 0, 'scale': 0.1},
                     'function':     halfnorm_ppf,
+                    'params':       {'loc': 0, 'scale': 0.1},
                 },
             },
             'delta': {
@@ -149,12 +146,12 @@ class BayesModel(HierarchicalModel):
                 },
 
                 'mean': {
-                    'params':       {'loc': 6, 'scale': 2},
                     'function':     norm_ppf,
+                    'params':       {'loc': 6, 'scale': 2},
                 },
                 'sigma': {
-                    'params':       {'loc': 0, 'scale': 0.5},
                     'function':     halfnorm_ppf,
+                    'params':       {'loc': 0, 'scale': 0.5},
                 },
             },
             'nu_max': {
@@ -162,15 +159,14 @@ class BayesModel(HierarchicalModel):
                     'function':     norm_ppf,
                     'params':       {'loc': 'mean', 'scale': 'sigma'},
                 },
-
+                # 'params':           {'loc': 'mean', 'scale': 'sigma'},
                 'mean': {
-                    'params':       {'loc': 30, 'scale': 5},
                     'function':     norm_ppf,
+                    'params':       {'loc': 30, 'scale': 5},
                 },
-                'params':           {'loc': 'mean', 'scale': 'sigma'},
                 'sigma': {
-                    'params':       {'loc': 0, 'scale': 2},
                     'function':     halfnorm_ppf,
+                    'params':       {'loc': 0, 'scale': 2},
                 },
             },
         }
@@ -241,92 +237,6 @@ class BayesModel(HierarchicalModel):
             and the model is a Poisson model
         '''
 
-
-        # def logl_count_based(p,N_AP_low,k_AP,binom,nNeurons,zero=False):
-
-        #     '''
-        #         calculates probability to observe k_AP neurons with spike count N_AP, 
-        #         when drawing nNeurons from the distribution
-                
-        #         mostly used for low counts (for both observed, and non-observed counts)
-                
-        #         calculates
-        #             p_N_AP [nk]
-        #                 The probability to observe N_AP action potentials in any neuron, given the underlying firing rate distribution and poisson firing. Calculated as the integral over all possible rates
-        #                     int_0^{nu^max} p(nu | Sigma) * p(N_AP | nu,T) dnu
-                    
-        #             p_k_AP [nk]
-        #                 The probability to observe the empirical spike count distribution, given p_N_AP and the number of neurons. Calculated with the binomial distribution
-        #                     binomial(n k) * p_N_AP^k * (1-p_N_AP)^(n-k)
-
-        #         calculates as log, to avoid numerical issues (p->0, logp->-inf)
-        #     '''
-
-        #     zero = False
-        #     # if zero:
-        #         # p_N_AP = adaptive_integration(f,0,p['nu_max'],
-        #             # args=(*p.values(),0,self.T,True))
-        #     # else:
-        #     p_N_AP = adaptive_integration(f,0,p['nu_max'],
-        #         args=(p,N_AP_low,self.T,zero,self.two_pop)
-        #     )
-
-        #     # p_normalized = adaptive_integration(p_nu,0,p['nu_max'],
-        #     #     args=(p,False)
-        #     # )
-
-        #     # print(N_AP_low)
-        #     # p_continuous = p_nu(N_AP_low/self.T,p,two_pop=self.two_pop)
-
-        #     # print(f"{p_N_AP=}, {p_continuous=}")#, {p_normalized=}")
-
-        #     if p_N_AP is None:
-        #         self.log.warning('error in integration for p_N_AP')
-        #         return -100000.
-            
-        #     # p_N_AP /= (nNeurons * p['nu_max'])
-        #     # print(np.log(nNeurons * p['nu_max']))
-        #     logp = np.log(binom) + k_AP * np.log(p_N_AP) + (nNeurons - k_AP) * np.log(1-p_N_AP)
-        #     # logp -= np.log(nNeurons * p['nu_max'])    ## normalization to density
-
-        #     self.log.debug(f"count_based: {k_AP=}, {p_N_AP=}, {logp=}")
-        #     # print(f"{k_AP=}, {p_N_AP=} {logp_k=}, {logl_low=}")
-        #     return logp.sum()
-        
-
-        # def logl_continuous(p,rates):
-        #     '''
-        #         calculates the overall probability by evaluating empirical rates
-        #         at theoretical probability density function to obtain probability of
-        #         observing rates, given current model parameters
-        #     '''
-        #     p_continuous = p_nu(rates,p,two_pop=self.two_pop)
-        #     logp = np.log(p_continuous) - np.log(self.T)        ## probability to observe firing range in small interval, defined by integer counts
-        #     # self.log.debug(f"continuous (rates): {rates=}")
-        #     # self.log.debug(f"continuous (logp): {logp=}")
-        #     return logp.sum()
-
-
-        # def logl_tail(p,rates):
-            
-        #     '''
-        #         finally, estimate probability, that no "more extreme" firing rates are observed when drawing nNeurons neurons from the distribution by calculating the integral from 0 to the highest observed firing rate
-        #     '''            
-        #     emp_nu_max = rates.max()
-        #     nNeurons = len(rates)
-        #     p_spike_count_in_empirical_range = adaptive_integration(p_nu,0,emp_nu_max,
-        #             args=(p,self.two_pop))
-            
-        #     if p_spike_count_in_empirical_range is None:
-        #         self.log.warning('error in integration for tail')
-        #         return -100000.
-
-        #     logl_no_spikes_in_tail = nNeurons * np.log(p_spike_count_in_empirical_range)
-        #     self.log.debug(f'up to {emp_nu_max=}: {p_spike_count_in_empirical_range=}, p_no_spikes_in_tail={np.exp(logl_no_spikes_in_tail)}')
-        #     return np.maximum(logl_no_spikes_in_tail,-100000)
-            
-
-
         def loglikelihood(params,plot=False):
             '''
                 log likelihood function for the model
@@ -370,19 +280,12 @@ class BayesModel(HierarchicalModel):
 
             ## should be done somewhere else
             max_spike_count = np.nanmax(self.spike_counts,axis=0).astype('int')
-            # print(max_spike_count)
 
             nChain = params.shape[0]
             
             logl = np.zeros((nChain,self.nAnimals))
 
-            # k_idxes = np.where(self.data['k_AP']>0)
-            # k_raw = self.data['k_AP'][k_idxes]
-
             for a in range(self.nAnimals):
-                
-                if plot:
-                    fig,ax = plt.subplots(2,nChain,figsize=(18,5))
 
                 rates = self.rates[np.isfinite(self.rates[:,a]),a]
 
@@ -462,7 +365,6 @@ class BayesModel(HierarchicalModel):
                     binom = self.binom[a]['binomial_coefficient'][k_AP]
 
                     p_N_AP = p_nu((N_AP_array+offset)/self.T,p,two_pop=self.two_pop) / self.T
-
                     logp = np.log(binom) + k_AP * np.log(p_N_AP[N_AP]) + (nNeurons - k_AP) * np.log(1-p_N_AP[N_AP])
 
                     # print(f'{k_AP_empirical=}, {logp[N_AP_empirical]=}')
@@ -471,10 +373,8 @@ class BayesModel(HierarchicalModel):
                     logl[i,a] += logl_measures
                     
 
-                    bias_to_mean = True
+                    bias_to_mean = False
                     if bias_to_mean:
-                        # adjust to two-population model!
-
 
                         if self.two_pop:
                             nu_mean = p['p'] * get_nu_bar(p['gamma'],p['delta'],p['nu_max'])
@@ -486,7 +386,6 @@ class BayesModel(HierarchicalModel):
                             nu_SD = get_q(p['gamma'],p['delta'],p['nu_max'])
                          
                         nu_sigma = np.sqrt(nu_SD - nu_mean**2) / np.sqrt(nNeurons)
-                        # print(f'{nu_mean=}, {nu_SD=}, {nu_sigma=}')
 
                         logl_bias_to_mean = -(rates.mean() - nu_mean)**2 / (2*nu_sigma**2)
                         logl[i,a] += 10*logl_bias_to_mean
@@ -495,7 +394,7 @@ class BayesModel(HierarchicalModel):
 
 
 
-                    extrema = True
+                    extrema = False
                     if extrema and (max_spike_count < N_max):
                         ### now, get extreme value distribution
                         p_N_AP_cum = np.pad(
@@ -505,11 +404,13 @@ class BayesModel(HierarchicalModel):
                         p_extreme = np.diff(p_N_AP_cum)
                         p_extreme *= (1 - 1./(p['nu_max']-N_AP_array/self.T+1)**2)
                         
-                        logp_extreme_empirical = np.log(p_extreme[max_spike_count])
-                        logl[i,a] += 10*logp_extreme_empirical
-                    else:
+                        logl_extreme_empirical = np.log(p_extreme[max_spike_count])
+                        logl[i,a] += 10*logl_extreme_empirical
+                    elif extrema:
                         logp_extreme_empirical = -10**2
                         logl[i,a] += logp_extreme_empirical
+                    else:
+                        logl_extreme_empirical = 0
 
                     # print(f'{logl_measures=}, {logl_bias_to_mean=}, {logp_extreme_empirical=}')
                     # print(f'{logl[i,a]=}')
@@ -523,63 +424,81 @@ class BayesModel(HierarchicalModel):
                     if not np.isfinite(logl[i,a]):
                         logl[i,a] = -100000.
 
-            self.log.debug(logl)
 
             
             if vectorized:
                 return logl.sum(axis=1)
             # return logl.sum(axis=1)
             else:
+                self.log.debug(('logl:',logl[0,:].sum()))
                 return logl[0,:].sum()
         
         return loglikelihood
 
 
 
-def run_sampling(mP,mode='ultranest',two_pop=False,withZeros=True):
+def run_sampling(mP,mode='ultranest',two_pop=False,withZeros=True,nLive=100,nP=1,logLevel=logging.ERROR):
 
     BM = BayesModel(mP,mode='rates')
-    BM.set_logLevel(logging.ERROR)
+    # BM.set_logLevel(logging.ERROR)
+    BM.set_logLevel(logLevel)
     # BM.prepare_data(mP,mode='rates',key='WT')
     BM.prepare_data(mP,mode='rates')
     BM.set_priors(hierarchical=[],two_pop=two_pop)
+    # BM.set_priors(hierarchical=['gamma','delta','nu_max'],two_pop=two_pop)
     # BM.set_priors(hierarchical=['gamma','delta'],two_pop=two_pop)
-    
-    my_prior_transform = BM.set_prior_transform()
-    my_likelihood = BM.set_logl(withZeros=withZeros)
-
 
     if mode=='dynesty':
+
+        from dynesty import NestedSampler, DynamicNestedSampler, pool as dypool, utils as dyfunc, plotting as dyplot
+
         my_prior_transform = BM.set_prior_transform(vectorized=False)
         my_likelihood = BM.set_logl(vectorized=False,withZeros=withZeros)
         # my_prior_transform = lambda p_in : hbm.transform_p(p_in,vectorized=False)
         # my_likelihood = hbm.set_logl_func(vectorized=False)
         print('running nested sampling')
         # print(np.where(hbm.pTC['wrap'])[0])
-        with dypool.Pool(8,my_likelihood,my_prior_transform) as pool:
-            # sampler = DynamicNestedSampler(pool.loglike,pool.prior_transform,BM.nParams,
-            #         pool=pool,
-            #         # periodic=np.where(BM.wrap)[0],
-            #         sample='slice'
-            #     )
-            print('idx of p: ',BM.priors['p']['idx'])
-            sampler = NestedSampler(pool.loglike,pool.prior_transform,BM.nParams,
-                    pool=pool,
-                    nlive=400,
-                    bound='single',
-                    reflective=[BM.priors['p']['idx']] if two_pop else False,
-                    # periodic=np.where(BM.wrap)[0],
-                    # sample='slice'
-                )
-            sampler.run_nested(dlogz=1.)
+        if nP>1:
+            with dypool.Pool(nP,my_likelihood,my_prior_transform) as pool:
+                # sampler = DynamicNestedSampler(pool.loglike,pool.prior_transform,BM.nParams,
+                #         pool=pool,
+                #         # periodic=np.where(BM.wrap)[0],
+                #         sample='slice'
+                #     )
+                # print('idx of p: ',BM.priors['p']['idx'])
+                sampler = NestedSampler(pool.loglike,pool.prior_transform,BM.nParams,
+                        pool=pool,
+                        nlive=nLive,
+                        bound='single',
+                        reflective=[BM.priors['p']['idx']] if two_pop else False,
+                        # periodic=np.where(BM.wrap)[0],
+                        sample='slice'
+                    )
+                sampler.run_nested(dlogz=1.)
+        else:
 
+            import ultranest
+            import ultranest.stepsampler
+            # import ultranest.plot as ultraplot
+            # from ultranest.popstepsampler import PopulationSliceSampler, generate_region_oriented_direction
+
+            sampler = NestedSampler(my_likelihood,my_prior_transform,BM.nParams,
+                nlive=nLive,
+                bound='single',
+                reflective=[BM.priors['p']['idx']] if two_pop else False,
+                # periodic=np.where(BM.wrap)[0],
+                sample='slice'
+            )
+            sampler.run_nested(dlogz=1.)
         sampling_result = sampler.results
-        # print(sampling_result)
+
         return BM, sampling_result, sampler
     else:
-        # print(hbm.paraNames)
+        my_prior_transform = BM.set_prior_transform(vectorized=True)
+        my_likelihood = BM.set_logl(vectorized=True,withZeros=withZeros)
+
         sampler = ultranest.ReactiveNestedSampler(
-            BM.paraNames, 
+            BM.paramNames, 
             my_likelihood, my_prior_transform,
             wrapped_params=BM.wrap,
             vectorized=True,num_bootstraps=20,
@@ -589,16 +508,17 @@ def run_sampling(mP,mode='ultranest',two_pop=False,withZeros=True):
         logger = logging.getLogger("ultranest")
         logger.setLevel(logging.ERROR)
 
-        # nsteps = 2*BM.nParams
-        # sampler.stepsampler = ultranest.stepsampler.SliceSampler(
-        #     nsteps=nsteps,
-        #     generate_direction=ultranest.stepsampler.generate_mixture_random_direction,
+        # # nsteps = 2*BM.nParams
+        # sampler.stepsampler = PopulationSliceSampler(
+        #     popsize=100,
+        #     nsteps=10,
+        #     generate_direction=generate_region_oriented_direction,
         # )
 
 
         # num_samples = BM.nParams*100
         # num_samples = np.maximum(400,BM.nParams*100)
-        num_samples = 1000
+        num_samples = nLive
 
         sampling_result = sampler.run(
             min_num_live_points=num_samples,
@@ -616,4 +536,46 @@ def run_sampling(mP,mode='ultranest',two_pop=False,withZeros=True):
         return BM, sampling_result, sampler
 
 
+def compare_results(sampler,mP,mode='ultranest'):
 
+    print('data in:')
+    for key in mP.params.keys():
+        print(f'{key} = {mP.params[key]}')
+
+
+    if mode=='dynesty':
+        samples,weights = sampler.results.samples, sampler.results.importance_weights()
+        mean,cov = dyfunc.mean_and_cov(samples,weights)
+
+        dyplot.traceplot(sampler.results, truths=list(mP.params.values()),
+            truth_color='black', show_titles=True,
+            trace_cmap='viridis')
+
+        print("\nresults",mean)        
+    else:
+        mean = sampler.results['posterior']['mean']
+        sampler.plot_trace()
+
+        print('\nresults')
+        for i,key in enumerate(sampler.results['paramnames']):
+            print(f"{key} = {sampler.results['posterior']['mean'][i]} \pm {sampler.results['posterior']['stdev'][i]}")
+
+    plt.tight_layout()
+    plt.show(block=False)
+
+    
+    
+    
+    nu_bar_in = get_nu_bar(**mP.params)
+    nu_bar_out = get_nu_bar(gamma=mean[0],delta=mean[1],nu_max=mean[2])
+
+    tau_I_in = get_tau_I(nu_max=mP.params['nu_max'])
+    tau_I_out = get_tau_I(nu_max=mean[2])
+
+    alpha_0_in = get_alpha_0(**mP.params)
+    alpha_0_out = get_alpha_0(gamma=mean[0],delta=mean[1],nu_max=mean[2])
+
+
+    print(f'{nu_bar_in=}, {nu_bar_out=}')
+    print(f'{tau_I_in=}, {tau_I_out=}')
+    print(f'{alpha_0_in=}, {alpha_0_out=}')
