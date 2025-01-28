@@ -4,6 +4,7 @@ sort
 __pycache__
 
 *.pyc
+*.pkl
 
 *.png
 *.mat
@@ -12,6 +13,7 @@ __pycache__
 
 theory/sharkfins
 theory/generate_measures
+results_inference
 
 notebooks/.ipynb_checkpoints/*
 notebooks/logs*

@@ -229,6 +229,7 @@ void read_computation(string fileComp, Computation *comP)
     // get_from_ncid(ncid, "border", &comP->border);
     get_from_ncid(ncid, "draw_from_theory", &comP->draw_from_theory);
     get_from_ncid(ncid, "draw_finite_time", &comP->draw_finite_time);
+    
     get_from_ncid(ncid, "N", &comP->N);
     get_from_ncid(ncid, "T", &comP->T);      // if T=0 => infty
 

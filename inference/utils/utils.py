@@ -25,67 +25,61 @@ def p_nu_single(NU,gamma,delta,nu_max,log=False):
         
         return p
 
-def p_nu(NU,p,two_pop=False,log=False):
+def p_nu(NU,p,log=False):
+    '''
+        calculates the probability to observe a firing rate NU, given the underlying distribution
+    '''
 
-    if two_pop:
+    if 'p' in p: ## two populations
         # return (p['weight_dark'] * p_nu_single(NU,p['gamma_dark'],p['delta_dark'],p['nu_max']) + \
         # (1-p['weight_dark']) * p_nu_single(NU,p['gamma'],p['delta'],p['nu_max']))
-        return (p['p'] * p_nu_single(NU,p['gamma'],p['delta'],p['nu_max'],log=log) + \
-        (1-p['p']) * p_nu_single(NU,p['gamma2'],p['delta2'],p['nu_max2'],log=log))
+        p_nu = 0
+        prob = np.copy(p['p'])
+        for m in range(2):
+            p_nu += prob * p_nu_single(NU,p[f'gamma_{m+1}'],p[f'delta_{m+1}'],p[f'nu_max_{m+1}'],log=log)
+            prob = 1 - prob
+
+        return p_nu
+    # (p['p'] * p_nu_single(NU,p['gamma'],p['delta'],p['nu_max'],log=log) + \
+        # (1-p['p']) * p_nu_single(NU,p['gamma2'],p['delta2'],p['nu_max2'],log=log))
 
     else:
-        return p_nu_single(NU,p['gamma'],p['delta'],p['nu_max'],log=log)
+        m=0
+        return p_nu_single(NU,p[f'gamma_{m+1}'],p[f'delta_{m+1}'],p[f'nu_max_{m+1}'],log=log)
 
 def poisson_spikes(nu,N_AP,T,log=False):
     ## using the gamma-function to obtain log(N!) = gammaln(N+1)
+    # nu = nu[:,np.newaxis]
     if log:
         return N_AP*np.log(nu*T) - gammaln(N_AP+1) - nu*T
     else:
         return np.exp(N_AP*np.log(nu*T) - gammaln(N_AP+1) - nu*T)
 
 
-def f(NU,p,N_AP,T,two_pop=False,log=False):
+def f(NU,p,N_AP,T,log=False):
     '''
         calculates the probability to observe N_AP action potentials in any neuron, 
         given the underlying firing rate distribution and poisson firing
-    '''
+    '''    
+        
     if log:
-        p = np.exp(p_nu(NU,p,two_pop=two_pop,log=log) + poisson_spikes(NU,N_AP,T,log=log))
-        return p
+        return np.exp(p_nu(NU,p,log=log) + poisson_spikes(NU,N_AP,T,log=log))
     else:
-        return p_nu(NU,p,two_pop=two_pop,log=log) * poisson_spikes(NU,N_AP,T,log=log)
-    
-# def f(NU,p,N_AP,T,zero=False,two_pop=False,log=False):
-#     '''
-#         calculates the probability to observe N_AP action potentials in any neuron, 
-#         given the underlying firing rate distribution and poisson firing
-#     '''
-#     if log:#
-#         if zero:
-#             return np.exp(p_nu(NU,p,two_pop=two_pop,log=log) - NU*T)
-#         else:
-#             # return np.exp(p_nu(NU,p,two_pop=two_pop,log=log) + poisson_spikes(NU,N_AP[:,np.newaxis],T,log=log))
-#             return np.exp(p_nu(NU,p,two_pop=two_pop,log=log) + poisson_spikes(NU,N_AP,T,log=log))
-#     else:
-#         if zero:
-#             return p_nu(NU,p,two_pop=two_pop,log=log) * np.exp(-NU*T)
-#         else:
-#             # return p_nu(NU,p,two_pop=two_pop,log=log) * poisson_spikes(NU,N_AP[:,np.newaxis],T,log=log)
-#             return p_nu(NU,p,two_pop=two_pop,log=log) * poisson_spikes(NU,N_AP,T,log=log)
-
+        return p_nu(NU,p,log=log) * poisson_spikes(NU,N_AP,T,log=log)
 
 
 def adaptive_integration(f,x_lower,x_upper,args,eps_pow=-8,eps_thr=-4):
-    while True:
-        if eps_pow==eps_thr:
-            print('tolerance too high - breaking!')
-            return None
+    # while True:
+        # if eps_pow==eps_thr:
+        #     print('tolerance too high - breaking!')
+        #     return None
 
-        # try:
+    try:
         res,err = quad(f,x_lower,x_upper,args=args,epsabs=10**eps_pow, epsrel=10**eps_pow,points=np.logspace(-3,0,4))
-
-        break
+    except:
+        res = np.nan
+        # break
         # except:
         #     print(f'error in integration with tolerance 10^{eps_pow}')
         #     eps_pow += 1
-    return res
+    return res#,err

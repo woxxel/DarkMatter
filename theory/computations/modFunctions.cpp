@@ -312,7 +312,7 @@ double Population_Simulation::distribution_exact(double nu)
 {
     //! should not be evaluated, if gamma*delta > 200 or so, as cosh -> infty
     double rate_ratio = nu/rate_max;
-//         cout << "ratio: " << rate_ratio << endl;
+    // cout << "ratio: " << rate_ratio << endl;
 //         cout << "log: " << log(rate_ratio) << endl;
 //         cout << "cosh: " << cosh(paras.gamma[p]*paras.delta[p]*sqrt(-2*log(rate_ratio))) << endl;
     return gamma/(rate_max*sqrt(-M_PI*log(rate_ratio)))*exp(-gsl_pow_2(delta)/2)*pow(rate_ratio,gsl_pow_2(gamma)-1)*cosh(gamma*delta*sqrt(-2*log(rate_ratio)));
@@ -851,17 +851,20 @@ void Model::find_transitions(Simulation *simP)
 void Model::get_max_prob()
 {
     Population_Simulation *popSimP;
-    unsigned steps = 1000000;
-    double d_nu;
+    // unsigned steps = 1000000;
+    double peak_pos;
+    // double d_nu;
     for (unsigned l = 0; l < L; l++) {
         for (unsigned p = 0; p < layer[l].nPop; p++) {
             popSimP = &layer[l].population[p].simulation;
 
-            d_nu = popSimP->rate_max/steps;
-            popSimP->max_prob = 0;
-            for (unsigned s=1;s<steps;s++)
-                popSimP->max_prob = max(popSimP->distribution_exact(s*d_nu),popSimP->max_prob);
-            // cout << "l,p: " << l << "," << p << " max distribution value: " << popSimP->max_prob << endl;
+            peak_pos = exp(nu_peak_log_full(popSimP));
+            popSimP->max_prob = popSimP->distribution_exact(peak_pos);
+            // d_nu = popSimP->rate_max/steps;
+            // popSimP->max_prob = 0;
+            // for (unsigned s=1;s<steps;s++)
+            //     popSimP->max_prob = max(popSimP->distribution_exact(s*d_nu),popSimP->max_prob);
+            // // cout << "l,p: " << l << "," << p << " max distribution value: " << popSimP->max_prob << endl;
         }
     }
 }

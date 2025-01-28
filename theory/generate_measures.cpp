@@ -63,9 +63,29 @@ int main(int argc, char** argv)
     read_computation(fileCom,comP);
 
     mod.set_weights();
-    mod.solve_selfcon(0);
+
+	// ## might be wrong here -> need other solution!!!
+    // mod.solve_selfcon(0);
+	mod.solve_selfcon_from_currents(0);
+
     // mod.find_transitions(simP);
 	mod.get_max_prob();
+
+	mod.layer[0].print_layer();
+
+	for (unsigned p=0; p<mod.layer[0].nPop; p++)
+		// PLOG_DEBUG << "maximum rate of pop " << p << ": " << mod.layer[0].population[p].simulation.rate_max << endl;
+		cout << "maximum probability value of pop " << p << ": " << mod.layer[0].population[p].simulation.max_prob << endl;
+
+
+	// Population_Simulation *popSimP;
+	// double peak_pos;
+	// for (unsigned p=0; p<mod.layer[0].nPop; p++)
+	// {
+	// 	popSimP = &modP->layer[0].population[p].simulation;
+	// 	peak_pos = exp(mod.nu_peak_log_full(popSimP));
+	// 	cout << "peak position of pop " << p << ": " << peak_pos << ", with peak value: " << popSimP->distribution_exact(peak_pos) << endl;
+	// };
 
 	mes.rates.resize(mod.layer[0].nPop);
 	mes.rates_T.resize(mod.layer[0].nPop);

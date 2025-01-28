@@ -23,16 +23,17 @@ class network:
         for key in para_defaults:
             setattr(self,key,kwargs[key] if key in kwargs else para_defaults[key])
 
-        #self.tau_G = tau_G          # synaptic timeconstant in s
-        #self.tau_A = tau_A          # synaptic timeconstant in s
-        #self.tau_N = tau_N          # synaptic timeconstant in s
-        #self.tau_M = tau_M          # membrane timeconstant in s
+        # self.tau_G = tau_G          # synaptic timeconstant in s
+        # self.tau_A = tau_A          # synaptic timeconstant in s
+        # self.tau_N = tau_N          # synaptic timeconstant in s
+        # self.tau_M = tau_M          # membrane timeconstant in s
         J = self.J_0 * self.tau_M          # synaptic coupling strength
 
         self.J = np.array([
             [- np.sqrt(1 - self.eps**2), self.eps],
             [- np.sqrt(1 - (self.eta*self.eps)**2), self.eta * self.eps]
         ]) * J
+        # self.J = np.full((2, 2), J)
 
     def broadcast_q(self,q):
 
@@ -43,7 +44,6 @@ class network:
                 return q
             else:
                 return np.tile(q,(2,1))
-
 
     def I_squared_nu(self, nu, q, p):
         nu = np.tile(nu,(2,1)) if np.isscalar(nu) else nu
@@ -56,9 +56,13 @@ class network:
         return -( self.alpha(q,p)**2 + 1./2 * self.sigma_V(nu, p)**2 ) * np.log( ( q[p,...]/self.rate_max(nu, p)**2 )**2 * (1 + 2*(self.alpha(q,p) / self.sigma_V(nu,p))**2) )
 
     def get_q(self,nu,q,p,I=None):
-       I = I if I else self.I_squared_nu(nu,q,p)       
-       return self.rate_max(nu,p)**2 * self.sigma_V(nu,p) / np.sqrt(2*self.alpha(q,p)**2 + self.sigma_V(nu,p)**2) * np.exp( - I**2 / (2 * self.alpha(q,p)**2 + self.sigma_V(nu,p)**2) )
-
+        I = I if I else self.I_squared_nu(nu, q, p)
+        return (
+            self.rate_max(nu, p) ** 2
+            * self.sigma_V(nu, p)
+            / np.sqrt(2 * self.alpha(q, p) ** 2 + self.sigma_V(nu, p) ** 2)
+            * np.exp(-(I**2) / (2 * self.alpha(q, p) ** 2 + self.sigma_V(nu, p) ** 2))
+        )
 
     def alpha(self, q, p=0):
         q = self.broadcast_q(q)

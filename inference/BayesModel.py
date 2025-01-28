@@ -10,10 +10,10 @@ from collections import Counter
 from matplotlib import pyplot as plt
 
 
-
-from .utils.utils import adaptive_integration, p_nu, f
+from .utils.utils import p_nu, adaptive_integration, f
 
 from DM_theory.functions import get_nu_bar, get_q, get_tau_I, get_alpha_0
+from DM_theory.functions import get_nu_max, get_gamma, get_delta
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -23,7 +23,6 @@ logging.basicConfig(level=logging.INFO)
 
 
 class BayesModel(HierarchicalModel):
-
 
     def __init__(self,modelParams,mode='rates',logLevel=logging.ERROR):
         '''
@@ -37,14 +36,11 @@ class BayesModel(HierarchicalModel):
         os.environ['OPENBLAS_NUM_THREADS'] = '1'
         os.environ['OMP_NUM_THREADS'] = '1'
 
-
         self.prepare_data(modelParams,mode=mode)
         self.set_priors()
 
-
     def set_logLevel(self,logLevel):
         self.log.setLevel(logLevel)
-
 
     def prepare_data(self,modelParams,mode='rates',key=None):
         '''
@@ -55,7 +51,6 @@ class BayesModel(HierarchicalModel):
         '''
 
         self.T = modelParams.T
-        
 
         if mode=='rates':
             if key:
@@ -72,7 +67,7 @@ class BayesModel(HierarchicalModel):
         ## get the maximum number of spikes
         self.N_max = np.nanmax(self.spike_counts).astype('int64')
         self.nSamples = self.spike_counts.shape[1]      ## here: number of animals
-        
+
         self.nAnimals = self.nSamples
 
         self.data = {
@@ -82,7 +77,7 @@ class BayesModel(HierarchicalModel):
 
         ## calculate the number of occurences 'k_AP' of each spike number per animal,
         ## as well as the binomial coefficient of occurence 'k_AP', given n neurons
-        ## can be sped up, using: 
+        ## can be sped up, using:
         ##      if k=0, then the binomial coefficient is 1
         ##      if k=1, then the binomial coefficient is n
         self.data['k_AP'] = np.zeros(
@@ -91,11 +86,10 @@ class BayesModel(HierarchicalModel):
         # self.binom = np.zeros_like(self.data['k_AP'])
         self.binom = {}
         for a,N in enumerate(self.spike_counts.T):
-        
+
             N = N[np.isfinite(N)].astype('int64')
             N_ct = Counter(N)
             self.data['k_AP'][a,list(N_ct.keys())] = list(N_ct.values())
-            
 
             self.binom[a] = {}
             self.binom[a]['N_AP'] = np.where(self.data['k_AP'][a]>0)[0]
@@ -108,9 +102,7 @@ class BayesModel(HierarchicalModel):
         # self.k_idxes = np.where(self.data['k_AP']>0)
         # self.k_raw = self.data['k_AP'][self.k_idxes]
 
-
-
-    def set_priors(self,hierarchical=[],two_pop=False):
+    def set_priors(self, hierarchical=[], two_pop=False, biological=False):
 
         '''
             builds prior distributions for the model parameters
@@ -122,120 +114,175 @@ class BayesModel(HierarchicalModel):
         ## define distributions inline, instead of using scipy ones for the sake of performance
         halfnorm_ppf = lambda x, loc, scale: loc + scale * np.sqrt(2) * erfinv(x)
         norm_ppf = lambda x, loc, scale: loc + scale * np.sqrt(2) * erfinv(2*x - 1)
-        
-        self.priors_init = {
-            'gamma': {
-                'hierarchical': {
-                    'function':     norm_ppf,
-                    'params':       {'loc': 'mean', 'scale': 'sigma'},
-                },
 
-                'mean': {
-                    'function':     norm_ppf,
-                    'params':       {'loc': 2., 'scale': 0.5},
-                },
-                'sigma': {
-                    'function':     halfnorm_ppf,
-                    'params':       {'loc': 0, 'scale': 0.1},
-                },
-            },
-            'delta': {
-                'hierarchical': {
-                    'function':     norm_ppf,
-                    'params':       {'loc': 'mean', 'scale': 'sigma'},
-                },
+        self.priors_init = {}
 
-                'mean': {
-                    'function':     norm_ppf,
-                    'params':       {'loc': 6, 'scale': 2},
+        if biological:
+            self.priors_init[f"nu_bar"] = {
+                "hierarchical": {
+                    "function": norm_ppf,
+                    "params": {"loc": "mean", "scale": "sigma"},
                 },
-                'sigma': {
-                    'function':     halfnorm_ppf,
-                    'params':       {'loc': 0, 'scale': 0.5},
+                "mean": {
+                    "function": halfnorm_ppf,
+                    "params": {"loc": 0.0, "scale": 1.0},
                 },
-            },
-            'nu_max': {
-                'hierarchical':     {
-                    'function':     norm_ppf,
-                    'params':       {'loc': 'mean', 'scale': 'sigma'},
+                "sigma": {
+                    "function": halfnorm_ppf,
+                    "params": {"loc": 0, "scale": 0.1},
                 },
-                # 'params':           {'loc': 'mean', 'scale': 'sigma'},
-                'mean': {
-                    'function':     norm_ppf,
-                    'params':       {'loc': 30, 'scale': 5},
+            }
+            self.priors_init[f"alpha_0"] = {
+                "hierarchical": {
+                    "function": norm_ppf,
+                    "params": {"loc": "mean", "scale": "sigma"},
                 },
-                'sigma': {
-                    'function':     halfnorm_ppf,
-                    'params':       {'loc': 0, 'scale': 2},
+                "mean": {
+                    "function": halfnorm_ppf,
+                    "params": {"loc": 0.0, "scale": 0.1},
                 },
-            },
-        }
-        
-        if self.two_pop:
-            
-            self.priors_init['p'] = {
-                'hierarchical': {
-                    'function':     norm_ppf,
-                    'params':       {'loc': 'mean', 'scale': 'sigma'},
+                "sigma": {
+                    "function": halfnorm_ppf,
+                    "params": {"loc": 0, "scale": 0.02},
                 },
-                
-                'mean': {
-                    'params':       {},
-                    'function':     lambda x : x*0.5,
+            }
+            self.priors_init[f"tau_A"] = {
+                "hierarchical": {
+                    "function": norm_ppf,
+                    "params": {"loc": "mean", "scale": "sigma"},
                 },
-                'sigma': {
-                    'params':       {'loc': 0., 'scale': 0.1},
-                    'function':     halfnorm_ppf,
+                "mean": {
+                    "function": halfnorm_ppf,
+                    "params": {"loc": 0.0, "scale": 0.02},
+                },
+                "sigma": {
+                    "function": halfnorm_ppf,
+                    "params": {"loc": 0, "scale": 0.005},
+                },
+            }
+            self.priors_init[f"tau_N"] = {
+                "hierarchical": {
+                    "function": norm_ppf,
+                    "params": {"loc": "mean", "scale": "sigma"},
+                },
+                "mean": {
+                    "function": halfnorm_ppf,
+                    "params": {"loc": 0.0, "scale": 0.2},
+                },
+                "sigma": {
+                    "function": halfnorm_ppf,
+                    "params": {"loc": 0, "scale": 0.01},
+                },
+            }
+            self.priors_init[f"r_N"] = {
+                "hierarchical": {
+                    "function": norm_ppf,
+                    "params": {"loc": "mean", "scale": "sigma"},
+                },
+                "mean": {
+                    "function": lambda x: x,
+                    "params": {},
+                },
+                "sigma": {
+                    "function": halfnorm_ppf,
+                    "params": {"loc": 0, "scale": 0.1},
                 },
             }
 
-            self.priors_init['gamma2'] = {
-            # self.priors_init['delta_dark'] = {
-                'hierarchical': {
-                    'function':     norm_ppf,
-                    'params':       {'loc': 'mean', 'scale': 'sigma'},
-                },
+        else:
+            if two_pop:
+                self.priors_init["p"] = {
+                    "hierarchical": {
+                        "function": norm_ppf,
+                        "params": {"loc": "mean", "scale": "sigma"},
+                    },
+                    "mean": {
+                        "params": {},
+                        "function": lambda x: x * 0.5,
+                    },
+                    "sigma": {
+                        "params": {"loc": 0.0, "scale": 0.1},
+                        "function": halfnorm_ppf,
+                    },
+                }
 
-                'mean': {
-                    'params':       {'loc': 2., 'scale': 0.5},
-                    'function':     norm_ppf,
-                },
-                'sigma': {
-                    'params':       {'loc': 0, 'scale': 0.1},
-                    'function':     halfnorm_ppf,
-                },
-            }
-
-            self.priors_init['delta2'] = {
-                'hierarchical': {
-                    'function':     norm_ppf,
-                    'params':       {'loc': 'mean', 'scale': 'sigma'},
-                },
-
-                'mean': {
-                    'params':       {'loc': 6, 'scale': 2},
-                    'function':     norm_ppf,
-                },
-                'sigma': {
-                    'params':       {'loc': 0, 'scale': 0.5},
-                    'function':     halfnorm_ppf,
-                },
-            }
+            for m in range(2 if two_pop else 1):
+                self.priors_init[f"gamma_{m+1}"] = {
+                    "hierarchical": {
+                        "function": norm_ppf,
+                        "params": {"loc": "mean", "scale": "sigma"},
+                    },
+                    "mean": {
+                        "function": norm_ppf,
+                        "params": {"loc": 2.0, "scale": 0.5},
+                    },
+                    "sigma": {
+                        "function": halfnorm_ppf,
+                        "params": {"loc": 0, "scale": 0.1},
+                    },
+                }
+                self.priors_init[f"delta_{m+1}"] = {
+                    "hierarchical": {
+                        "function": norm_ppf,
+                        "params": {"loc": "mean", "scale": "sigma"},
+                    },
+                    "mean": {
+                        "function": norm_ppf,
+                        "params": {"loc": 6, "scale": 2},
+                    },
+                    "sigma": {
+                        "function": halfnorm_ppf,
+                        "params": {"loc": 0, "scale": 0.5},
+                    },
+                }
+                if m == 0:
+                    self.priors_init[f"nu_max_{m+1}"] = {
+                        "hierarchical": {
+                            "function": norm_ppf,
+                            "params": {"loc": "mean", "scale": "sigma"},
+                        },
+                        "mean": {
+                            "function": halfnorm_ppf,
+                            "params": {"loc": 1.0, "scale": 50.0},
+                        },
+                        "sigma": {
+                            "function": halfnorm_ppf,
+                            "params": {"loc": 0, "scale": 5},
+                        },
+                    }
 
         '''
             translating the above specified priors into a format that can be used by the model
         '''
-        super().set_priors(self.priors_init,hierarchical=hierarchical)
-        
+        super().set_priors(self.priors_init, hierarchical=hierarchical)
 
-    def set_logl(self,vectorized=False,withZeros=False,N_low_counts=1):
-        '''
-            sets the log likelihood function for the model,
-            which calculates the log likelihood of the data given the model parameters
+    def set_logl(
+        self,
+        vectorized=False,
+        correct_N=0,
+        bias_to_expected_max=0,
+        bias_to_mean=0,
+        correct_threshold=0.01,
+        biological=False,
+    ):
+        """
+        sets the log likelihood function for the model,
+        which calculates the log likelihood of the data given the model parameters
 
-            it assumes that neuron activity is provided as spike counts per neuron
-            and the model is a Poisson model
-        '''
+        it assumes that neuron activity is provided as spike counts per neuron
+        and the model is a Poisson model
+
+        input
+            vectorized [bool]
+                whether the log likelihood function should be vectorized or not
+            withZeros [bool]
+                whether the likelihood should be calculated for spike counts of 0
+            correct_N [int]
+                spike number up to which the likelihood should be corrected, if required
+
+        """
+
+        offset = 0.5
 
         def loglikelihood(params,plot=False):
             '''
@@ -282,7 +329,7 @@ class BayesModel(HierarchicalModel):
             max_spike_count = np.nanmax(self.spike_counts,axis=0).astype('int')
 
             nChain = params.shape[0]
-            
+
             logl = np.zeros((nChain,self.nAnimals))
 
             for a in range(self.nAnimals):
@@ -293,122 +340,160 @@ class BayesModel(HierarchicalModel):
                 max_spike_count = int(np.nanmax(self.spike_counts[:,a]))
 
                 for i in range(nChain):
-                    
-                    p = {}
-                    for var in self.priors_init.keys():
-                        p[var] = params[i,self.priors[var]['idx'] + ( a if self.priors[var]['n']>1 else 0 )]
-                    
-                    # check_and_adjust_parameters(p)
-                    # def check_and_adjust_parameters(p):
 
-                    #     logl_penalty = 0.
+                    p = {}
+
+                    if biological:
+                        """
+                        first, calculate distribution parameters from biological parameters
+                        QUESTION:
+                            * how to do this quickly (solving selfcon, ...)?
+                            * is approximation good enough?
+                        """
+                        p_tmp = {}
+                        for var in self.priors_init.keys():
+                            p_tmp[var] = params[
+                                i,
+                                self.priors[var]["idx"]
+                                + (a if self.priors[var]["n"] > 1 else 0),
+                            ]
+
+                        p["nu_max_1"] = get_nu_max(
+                            p_tmp["nu_bar"],
+                            p_tmp["tau_A"],
+                            p_tmp["tau_N"],
+                            p_tmp["r_N"],
+                        )
+                        p["gamma_1"] = get_gamma(
+                            p_tmp["nu_bar"],
+                            p_tmp["alpha_0"],
+                            p_tmp["tau_A"],
+                            p_tmp["tau_N"],
+                            p_tmp["r_N"],
+                        )
+                        p["delta_1"] = get_delta(
+                            p_tmp["nu_bar"],
+                            p_tmp["alpha_0"],
+                            p_tmp["tau_A"],
+                            p_tmp["tau_N"],
+                            p_tmp["r_N"],
+                        )
+
+                        if (
+                            np.isnan(p["nu_max_1"])
+                            or np.isnan(p["gamma_1"])
+                            or np.isnan(p["delta_1"])
+                        ):
+                            logl[i, a] = -(10**6)
+                            continue
+                    else:
+                        for var in self.priors_init.keys():
+                            p[var] = params[
+                                i,
+                                self.priors[var]["idx"]
+                                + (a if self.priors[var]["n"] > 1 else 0),
+                            ]
+                    # print(f"{p_tmp=}")
+                    # print(f"{p=}")
+
                     if self.two_pop:
-                        p['nu_max2'] = p['nu_max']
+                        p["nu_max_2"] = p["nu_max_1"]
+
+                    if p["nu_max_1"] < 0:
+                        logl[i, a] = -(10**6) * abs(p["nu_max_1"])
+                        continue
 
                         # if p['gamma'] < p['gamma2']:
                         #     logl[i,a] += -10**6 * (p['gamma2'] - p['gamma'])
-                        # p['weight_dark'] = 0.5
 
-                        # p['delta_dark'] = np.sqrt(- (1+p['gamma_dark']**2) * np.log(p['gamma']**2/p['gamma_dark']**2) - (1 + p['gamma_dark']**2) * np.log((1+p['gamma_dark']**2)/(1+p['gamma']**2)) + (1+p['gamma_dark']**2)/(1+p['gamma']**2) * p['delta']**2)
-                        # p['delta_dark'] = p['gamma_dark']/p['gamma'] * p['delta']
-                        # p['gamma_dark'] = p['gamma']
+                    ## calculate maximum number of spikes:
+                    N_max = (p["nu_max_1"] * self.T).astype("int")
 
-                        ### enter constraints on parameters, especially gamma & delta!
-
-                        if np.isnan(p['delta2']):
-                            self.log.warning('delta2 is NaN')
-                            logl[i,a] += -10**6
-                            continue
-                        
-                        # return p, logl_penalty
-                    
-
-                    N_max = int(p['nu_max'] * self.T)
-
-                    offset = 0.5
                     N_AP_array = np.arange(N_max).astype('int')
-                    
+
                     N_AP_empirical = self.binom[a]['N_AP'][self.binom[a]['N_AP']<N_max]
                     k_AP_empirical = self.binom[a]['k_AP'][self.binom[a]['N_AP']<N_max]
-                    
-                    if withZeros:
-                        N_AP = N_AP_array
 
-                        k_AP = np.zeros(N_max,dtype='int')
-                        k_AP[N_AP_empirical] = k_AP_empirical
-                        
-                    else:
-                        N_AP = N_AP_empirical
-                        k_AP = k_AP_empirical
-                    
+                    # if withZeros:
+                    N_AP = N_AP_array
+
+                    k_AP = np.zeros(N_max, dtype="int")
+                    k_AP[N_AP_empirical] = k_AP_empirical
+                    # else:
+                    #     N_AP = N_AP_empirical
+                    #     k_AP = k_AP_empirical
+
                     ## get all spike counts higher than allowed by model
                     idx_too_high = np.where(self.binom[a]['N_AP'] > N_max)[0]
                     for idx in idx_too_high:
                         # print(idx)
                         N_AP_too_high = self.binom[a]['N_AP'][idx]
                         k_AP_too_high = self.binom[a]['k_AP'][idx]
-                        # print(f'{N_AP_too_high=}, {k_AP_too_high=}') 
+                        # print(f'{N_AP_too_high=}, {k_AP_too_high=}')
                         logl[i,a] += -10**2 * k_AP_too_high*(N_AP_too_high - N_max)**2
 
-                    # logl[i,a] += -100*((rates.mean() - get_nu_bar(p['gamma'],p['delta'],p['nu_max']))/rates.mean())**2
-                    
-
-                    # if 'gamma_dark' in p and p['gamma_dark'] > p['gamma']:
-                    #     self.log.warning('gamma_dark > gamma')
-                    #     logl[i,a] = -10**6 * (p['gamma_dark'] - p['gamma'])
-                    #     continue
-
                     # self.log.debug(f"animal {a}, parameters: {p['gamma']=}, {p['delta']=}, {p['nu_max']=}")
-                    
 
-                    ## calculate maximum number of spikes:
-                    binom = self.binom[a]['binomial_coefficient'][k_AP]
+                    p_N_AP = get_p_nu(
+                        (N_AP_array + offset) / self.T,
+                        p,
+                        self.T,
+                        correct_N=correct_N,
+                        correct_threshold=correct_threshold,
+                    )
 
-                    p_N_AP = p_nu((N_AP_array+offset)/self.T,p,two_pop=self.two_pop) / self.T
+                    binom = self.binom[a]["binomial_coefficient"][k_AP]
                     logp = np.log(binom) + k_AP * np.log(p_N_AP[N_AP]) + (nNeurons - k_AP) * np.log(1-p_N_AP[N_AP])
 
                     # print(f'{k_AP_empirical=}, {logp[N_AP_empirical]=}')
 
                     logl_measures = logp.sum()
-                    logl[i,a] += logl_measures
-                    
+                    logl[i, a] += logl_measures
 
-                    bias_to_mean = False
-                    if bias_to_mean:
+                    if bias_to_mean > 0:
 
                         if self.two_pop:
-                            nu_mean = p['p'] * get_nu_bar(p['gamma'],p['delta'],p['nu_max'])
-                            nu_mean += (1-p['p']) * get_nu_bar(p['gamma2'],p['delta2'],p['nu_max2'])
-                            nu_SD = p['p'] * get_q(p['gamma'],p['delta'],p['nu_max'])
-                            nu_SD += (1-p['p']) * get_q(p['gamma2'],p['delta2'],p['nu_max2'])
+                            nu_mean = p["p"] * get_nu_bar(
+                                p["gamma_1"], p["delta_1"], p["nu_max_1"]
+                            )
+                            nu_mean += (1 - p["p"]) * get_nu_bar(
+                                p["gamma_2"], p["delta_2"], p["nu_max_2"]
+                            )
+                            nu_SD = p["p"] * get_q(
+                                p["gamma_1"], p["delta_1"], p["nu_max_1"]
+                            )
+                            nu_SD += (1 - p["p"]) * get_q(
+                                p["gamma_2"], p["delta_2"], p["nu_max_2"]
+                            )
                         else:
-                            nu_mean = get_nu_bar(p['gamma'],p['delta'],p['nu_max'])
-                            nu_SD = get_q(p['gamma'],p['delta'],p['nu_max'])
-                         
+                            nu_mean = get_nu_bar(
+                                p["gamma_1"], p["delta_1"], p["nu_max_1"]
+                            )
+                            nu_SD = get_q(p["gamma_1"], p["delta_1"], p["nu_max_1"])
+
                         nu_sigma = np.sqrt(nu_SD - nu_mean**2) / np.sqrt(nNeurons)
 
                         logl_bias_to_mean = -(rates.mean() - nu_mean)**2 / (2*nu_sigma**2)
-                        logl[i,a] += 10*logl_bias_to_mean
+                        logl[i, a] += bias_to_mean * logl_bias_to_mean
                     else:
                         logl_bias_to_mean = 0
 
-
-
-                    extrema = False
-                    if extrema and (max_spike_count < N_max):
+                    if bias_to_expected_max > 0 and (max_spike_count < N_max):
                         ### now, get extreme value distribution
                         p_N_AP_cum = np.pad(
                             np.cumsum(p_N_AP)**nNeurons,
                             (1,0),mode='constant',constant_values=0
                         )
                         p_extreme = np.diff(p_N_AP_cum)
-                        p_extreme *= (1 - 1./(p['nu_max']-N_AP_array/self.T+1)**2)
-                        
+                        p_extreme *= (
+                            1 - 1.0 / (p["nu_max_1"] - N_AP_array / self.T + 1) ** 2
+                        )
+
                         logl_extreme_empirical = np.log(p_extreme[max_spike_count])
-                        logl[i,a] += 10*logl_extreme_empirical
-                    elif extrema:
+                        logl[i, a] += bias_to_expected_max * logl_extreme_empirical
+                    elif bias_to_expected_max > 0:
                         logp_extreme_empirical = -10**2
-                        logl[i,a] += logp_extreme_empirical
+                        logl[i, a] += bias_to_expected_max * logp_extreme_empirical
                     else:
                         logl_extreme_empirical = 0
 
@@ -424,38 +509,72 @@ class BayesModel(HierarchicalModel):
                     if not np.isfinite(logl[i,a]):
                         logl[i,a] = -100000.
 
-
-            
             if vectorized:
                 return logl.sum(axis=1)
             # return logl.sum(axis=1)
             else:
                 self.log.debug(('logl:',logl[0,:].sum()))
                 return logl[0,:].sum()
-        
+
         return loglikelihood
 
 
+def get_p_nu(nu, p, T, correct_N=5, correct_threshold=0.01, _print=False):
 
-def run_sampling(mP,mode='ultranest',two_pop=False,withZeros=True,nLive=100,nP=1,logLevel=logging.ERROR):
+    p_N_AP = p_nu(nu, p) / T
+    p_N_AP[~np.isfinite(p_N_AP)] = np.nan
+    # print(p_N_AP)
+    ## correcting terms until normalization becomes decent
+    for N in range(correct_N):
+        if _print:
+            print(f"{N=} , {np.nansum(p_N_AP)=}")
+        if abs(np.nansum(p_N_AP) - 1.0) < correct_threshold:
+            if _print:
+                print("break")
+            break
+        p_N_AP[N] = adaptive_integration(f, 0, 100.0 / T, args=(p, N, T), eps_pow=-2)
+
+    return p_N_AP
+
+
+def run_sampling(
+    mP,
+    mode="ultranest",
+    biological=False,
+    correct_N=5,
+    bias_to_mean=0,
+    bias_to_expected_max=0,
+    n_live=100,
+    nP=1,
+    logLevel=logging.ERROR,
+):
+
+    # withZeros = True
+    two_pop = mP.two_pop
 
     BM = BayesModel(mP,mode='rates')
     # BM.set_logLevel(logging.ERROR)
     BM.set_logLevel(logLevel)
     # BM.prepare_data(mP,mode='rates',key='WT')
     BM.prepare_data(mP,mode='rates')
-    BM.set_priors(hierarchical=[],two_pop=two_pop)
+    BM.set_priors(hierarchical=[], biological=biological, two_pop=two_pop)
     # BM.set_priors(hierarchical=['gamma','delta','nu_max'],two_pop=two_pop)
     # BM.set_priors(hierarchical=['gamma','delta'],two_pop=two_pop)
 
+    vectorized = mode == "ultranest"
+    my_prior_transform = BM.set_prior_transform(vectorized=vectorized)
+    my_likelihood = BM.set_logl(
+        vectorized=vectorized,
+        correct_N=correct_N,
+        bias_to_expected_max=bias_to_expected_max,
+        bias_to_mean=bias_to_mean,
+        biological=biological,
+    )
+
     if mode=='dynesty':
 
-        from dynesty import NestedSampler, DynamicNestedSampler, pool as dypool, utils as dyfunc, plotting as dyplot
+        from dynesty import NestedSampler, pool as dypool
 
-        my_prior_transform = BM.set_prior_transform(vectorized=False)
-        my_likelihood = BM.set_logl(vectorized=False,withZeros=withZeros)
-        # my_prior_transform = lambda p_in : hbm.transform_p(p_in,vectorized=False)
-        # my_likelihood = hbm.set_logl_func(vectorized=False)
         print('running nested sampling')
         # print(np.where(hbm.pTC['wrap'])[0])
         if nP>1:
@@ -466,36 +585,53 @@ def run_sampling(mP,mode='ultranest',two_pop=False,withZeros=True,nLive=100,nP=1
                 #         sample='slice'
                 #     )
                 # print('idx of p: ',BM.priors['p']['idx'])
-                sampler = NestedSampler(pool.loglike,pool.prior_transform,BM.nParams,
-                        pool=pool,
-                        nlive=nLive,
-                        bound='single',
-                        reflective=[BM.priors['p']['idx']] if two_pop else False,
-                        # periodic=np.where(BM.wrap)[0],
-                        sample='slice'
-                    )
+                sampler = NestedSampler(
+                    pool.loglike,
+                    pool.prior_transform,
+                    BM.nParams,
+                    pool=pool,
+                    nlive=n_live,
+                    bound="single",
+                    reflective=[BM.priors["p"]["idx"]] if two_pop else False,
+                    # periodic=np.where(BM.wrap)[0],
+                    sample="rslice",
+                )
                 sampler.run_nested(dlogz=1.)
         else:
 
-            import ultranest
-            import ultranest.stepsampler
             # import ultranest.plot as ultraplot
             # from ultranest.popstepsampler import PopulationSliceSampler, generate_region_oriented_direction
 
-            sampler = NestedSampler(my_likelihood,my_prior_transform,BM.nParams,
-                nlive=nLive,
-                bound='single',
-                reflective=[BM.priors['p']['idx']] if two_pop else False,
+            sampler = NestedSampler(
+                my_likelihood,
+                my_prior_transform,
+                BM.nParams,
+                nlive=n_live,
+                bound="single",
+                reflective=[BM.priors["p"]["idx"]] if two_pop else False,
                 # periodic=np.where(BM.wrap)[0],
-                sample='slice'
+                sample="slice",
             )
             sampler.run_nested(dlogz=1.)
         sampling_result = sampler.results
 
         return BM, sampling_result, sampler
     else:
-        my_prior_transform = BM.set_prior_transform(vectorized=True)
-        my_likelihood = BM.set_logl(vectorized=True,withZeros=withZeros)
+        import ultranest
+        import ultranest.stepsampler
+
+        from ultranest.popstepsampler import (
+            PopulationSliceSampler,
+            generate_region_oriented_direction,
+        )
+        from ultranest.mlfriends import RobustEllipsoidRegion
+
+        NS_parameters = {
+            "min_num_live_points": n_live,
+            "max_num_improvement_loops": 3,
+            "max_iters": 50000,
+            "cluster_num_live_points": 20,
+        }
 
         sampler = ultranest.ReactiveNestedSampler(
             BM.paramNames, 
@@ -508,23 +644,31 @@ def run_sampling(mP,mode='ultranest',two_pop=False,withZeros=True,nLive=100,nP=1
         logger = logging.getLogger("ultranest")
         logger.setLevel(logging.ERROR)
 
-        # # nsteps = 2*BM.nParams
-        # sampler.stepsampler = PopulationSliceSampler(
-        #     popsize=100,
-        #     nsteps=10,
-        #     generate_direction=generate_region_oriented_direction,
-        # )
+        show_status = True
+        n_steps = 10
+        sampler.stepsampler = PopulationSliceSampler(
+            popsize=2**4,
+            nsteps=n_steps,
+            generate_direction=generate_region_oriented_direction,
+        )
 
+        sampling_result = sampler.run(
+            **NS_parameters,
+            region_class=RobustEllipsoidRegion,
+            update_interval_volume_fraction=0.01,
+            show_status=show_status,
+            viz_callback="auto",
+        )
 
         # num_samples = BM.nParams*100
         # num_samples = np.maximum(400,BM.nParams*100)
-        num_samples = nLive
+        # num_samples = nLive
 
-        sampling_result = sampler.run(
-            min_num_live_points=num_samples,
-            max_iters=20000,cluster_num_live_points=20,max_num_improvement_loops=3,
-            show_status=True,viz_callback='auto')
-        
+        # sampling_result = sampler.run(
+        #     min_num_live_points=num_samples,
+        #     max_iters=20000,cluster_num_live_points=20,max_num_improvement_loops=3,
+        #     show_status=True,viz_callback='auto')
+
         # plt.figure()
         # cornerplot(sampling_result)
         # plt.show(block=False)
@@ -536,46 +680,129 @@ def run_sampling(mP,mode='ultranest',two_pop=False,withZeros=True,nLive=100,nP=1
         return BM, sampling_result, sampler
 
 
-def compare_results(sampler,mP,mode='ultranest'):
+def compare_results(BM, sampler, mP, mode="ultranest", biological=False):
 
     print('data in:')
     for key in mP.params.keys():
         print(f'{key} = {mP.params[key]}')
 
+    paraKeys = []
+
+    if biological:
+        paraKeys.extend(["nu_bar", "alpha_0", "tau_A", "tau_N", "r_N"])
+        truth_values = None
+    else:
+        if mP.two_pop:
+            paraKeys.extend("p")
+        paraKeys.extend(["gamma_1", "delta_1", "nu_max_1"])
+        if mP.two_pop:
+            paraKeys.extend(["gamma_2", "delta_2"])
+
+        truth_values = []
+        for key in paraKeys:
+            truth_values.append(mP.params[key])
+
+    mean = {}
+    for i, key in enumerate(BM.paramNames):
+        if mode == "dynesty":
+            samp = sampler.results.samples[:, i]
+            weights = sampler.results.importance_weights()
+        else:
+            samp = sampler.results["weighted_samples"]["points"][:, i]
+            weights = sampler.results["weighted_samples"]["weights"]
+
+        mean[key] = (samp * weights).sum()
+        print(f"{key} mean: {mean[key]}")
 
     if mode=='dynesty':
-        samples,weights = sampler.results.samples, sampler.results.importance_weights()
-        mean,cov = dyfunc.mean_and_cov(samples,weights)
 
-        dyplot.traceplot(sampler.results, truths=list(mP.params.values()),
-            truth_color='black', show_titles=True,
-            trace_cmap='viridis')
+        from dynesty import utils as dyfunc, plotting as dyplot
 
-        print("\nresults",mean)        
+        # samples,weights = sampler.results.samples, sampler.results.importance_weights()
+        # mean,cov = dyfunc.mean_and_cov(samples,weights)
+
+        dyplot.traceplot(
+            sampler.results,
+            truths=truth_values,
+            truth_color="black",
+            show_titles=True,
+            trace_cmap="viridis",
+        )
+        plt.show(block=False)
+
+        dyplot.cornerplot(
+            sampler.results, color="dodgerblue", truths=truth_values, show_titles=True
+        )
+        plt.show(block=False)
+
+        print("\nresults", mean)
     else:
-        mean = sampler.results['posterior']['mean']
+        # mean = sampler.results['posterior']['mean']
+
+        # from ultranest.plot import traceplot,cornerplot
         sampler.plot_trace()
+        sampler.plot_corner()
 
         print('\nresults')
         for i,key in enumerate(sampler.results['paramnames']):
-            print(f"{key} = {sampler.results['posterior']['mean'][i]} \pm {sampler.results['posterior']['stdev'][i]}")
+            print(
+                f"{key} = {sampler.results['posterior']['mean'][i]} \pm {sampler.results['posterior']['stdev'][i]}"
+            )
+        plt.show(block=False)
 
-    plt.tight_layout()
-    plt.show(block=False)
+    mP.plot_rates(param_in=mP.params)
 
-    
-    
-    
-    nu_bar_in = get_nu_bar(**mP.params)
-    nu_bar_out = get_nu_bar(gamma=mean[0],delta=mean[1],nu_max=mean[2])
+    dictfilt = lambda x, y: dict([(i, x[i]) for i in x if i in set(y)])
 
-    tau_I_in = get_tau_I(nu_max=mP.params['nu_max'])
-    tau_I_out = get_tau_I(nu_max=mean[2])
+    distribution_mean = {}
+    distribution_mean["nu_max"] = get_nu_max(
+        mean["nu_bar"],
+        mean["tau_A"],
+        mean["tau_N"],
+        mean["r_N"],
+    )
+    distribution_mean["gamma"] = get_gamma(
+        mean["nu_bar"],
+        mean["alpha_0"],
+        mean["tau_A"],
+        mean["tau_N"],
+        mean["r_N"],
+    )
+    distribution_mean["delta"] = get_delta(
+        mean["nu_bar"],
+        mean["alpha_0"],
+        mean["tau_A"],
+        mean["tau_N"],
+        mean["r_N"],
+    )
+    nu_bar_in = get_nu_bar(
+        gamma=mP.params["gamma_1"],
+        delta=mP.params["delta_1"],
+        nu_max=mP.params["nu_max_1"],
+    )
+    nu_bar_out = get_nu_bar(
+        gamma=distribution_mean["gamma"],
+        delta=distribution_mean["delta"],
+        nu_max=distribution_mean["nu_max"],
+    )
 
-    alpha_0_in = get_alpha_0(**mP.params)
-    alpha_0_out = get_alpha_0(gamma=mean[0],delta=mean[1],nu_max=mean[2])
+    tau_I_in = get_tau_I(nu_max=mP.params["nu_max_1"])
+    tau_I_out = get_tau_I(nu_max=distribution_mean["nu_max"])
 
+    alpha_0_in = get_alpha_0(
+        gamma=mP.params["gamma_1"],
+        delta=mP.params["delta_1"],
+        nu_max=mP.params["nu_max_1"],
+    )
+    alpha_0_out = get_alpha_0(
+        gamma=distribution_mean["gamma"],
+        delta=distribution_mean["delta"],
+        nu_max=distribution_mean["nu_max"],
+    )
 
     print(f'{nu_bar_in=}, {nu_bar_out=}')
     print(f'{tau_I_in=}, {tau_I_out=}')
     print(f'{alpha_0_in=}, {alpha_0_out=}')
+
+    for key in mean.keys():
+        print(f"{key} = {mean[key]}")

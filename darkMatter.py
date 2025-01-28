@@ -31,31 +31,40 @@ from netCDF4 import Dataset, stringtochar
         * add overall comment (written by, at, ...)
 """
 
-def darkMatter(steps=100,mode=0,options={},path=None,logging=3,cleanup=True,rerun=False,compile=False):
+def darkMatter(steps=100,mode=0,options={},path=None,logging=3,cleanup=True,rerun=False,compile=False,suffix=''):
 
+    if suffix != '':
+        suffix = f'_{suffix}' if not suffix.startswith('_') else suffix
+
+    print('DM suffix:',suffix)
     # set model parameters
-    path = os.path.dirname(__file__) if path is None else path
-    fileModel = Path(path,'data','modPara.nc')
+    path_script = os.path.dirname(__file__)
+    path = path_script if (path is None) else path
+
+    # print('script:',path_script)
+    # print('path:',path)
+
+    fileModel = Path(path,'data',f'modPara{suffix}.nc')
 
     model,sv_str_const = set_model(fileModel,options)
     if mode==0:
         # print('hello')
-        filePara = Path(path,'data','simPara.nc')
+        filePara = Path(path,'data',f'simPara{suffix}.nc')
         sim, sv_str = set_simulation(filePara,options,steps)
     elif mode==1:
-        filePara = Path(path,'data','comPara.nc')
+        filePara = Path(path,'data',f'comPara{suffix}.nc')
         com, sv_str = set_computation(filePara,options['computation'])
 
     # fileResults = './.data/results.nc'
-    fileResults = Path(path,'data',f'results_{sv_str}_{sv_str_const}.nc')
+    fileResults = Path(path,'data',f'results_{sv_str}_{sv_str_const}{suffix}.nc')
     if not fileResults.is_file() or rerun:
         if mode==0:
-            program = Path(path,'theory','sharkfins')
+            program = Path(path_script,'theory','sharkfins')
         elif mode==1:
-            program = Path(path,'theory','generate_measures')
+            program = Path(path_script,'theory','generate_measures')
 
         if (compile):
-            compile_code(program)
+            compile_code(path_script,program)
 
         run_str = f'{program} {fileModel} {filePara} {fileResults} {logging}'
         os.system(run_str)
@@ -109,18 +118,18 @@ def set_model(fileModel,options):
     ### parameters for each population
     model.set_para('I_ext',1,options,sz=nP)           # external, constant drive
     model.set_para('rateWnt',1.,options,sz=nP)           # external, constant drive
-    model.set_para('kappa',1.,options,sz=nP)            # connectivity ratio (should have dim=Npop)
+    model.set_para('kappa',1.,options,sz=nP,register=False)            # connectivity ratio (should have dim=Npop)
     model.set_para('alpha_0',0.,options,sz=nP)           # external, constant drive
-    model.set_para('Psi_0',0.,options,sz=nP)           # external, constant drive
-    model.set_para('tau_M',0.01,options,sz=nP)        # membrane timeconstant in sec
+    model.set_para('Psi_0',0.,options,sz=nP,register=False)           # external, constant drive
+    model.set_para('tau_M',0.01,options,sz=nP,register=False)        # membrane timeconstant in sec
     model.set_para('tau_n',0.,options,sz=nP)
-    model.set_para('J0',-1.,options,sz=nP)             # base synaptic strength
+    model.set_para('J0',-1.,options,sz=nP,register=False)             # base synaptic strength
 
-    model.set_para('drive',0,options,sz=L)            # external drive (1=on, 0=off)
+    model.set_para('drive',0,options,sz=L,register=False)            # external drive (1=on, 0=off)
 
     ### parameters for each synapse set
     model.set_para('tau_I',[0.005,0.2,0.03],options,sz=nS)
-    model.set_para('tau_norm',1.,options,sz=nS)
+    model.set_para('tau_norm',1.,options,sz=nS,register=False)
 
     for tau_para in ['tau_I','tau_norm']:
         assert len(getattr(model,tau_para)) == nS, 'Make sure to provide the same number of parameters for each variable of synaptic timeconstants'
@@ -138,8 +147,8 @@ def set_model(fileModel,options):
     #         model.set_para('K_0',0,options,sz=Npop)            # external in-degree
 
 
-    model.set_para('I_alpha',1.,options)
-    model.set_para('I_beta',1.,options)
+    model.set_para('I_alpha',1.,options,register=False)
+    model.set_para('I_beta',1.,options,register=False)
 
     
     ncid = Dataset(fileModel, "w");#, format="NETCDF4")
@@ -147,25 +156,23 @@ def set_model(fileModel,options):
     for key in model.paras:
 
         val = getattr(model,key)
-        varType,varDim = prepare_ncid_var(ncid,model,key,val)
+        varType,varDim = prepare_ncid_var(ncid,key,val)
         Var = ncid.createVariable(key,varType,varDim)
         Var[:] = val
     ncid.close()
 
     sv_str = '_const'
-    for key in model.paras:
-        val = getattr(model,key)
-        print(key,val)
-        if np.isscalar(val) and isinstance(val,int):#or 
-            sv_str += f'_{key}={val:d}'
-        elif np.isscalar(val):
-            sv_str += f'_{key}={val:.3g}'
-        elif (len(val) == 1 or val[0]==val[-1]) and isinstance(val[0],float):
-            print("isfloat")
-            sv_str += f'_{key}={val[0]:.3g}'
-        elif (len(val) == 1 or val[0]==val[-1]):# and (isinstance(val[0],int) or val[0]%1==0):
-            print("isint")
-            sv_str += f'_{key}={val[0]:d}'
+    for i,key in enumerate(model.paras):
+        if model.register[i]:
+            val = getattr(model,key)
+            if np.isscalar(val) and isinstance(val,int):#or 
+                sv_str += f'_{key}={val:d}'
+            elif np.isscalar(val):
+                sv_str += f'_{key}={val:.3g}'
+            elif (len(val) == 1 or val[0]==val[-1]) and isinstance(val[0],float):
+                sv_str += f'_{key}={val[0]:.3g}'
+            elif (len(val) == 1 or val[0]==val[-1]):# and (isinstance(val[0],int) or val[0]%1==0):
+                sv_str += f'_{key}={val[0]:d}'
 
 
 
@@ -201,22 +208,23 @@ def set_simulation(fileSim,options,steps):
 
     sv_str = 'mode=%d_stats=%d_approx=%d_steps=%d' % (sim.mode,sim.mode_stats,sim.mode_calc,steps)
     sv_str += '_iter'
-    for key in sim.paras:
-        val = getattr(sim,key)
-        if len(val) > 1:
-            # sv_str += '_%s=%g' %^(key,val[-1])
-            sv_str += f'_{key}'
+    for i,key in enumerate(sim.paras):
+        if sim.register[i]:
+            val = getattr(sim,key)
+            if len(val) > 1:
+                # sv_str += '_%s=%g' %^(key,val[-1])
+                sv_str += f'_{key}'
 
     #write simulation parameters to netcdf file
     ncid = Dataset(fileSim, "w")
     ncid.createDimension('one',1)
 
-    sim.paras.extend(['mode_calc','mode_stats','mode_selfcon','sim_prim','sim_sec','order'])
+    # sim.paras.extend(['mode_calc','mode_stats','mode_selfcon','sim_prim','sim_sec'])#,'order'
     for key in sim.paras:
 
         val = getattr(sim,key)
 
-        varType,varDim = prepare_ncid_var(ncid,sim,key,val)
+        varType,varDim = prepare_ncid_var(ncid,key,val)
         if varType=='S':        ## somewhat complicated passing over readable strings to netcdf
             nChar = len(max(val,key=len))
             ncid.createDimension('charSz',nChar)
@@ -240,17 +248,18 @@ def set_computation(fileComputation,options):
     com = parameters('computation')
 
     ### parameters for layers
-    com.set_para('N',10.,options)
-    com.set_para('T',100.,options)
-    com.set_para('draw_from_theory',100,options)
-    com.set_para('draw_finite_time',100,options)
+    com.set_para('N',10,options)
+    com.set_para('T',100,options)
+    com.set_para('draw_from_theory',100,options,register=False)
+    com.set_para('draw_finite_time',100,options,register=False)
     # com.set_para('seed_theory',np.random.randint(0,10000,getattr(com,'draw_finite_time')),options)
 
     sv_str = 'computation'
-    for key in com.paras:
-        val = getattr(com,key)
-        if (type(val)!=list and type(val)!=np.ndarray):
-            sv_str += f'_{key}={val:.0f}'
+    for i,key in enumerate(com.paras):
+        if com.register[i]:
+            val = getattr(com,key)
+            if (type(val)!=list and type(val)!=np.ndarray):
+                sv_str += f'_{key}={val:.0f}'
 
     com.set_para('seed',np.random.randint(0,2**16),options)
 
@@ -259,7 +268,7 @@ def set_computation(fileComputation,options):
     for key in com.paras:
 
         val = getattr(com,key)
-        varType,varDim = prepare_ncid_var(ncid,com,key,val)
+        varType,varDim = prepare_ncid_var(ncid,key,val)
         Var = ncid.createVariable(key,varType,varDim)
         Var[:] = val
     ncid.close()
@@ -275,6 +284,7 @@ class parameters:
     def __init__(self,name):
         # print('Building %s class'%name)
         self.paras = []
+        self.register = []
 
     def set_para(self,key,default,option=None,register=True,sz=None):
 
@@ -299,8 +309,8 @@ class parameters:
         # else:
         #     setattr(self,key,default)
 
-        if register:
-            self.paras.append(key)
+        self.paras.append(key)
+        self.register.append(register)
 
     def prepare_sim_paras(self,steps):   # only works in conjunction with "set_simulation"
         for key in self.paras:
@@ -333,7 +343,7 @@ def get_type(val):
     return varType
 
 
-def prepare_ncid_var(ncid,sim,key,val):
+def prepare_ncid_var(ncid,key,val):
 
     if type(val) == np.ndarray and len(val.shape)>1:
         varDim = ()
@@ -357,12 +367,13 @@ def prepare_ncid_var(ncid,sim,key,val):
     return varType, varDim
 
 
-def compile_code(program):
+def compile_code(path_script,program):
     ## prepare code by compiling, if needed
-    path = 'theory/src/3rdParty/'
+    
+    path = Path(path_script,'theory','src','3rdParty')
     
     modes = '-g -Wall -ansi'
-    manual_libs = f'-I{path}include -L{path}lib'
+    manual_libs = f"-I{path / 'include'} -L{path / 'lib'}"
     module_libs = ' -lgsl -lgslcblas -lnetcdf -std=c++17' # or rather 11? (beta function requires 17)
 
     cmd = f"g++ {modes} -o {program} {program}.cpp {manual_libs} {module_libs}"

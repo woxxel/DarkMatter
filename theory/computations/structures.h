@@ -259,6 +259,8 @@ class Model
 
         void get_max_prob();
         void get_sigma_V();
+        
+        double nu_peak_log_full(Population_Simulation *simP);
 
     private:
 
@@ -267,7 +269,6 @@ class Model
         void get_gamma();
         void get_chi();
 
-        double nu_peak_log_full(Population_Simulation *simP);
 };
 
 struct Simulation_Variable
