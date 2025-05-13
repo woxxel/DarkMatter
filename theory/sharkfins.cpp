@@ -52,68 +52,84 @@ int main(int argc, char** argv)
 	
 	plog::init(sev, &consoleAppender);//.addAppender(&fileAppender);
 
-	if ((argc < 4) or (argc > 5))
+	if ((argc < 3) or (argc > 5))
+	// if (argc != 4)
 	{
 		PLOG_ERROR << "Please specify (only) the input and output file names!" << endl;
 		return 1;
 	}
 
 	// obtain paths of input files
-	string fileModel = argv[1];
-    string fileSim = argv[2];
-	string fileOut = argv[3];
+	unsigned file_idx = 1;
+	string fileModel = argv[file_idx++];
+	string fileSim;
+	if (argc>3) {
+		fileSim = argv[file_idx++];
+	}
+	string fileOut = argv[file_idx++];
+	
 	
 	// prepare and read paramaters from input files
-    Simulation sim, *simP = &sim;
+	PLOG_DEBUG << "Initiating model arrays " << endl;
     Model mod, *modP = &mod;
-	Model mod_approx, *modP_approx = &mod_approx;
-
     read_model(fileModel,modP);
+
+	Model mod_approx, *modP_approx = &mod_approx;
     read_model(fileModel,modP_approx);
-    read_simulation(fileSim,simP);
+	PLOG_DEBUG << "Initiating model arrays ... done" << endl;
+	
+	Simulation sim, *simP = &sim;
+	if (argc>3) {
+		read_simulation(fileSim,simP);
+		sim.initialize(modP);
+		sim.initialize(modP_approx);
+	};
 
 	// initialize arrays and functions
-	sim.initialize(modP);
-	sim.initialize(modP_approx);
-
+	PLOG_DEBUG << "Initiating results arrays " << endl;
     initiate_results(modP,simP);
     initiate_results(modP_approx,simP);
+
+	PLOG_DEBUG << "Initiating results arrays ... done" << endl;
 
 	// cout << "mode selfcon: " << sim.mode_selfcon << endl;
 
 	// run iteration to solve model for each parameter set
-	PLOG_DEBUG << "calculate solutions for mode stats = " << sim.mode_stats;
+	// PLOG_DEBUG << "calculate solutions for mode stats = " << sim.mode_stats;
 	
 	do {
-		PLOG_DEBUG << "start iteration... ";
+		// PLOG_DEBUG << "start iteration... ";
 
 		mod.set_parameters();
 		mod_approx.set_parameters();
 
-		if (sim.mode_selfcon==0)
-			mod.solve_selfcon(sim.mode_calc);
-		else 
-			mod.solve_selfcon_from_currents(sim.mode_calc);
+		// PLOG_DEBUG << "solving model... ";
 		
+		if (sim.mode_selfcon==0)
+		mod.solve_selfcon(sim.mode_calc);
+		else 
+		mod.solve_selfcon_from_currents(sim.mode_calc);
+		
+		// PLOG_DEBUG << "finding transition... ";
 		mod.find_transitions(simP);
 
 		if ((sim.mode_stats == 2) || (sim.mode_stats == 3)) {
-			PLOG_DEBUG << "solving approximate model... ";
+			// PLOG_DEBUG << "solving approximate model... ";
 			mod_approx.solve_selfcon(1);
-			PLOG_DEBUG << "finding transitions in approx model";
+			// PLOG_DEBUG << "finding transitions in approx model";
 			mod_approx.find_transitions(simP);
 
-			PLOG_DEBUG << "comparing approx model";
+			// PLOG_DEBUG << "comparing approx model";
 			compare_approx(modP,modP_approx);
-			PLOG_DEBUG << "done";
+			// PLOG_DEBUG << "done";
 		}
 
 		if (sim.mode_stats == 4 && !modP->simulation.in_inc)
 			mod.integrate_information();
 
-		PLOG_DEBUG << "storing ...";
+		// PLOG_DEBUG << "storing ...";
 		sim.store_results(modP,modP_approx);
-		PLOG_DEBUG << "done";
+		// PLOG_DEBUG << "done";
 	} while (sim.run_iteration(modP,modP_approx));
 
 	PLOG_DEBUG << "computation done!";

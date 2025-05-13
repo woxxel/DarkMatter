@@ -1,3 +1,5 @@
+#include <gsl/gsl_vector.h>
+
 using namespace std;
 
 void add_PSP(int p, double tau_I, double tau_norm, double tau_n);
@@ -6,7 +8,9 @@ void initiate_results(Model *modP, Simulation *simP);
 void compare_approx(Model *modP, Model *mod_approxP);
 // void find_transitions(Model *modP, Simulation *simP);
 
-// int selfconsistency_f (const gsl_vector * q, void * paras, gsl_vector * f);   // dummy function for integration
+int selfconsistency_f (const gsl_vector * q, void * paras, gsl_vector * f);   // dummy function for integration
+int selfconsistency_from_currents_f (const gsl_vector * vars, void * params, gsl_vector * f);
+
 double I_squared_nu(double alpha, double sigma_V, double rateWnt, double rate_max);
 double I_squared_q(double alpha, double sigma_V, double q, double rate_max);
 double selfcon(double alpha, double sigma_V, double rateWnt, double q, double rate_max);

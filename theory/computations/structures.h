@@ -111,8 +111,9 @@ struct Population
     /*
         External drive to populations
             I_ext (vector<bool>)
-                true: introduces external drive to keep population firing rate at rate specified by rateWnt
-                false: no external drive - population is only activated by excitatory populations
+                1: introduces external drive to keep population firing rate at rate specified by rateWnt
+                0: no external drive - population is only activated by excitatory populations
+                -1: rateWnt parameter fixes the external input, with the rates of the populations being calculated from the balance equation
             rateWnt (vector<double>)
                 if I_ext[p], rateWnt defines the rate at which the population should be active - otherwise neglected
 
@@ -125,7 +126,7 @@ struct Population
   //  	1 : all populations driven to have same firing rates
 	//  	2 : recurrent, inhibitory population is driven by afferent spikes from excitatory population
 
-    int I_ext;
+    double I_ext;
     double rateWnt;
     double tau_n;
     double J0; // synaptic strength base value

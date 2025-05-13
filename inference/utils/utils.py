@@ -36,16 +36,28 @@ def p_nu(NU,p,log=False):
         p_nu = 0
         prob = np.copy(p['p'])
         for m in range(2):
-            p_nu += prob * p_nu_single(NU,p[f'gamma_{m+1}'],p[f'delta_{m+1}'],p[f'nu_max_{m+1}'],log=log)
+            p_nu += prob * p_nu_single(
+                NU,
+                p["distr"][m]["gamma"],
+                p["distr"][m]["delta"],
+                p["distr"][m]["nu_max"],
+                log=log,
+            )
             prob = 1 - prob
 
         return p_nu
     # (p['p'] * p_nu_single(NU,p['gamma'],p['delta'],p['nu_max'],log=log) + \
-        # (1-p['p']) * p_nu_single(NU,p['gamma2'],p['delta2'],p['nu_max2'],log=log))
+    # (1-p['p']) * p_nu_single(NU,p['gamma2'],p['delta2'],p['nu_max2'],log=log))
 
     else:
         m=0
-        return p_nu_single(NU,p[f'gamma_{m+1}'],p[f'delta_{m+1}'],p[f'nu_max_{m+1}'],log=log)
+        return p_nu_single(
+            NU,
+            p["distr"][m]["gamma"],
+            p["distr"][m]["delta"],
+            p["distr"][m]["nu_max"],
+            log=log,
+        )
 
 def poisson_spikes(nu,N_AP,T,log=False):
     ## using the gamma-function to obtain log(N!) = gammaln(N+1)

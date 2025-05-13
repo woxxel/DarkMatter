@@ -14,7 +14,7 @@ from DM_theory.functions import get_nu_bar,get_tau_I,get_alpha_0
 from general_utils.parameters import set_options
 from inference.utils.utils import *
 
-#from empirical.readData_xls import *
+# from empirical.readData_xls import *
 
 class ModelParams:
 
@@ -24,7 +24,7 @@ class ModelParams:
             self.suffix = f"_{suffix}" if not suffix.startswith('_') else suffix
         else:
             self.suffix = ''
-        
+
         self.path_results = path_results
         if mode=='empirical':
 
@@ -34,7 +34,7 @@ class ModelParams:
                 self.mat_data(filePath)
             elif ext=='.xlsx':
                 self.xlsx_data(**kwargs)
-        
+
         if mode=='artificial':
             self.artificial_data(**kwargs)
 
@@ -84,7 +84,7 @@ class ModelParams:
         self._num_layers = 3
         self._num_clusters = 2
 
-        #types = [0 if sd["classification"]["spikes_genotype"][1]==114 else 1 for sd in data]
+        # types = [0 if sd["classification"]["spikes_genotype"][1]==114 else 1 for sd in data]
 
         self.modelShape = (self._num_animals,self._num_layers,self._num_clusters)
         self.types = ['WT','cTKO']
@@ -117,11 +117,9 @@ class ModelParams:
 
         self.nMax = rates_shape[-1]
 
-
         self.rates = np.transpose(self.rates_raw,(3,0,1,2))
         self.mask = ~np.isnan(self.rates)
         self.rates = self.rates[self.mask]
-
 
     def xlsx_data(self, filePath='../../data/BuscheLab/2P_data.xlsx',sheets=None,population_keys=['mouse type','mouse_ID']):
 
@@ -146,7 +144,6 @@ class ModelParams:
         data = pd.ExcelFile(filePath)
         sheets = sheets if sheets else data.sheet_names
 
-
         self.rates = pd.DataFrame(
             columns=pd.MultiIndex(levels=[[],[]],codes=[[],[]],names=population_keys)
         )
@@ -155,7 +152,7 @@ class ModelParams:
 
             input_df = data.parse(sheet,header=list(range(len(population_keys)-1)))
             for col in input_df.columns:    # iterate through each column in sheet
-                
+
                 self.rates = add_column_to_dataframe(self.rates,new_data=np.array(input_df[col]),name=col,population=sheet,population_keys=population_keys)
 
         self.get_data_shape()
@@ -167,10 +164,9 @@ class ModelParams:
             self.animal_mask[i*self.data_shape[1]:i*self.data_shape[1]+self.rates[c].shape[1]] = True
 
         self.T = 1200
-        
 
     def artificial_data(self,parameter,population_keys=['rates','mouse ID'],T=600.,N=100,nAnimals=5,plot=False):
-        
+
         self._num_layers = 1
         self._num_clusters = 2
 
@@ -205,23 +201,35 @@ class ModelParams:
         options['tau_I'] = []
         options['alpha_0'] = []
 
-        for m in range(2 if self.two_pop else 1):
-            options['rateWnt'].append(
-                get_nu_bar(gamma=self.params[f'gamma_{m+1}'],delta=self.params[f'delta_{m+1}'],nu_max=self.params[f'nu_max_{m+1}'])
+        for m in range(len(self.params["distr"])):
+            options["rateWnt"].append(
+                get_nu_bar(
+                    gamma=self.params["distr"][m]["gamma"],
+                    delta=self.params["distr"][m]["delta"],
+                    nu_max=self.params["distr"][m]["nu_max"],
+                )
             )
-            options['tau_I'].append(
-                get_tau_I(nu_max=self.params[f'nu_max_{m+1}'],tau_m=options['tau_M'])
+            options["tau_I"].append(
+                get_tau_I(
+                    nu_max=self.params["distr"][m]["nu_max"], tau_m=options["tau_M"]
+                )
             )
-            options['alpha_0'].append(
-                get_alpha_0(gamma=self.params[f'gamma_{m+1}'],delta=self.params[f'delta_{m+1}'],nu_max=self.params[f'nu_max_{m+1}'],tau_m=options['tau_M'],J_0=options['J0'][0])
+            options["alpha_0"].append(
+                get_alpha_0(
+                    gamma=self.params["distr"][m]["gamma"],
+                    delta=self.params["distr"][m]["delta"],
+                    nu_max=self.params["distr"][m]["nu_max"],
+                    tau_m=options["tau_M"],
+                    J_0=options["J0"][0],
+                )
             )
         # options['mode_selfcon'] = 0
         # print(options)
         # print('\n')
         string_input_params = "input parameters: "
-        for m in range(2 if self.two_pop else 1):
+        for m in range(len(self.params["distr"])):
             for key in ['gamma','delta','nu_max']:
-                string_input_params += f"{self.params[f'{key}_{m+1}']=}, "
+                string_input_params += f"{self.params['distr'][m][key]=}, "
         print(string_input_params)
 
         print(f"inferred parameters: {options['rateWnt']=}, {options['tau_I']=}, {options['alpha_0']=}")
@@ -230,9 +238,8 @@ class ModelParams:
             print('inferred parameters contain NaNs - breaking!')
             self.rates = False
             return
-        
-        self.spike_counts = np.full((int(self.N),nAnimals),np.nan)
 
+        self.spike_counts = np.full((int(self.N), nAnimals), np.nan)
         for a in range(nAnimals):
             samples, samples_T = draw_samples(f_target=p_nu,params=self.params,n_samples=self.N,T=self.T,tolerance=0.001,plot=False,save=False)
 
@@ -244,7 +251,7 @@ class ModelParams:
         # print(res)
 
         # print(f'{two_pop=}')
-        
+
         # rate_lims = [-4,1.5]
 
         # self.res = res
@@ -282,16 +289,15 @@ class ModelParams:
 
         #     # print(rate_draw,rate_draw.shape)
         #     self.spike_counts = add_column_to_dataframe(self.spike_counts,rate_draw,d,population=f"{self.params['gamma']=}",population_keys=population_keys)
-        
+
         # plt.show(block=False)
         self.rates = self.spike_counts/self.T
         # print(self.rates)
         if plot:
-            self.plot_rates(key=f"{self.params['gamma_1']=}")
-        
-        # return res
-            # res = create_measures(L=1,S=[1,2],N=100,rerun=True,rateWnt=1.,alpha_0=0.02)
+            self.plot_rates(key=f"{self.params['distr'][0]['gamma']=}")
 
+        # return res
+        # res = create_measures(L=1,S=[1,2],N=100,rerun=True,rateWnt=1.,alpha_0=0.02)
 
     def plot_rates(self,key=None,param_in=None):
 
@@ -302,7 +308,7 @@ class ModelParams:
         # nu_max = nu_max if nu_max else self.params['nu_max']
         # parameters = [self.params]
         # if param_in:
-            # parameters.append(param_in)
+        # parameters.append(param_in)
         param = param_in if param_in else self.params
 
         # rates = self.rates[key] if key else self.rates
@@ -312,12 +318,11 @@ class ModelParams:
 
         print(f"{self.two_pop=}")
 
-        bins = np.linspace(0,param['nu_max_1'],101)
-        
-        NU_log = np.logspace(-20,np.log(param['nu_max_1']),10001)
+        bins = np.linspace(0, param["distr"][0]["nu_max"], 101)
+
+        NU_log = np.logspace(-20, np.log(param["distr"][0]["nu_max"]), 10001)
         p_NU = p_nu(NU_log,param)
         p_NU_cum = np.nancumsum(p_nu(NU_log,param)[:-1]*np.diff(NU_log))
-
 
         ## plot histogram of empirical or artificial rates
         ax[0].hist(rates,bins=bins,density=True)
@@ -329,9 +334,9 @@ class ModelParams:
         colors = ['k','r']
         # NU = np.linspace(0,xlim,10**8+1)
         # for i,param in enumerate(parameters):
-    # print(p_NU)
+        # print(p_NU)
         ax[0].plot(NU_log,p_NU,label='original distribution')
-    
+
         # bins = 10**np.linspace(-4,2,101)
         # p_NU[-1] = 0
         # p_NU_cum = np.nancumsum(p_NU)
@@ -343,7 +348,6 @@ class ModelParams:
         plt.setp(ax[0],xlim=[10**(-4),xlim],ylim=[0,2])
         plt.setp(ax[1],xlim=[10**(-4),xlim],ylim=[0,1.1])
         plt.show(block=False)
-
 
     def regularize_rates(self):
         """
@@ -398,11 +402,10 @@ class ModelParams:
             for key in keys:
                 expand_df(levels[1:],(*selector,key))
 
-        #expand_df(population_names)
+        # expand_df(population_names)
 
         # after all is done, sort dataframe such that indices appear at proper positions
         return data.sort_index(axis=1)
-
 
     def get_data_shape(self):
 
@@ -437,14 +440,10 @@ class ModelParams:
         self.data_shape = list(max_shape.values())
 
         return max_shape
-    
-
-    
-
 
 
 def add_column_to_dataframe(df,new_data,name,population=None,population_keys=None):
-    
+
     """
         function to add a column to a pandas dataframe
         with multicolumn structure
@@ -470,14 +469,13 @@ def add_column_to_dataframe(df,new_data,name,population=None,population_keys=Non
         new_data,
         columns=pd.MultiIndex.from_tuples([idx],names=population_keys)
     )
-    
+
     if (df is None) or df.empty:
         return new_data_df
     else:
         if len(new_data_df) > len(df):
             df = df.reindex(new_data_df.index)
-        return pd.concat([df,new_data_df],axis=1)
-    
+        return pd.concat([df, new_data_df], axis=1)
 
 
 def draw_samples(f_target,params,n_samples=1000,T=1200,tolerance=0.001,plot=False,save=False):
@@ -485,7 +483,7 @@ def draw_samples(f_target,params,n_samples=1000,T=1200,tolerance=0.001,plot=Fals
     ## define bounding function
     # f_envelope = lambda nu,M : M* 1./nu
 
-    high = params['nu_max_1']
+    high = params["distr"][0]["nu_max"]
     ## finding the lower bound for the bounding function by requiring the CDF(g(nu),0,b) < 0.001
     i = -1
     while True:
@@ -513,7 +511,7 @@ def draw_samples(f_target,params,n_samples=1000,T=1200,tolerance=0.001,plot=Fals
             if v <= f_target(nu,params) / (M * normalized_envelope_density(nu, low, high)):
                 samples.append(nu)
         return np.array(samples)
-    
+
     # define M such that M*g(nu) > f(nu) for all nu
     nu = np.logspace(np.log10(low),np.log10(high),10**3+1)
     M = np.ceil(np.nanmax(f_target(nu,params) / normalized_envelope_density(nu,low,high)))
@@ -544,5 +542,5 @@ def draw_samples(f_target,params,n_samples=1000,T=1200,tolerance=0.001,plot=Fals
         if save:
             plt.savefig(f'./figures/rejection_sampling_example.png')
         plt.show(block=False)
-    
+
     return samples, samples_T

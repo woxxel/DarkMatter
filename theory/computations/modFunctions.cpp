@@ -5,6 +5,7 @@
 #include <gsl/gsl_integration.h>
 
 #include "functions.h"
+#include "structures.h"
 
 void PSP::print_PSP()
 {
@@ -45,8 +46,8 @@ void Layer::print_layer()
 
 void Model::set_parameters()
 {
-    set_rates();
     set_weights(); // could rather be implemented via setter to according variables
+    set_rates();
     set_mixture();
 }
 
@@ -55,10 +56,12 @@ void Model::set_rates()
     double rate, J;
     for (unsigned l=0; l<L; l++) {
         for (unsigned p = 0; p < layer[l].nPop; p++) {
-            if (layer[l].population[p].I_ext==1) continue;
+            // PLOG_DEBUG << "I_ext (" << l << "," << p << "): " << layer[l].population[p].I_ext << endl;
+            if (layer[l].population[p].I_ext<0) continue;
             else {
-                rate = 0;
 
+                // this is effectively solving the equation 0 = I - sum_p (J_p * kappa_p * rate_p)
+                rate = 0;
                 for (unsigned ll=0; ll<L; ll++) {   // projecting layer
                 	for (unsigned pp = 0; pp < layer[ll].nPop; pp++) {   // projecting population
                         if (ll==l && pp==p) continue;
@@ -68,11 +71,16 @@ void Model::set_rates()
                         else        J = layer[ll].J_l[l];
 
                         rate += J * layer[ll].population[pp].kappa * layer[ll].population[pp].rateWnt;
+                        // PLOG_DEBUG << "J:" << J << endl;
+                        // PLOG_DEBUG << "kappa:" << layer[ll].population[pp].kappa << endl;
+                        // PLOG_DEBUG << "rateWnt:" << layer[ll].population[pp].rateWnt << endl;
+                        // PLOG_DEBUG << "rate(" << l << ","<< p << ") = " << rate << endl;
                     }
                 }
 
-                layer[l].population[p].rateWnt = rate / (layer[l].population[p].kappa * layer[l].population[p].J[p]);
-                // cout << "rate(" << l << ","<< p << ") = " << layer[l].population[p].rateWnt << endl;
+
+                layer[l].population[p].rateWnt = - rate / (layer[l].population[p].kappa * layer[l].population[p].J[p]);
+                // PLOG_INFO << "rate(" << l << ","<< p << ") = " << layer[l].population[p].rateWnt << endl;
             }
         }
     }
@@ -553,7 +561,7 @@ void Model::solve_selfcon(int mode_calc)
 
         get_sigma_V();
 
-        // cout << "solving the selfconsistency equations with mode " << mode_calc << endl;
+        // PLOG_DEBUG << "solving the selfconsistency equations with mode " << mode_calc << endl;
 
         //! solving selfconsistency equations(s)
         if (mode_calc == 0) // exact solution
@@ -598,16 +606,16 @@ void Model::solve_selfcon(int mode_calc)
                 for (unsigned p = 0; p < layer[l].nPop; p++) {
                     layer[l].population[p].simulation.q = gsl_vector_get(s->x,pp);
 
-                    // cout << "sigma_V=" << layer[l].population[p].simulation.sigma_V << ", rate max=" << layer[l].population[p].simulation.rate_max << endl;
+                    // PLOG_DEBUG << "sigma_V=" << layer[l].population[p].simulation.sigma_V << ", rate max=" << layer[l].population[p].simulation.rate_max << endl;
 
-                    // cout << "rate " << layer[l].population[p].rateWnt << " q(" << pp << ",exact)=" << layer[l].population[p].simulation.q << endl;
+                    // PLOG_DEBUG << "rate " << layer[l].population[p].rateWnt << " q(" << pp << ",exact)=" << layer[l].population[p].simulation.q << endl;
                     pp++;
                 }
             }
             gsl_multiroot_fsolver_free(s);
         }
         if (mode_calc == 1) {// analytic approximation
-            // cout << "apply approximation" << endl;
+            // PLOG_DEBUG << "apply approximation" << endl;
 
             // apply "xyz"-approximation to obtain selfconsistent second moment
             for (unsigned l = 0; l < L; l++) {
@@ -633,7 +641,7 @@ void Model::solve_selfcon(int mode_calc)
         get_delta();
         get_gamma();
         get_chi();
-        // cout << "done!" << endl;
+        // PLOG_DEBUG << "done!" << endl;
 
         // Population_Simulation *popSimP = &layer[0].population[0].simulation;
         // cout << "rate = " << popSimP->rate << ":\t q=" << popSimP->q << "\t alpha=" << popSimP->alpha << " ,\t sigma=" << popSimP->sigma_V << " ,\t delta=" << popSimP->delta << " ,\t gamma=" << popSimP->gamma << " ,\t chi=" << popSimP->chi << endl;
@@ -730,7 +738,7 @@ bool Model::is_inconsistent(Model_Simulation *mSimP)
 
 void Model::find_transitions(Simulation *simP)
 {
-    // cout << "check DM border & no peak" << endl;
+    // PLOG_DEBUG << "check DM border & no peak" << endl;
     Population_Simulation *popSimP;
 
     Model_Simulation *mSimP = &simulation;
@@ -748,40 +756,45 @@ void Model::find_transitions(Simulation *simP)
         }
     }
 
+    
     // checking inconsistency
+    // PLOG_DEBUG << "checking inconsistency" << endl;
 	if (is_inconsistent(mSimP) && (simP->vars[0].iter>0)) {
-		mSimP->trans_inc_found = true;
+        mSimP->trans_inc_found = true;
         // mSimP->trans_inc = *simP->vars[0].paraP[0];
         mSimP->trans_inc = simP->vars[0].iter;
-
-        PLOG_DEBUG << "inconsistent transition (" << simP->vars[1].name << ": " << *simP->vars[1].paraP[0] << ") @ " << *simP->vars[0].paraP[0];
+        
+        // PLOG_DEBUG << "inconsistent transition (" << simP->vars[1].name << ": " << *simP->vars[1].paraP[0] << ") @ " << *simP->vars[0].paraP[0];
 	}
-
+    
     if (mSimP->in_inc) {
         for (unsigned l = 0; l < L; l++) {
             for (unsigned p = 0; p < layer[l].nPop; p++)
-                layer[l].population[p].simulation.regions = 3;
+            layer[l].population[p].simulation.regions = 3;
         }
         return;
     }
-
+    
     // checking population-wise transitions: dark matter and 
+    // PLOG_DEBUG << "checking population-wise transitions:" << endl;
     for (unsigned l = 0; l < L; l++) {
         for (unsigned p = 0; p < layer[l].nPop; p++) {
             popSimP = &layer[l].population[p].simulation;
-
+            
+            // PLOG_DEBUG << "checking dark matter transition in l,p=" << l << "," << p << ":" << endl;
             if (is_darkMatter(popSimP) && (simP->vars[0].iter>0)) {
                 // popSimP->trans_DM = *simP->vars[0].paraP[0];
                 popSimP->trans_DM = simP->vars[0].iter;
                 popSimP->trans_DM_found = true;
-                PLOG_DEBUG << "DM transition (" << l << "," << p << ","<< simP->vars[1].name << ": " << *simP->vars[1].paraP[0] << ") @ " << *simP->vars[0].paraP[0];
+                // PLOG_DEBUG << "DM transition (" << l << "," << p << ","<< simP->vars[1].name << ": " << *simP->vars[1].paraP[0] << ") @ " << *simP->vars[0].paraP[0];
             }
-
+            
+            // PLOG_DEBUG << "checking no peak transition in l,p=" << l << "," << p << ":" << endl;
             if (is_noPeak(popSimP) && (simP->vars[0].iter>0)) {
                 // popSimP->trans_np = *simP->vars[0].paraP[0];
                 popSimP->trans_np = simP->vars[0].iter;
                 popSimP->trans_np_found = true;
-                PLOG_DEBUG << "no peak transition (" << simP->vars[1].name << ": " << *simP->vars[1].paraP[0] << ") @ " << *simP->vars[0].paraP[0];
+                // PLOG_DEBUG << "no peak transition (" << simP->vars[1].name << ": " << *simP->vars[1].paraP[0] << ") @ " << *simP->vars[0].paraP[0];
 
                 // layer[l].population[p].simulation.regions = 2;
             }
@@ -789,25 +802,29 @@ void Model::find_transitions(Simulation *simP)
     }
 
     // checking whether solutions are implausible
+    // PLOG_DEBUG << "checking implausible transitions" << endl;
 	if (is_implausible(mSimP)) { //} && (simP->vars[0].iter>0)) {
         // mSimP->trans_imp = *simP->vars[0].paraP[0];
+        // PLOG_DEBUG << "is in implausible" << endl;
+        // PLOG_DEBUG << "simP vars [0]: " << simP->vars[0] << endl;
         mSimP->trans_imp = simP->vars[0].iter;
         mSimP->trans_imp_found = true;
 
-        PLOG_DEBUG << "implausible transition (" << simP->vars[1].name << ": " << *simP->vars[1].paraP[0] << ") @ " << *simP->vars[0].paraP[0];
+        // PLOG_DEBUG << "implausible transition (" << simP->vars[1].name << ": " << *simP->vars[1].paraP[0] << ") @ " << *simP->vars[0].paraP[0];
 
         for (unsigned l = 0; l < L; l++) {
             for (unsigned p = 0; p < layer[l].nPop; p++)
                 layer[l].population[p].simulation.implausible = 1;
         }
 	} else if (simP->vars[0].iter==0) {
+        // PLOG_DEBUG << "is not in implausible" << endl;
         for (unsigned l = 0; l < L; l++) {
             for (unsigned p = 0; p < layer[l].nPop; p++)
                 layer[l].population[p].simulation.implausible = 0;
         }
     }
 
-
+    // PLOG_DEBUG << "checking inconsistency" << endl;
     if (!mSimP->in_inc) { // !mSimP->in_imp &&
         for (unsigned l = 0; l < L; l++) {
             for (unsigned p = 0; p < layer[l].nPop; p++) {

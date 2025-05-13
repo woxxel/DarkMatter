@@ -58,7 +58,6 @@ def plot_q(ax,res,plt_para,bound='imp',idxs=None,approx=False,order=1):
         set_title(ax,order=order,title='second moment')
 
 
-
 def plot_q_zoom(ax,res,plt_para,bound='imp',idxs=None,approx=False,order=1):
 
     x_key = plt_para['x']['key']
@@ -579,7 +578,7 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
     ## get location from subplots
     loc = ax.get_position().get_points()
     ax.remove()
-    
+
     ## define subaxes
     if plt_style=='row':
         y_offset = loc[0,1]
@@ -596,7 +595,7 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
             axx.spines[['top','right']].set_color('none')
             axx.yaxis.set_ticks_position('left')
             axx.xaxis.set_ticks_position('bottom')
-        
+
     else:
         x_offset = [0.02,0.3,0.98]
         y_offset = [0.1,0.5,0.925]
@@ -630,14 +629,11 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
                 I_marked[j,i] = jj*I_marked_position-jj*ii*I_marked_interval
 
     ax_I.set_yticks([])
-    
 
     ## set some general parameters
     factor = 0.6
     I_max = 1.
-    
 
-    
     if not show_xticks:
         plt.setp(ax_fI,xticklabels=[])
 
@@ -648,7 +644,7 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
     nu_max = res['rate_max'][idxes]
     fI = nu_max * np.exp(-I_range**2/(2*res['sigma_V'][idxes]**2))
     ax_fI.plot(I_range,fI,'k')
-    
+
     ax_fI.plot([0,0],[0,nu_max],'k--',linewidth=0.5)
 
     if 'highlight_var' in annotate:
@@ -657,11 +653,11 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
         if 'highlight_var_text' in annotate:
             ax_fI.text(0.005,1,r'$\Psi_0$',fontsize=12)
             ax_fI.text(-res['sigma_V'][idxes]/2.-0.01,factor*nu_max-2,r'$\sigma_V$',fontsize=10)
-    
+
     idxes_alpha = [0,2] if plt_style=='row' else [0]
 
     for idx_alpha, alpha_0 in enumerate(res['alpha_0'][idxes_alpha]):
-        
+
         idxes = (p,idx_alpha,idx_rate)
 
         if idx_alpha==0:
@@ -670,13 +666,12 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
         elif idx_alpha==1:
             lineprops = {'linewidth':1.5,'linestyle':':'}
             I_col = 'r'
-        
-        
+
         ## plot input current distribution
         I_balance = -res['I_balance'][idxes]
         p_I = np.exp(-(I_range-I_balance)**2/(2*res['alpha'][idxes]**2))
         ax_I.plot(I_range,p_I,color=I_col,**lineprops)
-        
+
         ax_I.plot([I_balance,I_balance],[0,I_max],I_col,linewidth=1.,linestyle=':')
         if 'highlight_var' in annotate:
             ax_I.plot([I_balance-res['alpha'][idxes],I_balance],[factor*I_max,factor*I_max],I_col,**lineprops,label=r'$\alpha_I$')
@@ -684,33 +679,30 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
             if ('highlight_var_text' in annotate) and (idx_alpha==0):
                 ax_I.text(-res['I_balance'][idxes]-res['alpha'][idxes]/2.-0.01,factor*I_max - 0.15,r'$\alpha_I$',fontsize=10)
                 ax_I.text(-res['I_balance'][idxes]+0.005,0.05,r'$\bar{I}_0$',fontsize=10)
-        
-    
+
         ## plot firing rate distribution
         range_rate = np.linspace(0,nu_max,steps+1)
         p_nu = distribution(range_rate,res['gamma'][idxes],res['delta'][idxes],res['rate_max'][idxes])
         rho_at_mean = p_nu[np.argmin(abs(range_rate-rateWnt))]
-        
+
         if plt_style=='row':
             ax_distr.plot([0,rho_at_mean],[rateWnt,rateWnt],'k--')
-    
+
         p_nu_max = np.nanmax(p_nu)
         nu_range_max = max(nu_range_max,range_rate[np.where(p_nu>10**(-3)*p_nu_max)[0][-1]])*1.1
-        
+
         ax_distr.plot(p_nu,range_rate,linewidth=1,linestyle='-',color='k' if idx_alpha==0 else 'r')
 
         plt.setp(ax_distr,xlim=[0,p_nu_max*1.05])
 
-
     if plt_style=='sketch':
-        
+
         idxes_rate = np.zeros(2,'int')
         for j,I_marked_row in enumerate(I_marked):
 
-
             for i,I_mark in enumerate(I_marked_row):
                 ax_I.axvline(I_mark,**marker_lineprops)
-                
+
                 nu_marked = fI[np.argmin(abs(I_range-I_mark))]
                 ax_fI.plot([I_mark,I_mark],[0,nu_marked],**marker_lineprops)
 
@@ -722,10 +714,10 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
                     ax_fI.plot([I_range[0],I_mark],[nu_marked,nu_marked],**marker_lineprops)
 
                     idxes_rate[i] = np.argmin(abs(range_rate-nu_marked))
-                    
+
                     p_nu_marked = p_nu[idxes_rate[i]]
                     ax_distr.plot([p_nu_marked,0],[nu_marked,nu_marked],**marker_lineprops)
-            
+
             idxes_I = [np.argmin(abs(I_range-I_marked_row[0])),np.argmin(abs(I_range-I_marked_row[1]))]
             idxes_I.sort()# = [min(idxes_I),max(idxes_I)]
 
@@ -733,10 +725,9 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
 
             ax_fI.fill_between(I_range[idxes_I[0]:idxes_I[1]],0,fI[idxes_I[0]:idxes_I[1]],color='grey',alpha=0.6)
 
-
         idxes_rate.sort()
         ax_distr.fill_betweenx(range_rate[idxes_rate[0]:idxes_rate[1]],0,p_nu[idxes_rate[0]:idxes_rate[1]],color='grey',alpha=0.6)
-    
+
         ax_fI.plot([I_range[0],0],[nu_max,nu_max],linewidth=1.,linestyle=':',color='k')
         ax_distr.plot([p_nu_max/2.,0],[nu_max,nu_max],linewidth=1.,linestyle=':',color='k')
 
@@ -749,16 +740,12 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
 
         ax_fI.yaxis.set_label_coords(0.0, 1.02)
 
-        
-        
     plt.setp(ax_I,ylim=[0,1.1])
     plt.setp(ax_distr,xticks=[],yticklabels=[])
-    
 
     if plt_style=='row':
         for axx in [ax_fI,ax_distr]:
             plt.setp(axx,yticks=np.linspace(0,(nu_max//5)*5,5),ylim=[0,nu_range_max])
-    
 
         ax_distr.text(0.3*p_nu_max,nu_range_max*3/4.,r'$\chi \approx %4.2f \rightarrow %4.2f $'%(res['chi'][p,0,idx_rate],res['chi'][p,1,idx_rate]),bbox={'facecolor':'white','alpha':0.9,'pad':5},fontsize=10)
 
@@ -768,36 +755,29 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
             plt.setp(axx,ylim=[0,nu_max*1.05],yticks=[])
 
         plt.setp(ax_fI,xlim=I_range[[0,-1]])
-        
+
         xlim = ax_distr.get_xlim()
         plt.setp(ax_distr,xlim=[xlim[1],0])
-
 
     if 'title' in annotate:
         ax_fI.text(I_range[int(steps*0.05)],nu_range_max*0.85,r'$\bar{\nu}=%g\,$Hz'%rateWnt,fontsize=12)
 
     return 
 
-
-
-
-
     # title_x = -0.1
     # title_y = 1.05
-
-    
 
     nu_border = [5,15,25]
 
     for i in range(len(rateWnt)):
         for j in range(len(alpha_0)):
             results = get_samples_from_theory(tau_M=tau_M,T=1000,dftheory=0,dftime=0,p_theory=2,plot=1,rate=rateWnt[i],alpha_0=alpha_0[j])
-            #print results
-            #ax1 = plt.subplot(gs[2*i,0])
+            # print results
+            # ax1 = plt.subplot(gs[2*i,0])
             if (j == 0):
                 border_y = (len(rateWnt)-i-1)*v_plots + (len(rateWnt)-i-1)*v_spaces + v_bottom
-                #ax1 = plt.axes([0.1,border_y+(v_plots+v_spaces_small)/2.,0.33,(v_plots-v_spaces_small)/2.])
-                #ax2 = plt.axes([0.1,border_y,0.33,(v_plots-v_spaces_small)/2.])
+                # ax1 = plt.axes([0.1,border_y+(v_plots+v_spaces_small)/2.,0.33,(v_plots-v_spaces_small)/2.])
+                # ax2 = plt.axes([0.1,border_y,0.33,(v_plots-v_spaces_small)/2.])
                 ax2 = plt.axes([0.1,border_y,0.45,v_plots])
                 ax1 = ax2.twinx()
                 ax3 = plt.axes([0.6,border_y,0.15,v_plots])
@@ -805,14 +785,14 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
                 ax2.set_xticks(np.linspace(-0.4,0.0,5))
                 ax2.set_yticks([])
                 ##ax2.set_xlabel(r'$I$')
-                #ax2.set_ylabel(r'$\rho(I)$')
+                # ax2.set_ylabel(r'$\rho(I)$')
                 ax2.spines['right'].set_color('none')
                 ax2.yaxis.set_ticks_position('left')
                 ax2.spines['top'].set_color('none')
                 ax2.xaxis.set_ticks_position('bottom')
 
-                #ax1.set_xticks([])
-                #ax1.set_ylabel(r'$\nu(I)\,$[Hz]')
+                # ax1.set_xticks([])
+                # ax1.set_ylabel(r'$\nu(I)\,$[Hz]')
                 ax1.spines['right'].set_color('none')
                 ax1.yaxis.set_ticks_position('left')
                 ax1.spines['top'].set_color('none')
@@ -820,14 +800,14 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
 
                 ax3.set_xticks([])
                 ax3.set_yticks([])
-                #ax3.set_xlabel(r'$\nu\,$[Hz]')
-                #ax3.set_ylabel(r'$\rho(\nu)$')
+                # ax3.set_xlabel(r'$\nu\,$[Hz]')
+                # ax3.set_ylabel(r'$\rho(\nu)$')
                 ax3.spines['right'].set_color('none')
                 ax3.yaxis.set_ticks_position('left')
                 ax3.spines['top'].set_color('none')
                 ax3.xaxis.set_ticks_position('bottom')
 
-                #factor = 1-1./math.pi
+                # factor = 1-1./math.pi
                 factor = 0.6
 
                 nu_max = max(results['f_I'])
@@ -838,39 +818,34 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
 
                 ax1.set_yticks(np.linspace(0,25,6))
 
-
-
-                #ax1.legend(prop={'size':10},loc=3)
+                # ax1.legend(prop={'size':10},loc=3)
 
                 I_max = max(results['I_distr'])
                 I_tmp = np.copy(I_max)
                 ax2.plot([results['I']-results['alpha'],results['I']],[factor*I_max,factor*I_max],'r',linewidth=2,label=r'$\alpha_I$')
                 ax2.plot(results['I_range'],results['I_distr'],'r')
                 ax2.plot([results['I'],results['I']],[0,I_tmp],'r--',linewidth=0.5)
-                #ax2.plot([results['I']-results['alpha'],results['I']],[factor*I_max,factor*I_max],'r',linewidth=2,label=r'$\alpha_I$')
-                #ax2.plot(results['I_range'],results['I_distr'],'k')
-                #ax2.plot([results['I'],results['I']],[0,I_max],'k--',linewidth=0.5)
-                #ax2.plot([0,0],[0,1.1*I_max],'k--',linewidth=0.5)
+                # ax2.plot([results['I']-results['alpha'],results['I']],[factor*I_max,factor*I_max],'r',linewidth=2,label=r'$\alpha_I$')
+                # ax2.plot(results['I_range'],results['I_distr'],'k')
+                # ax2.plot([results['I'],results['I']],[0,I_max],'k--',linewidth=0.5)
+                # ax2.plot([0,0],[0,1.1*I_max],'k--',linewidth=0.5)
 
+                # ax2.legend(prop={'size':10},loc=4)
 
-
-
-                #ax2.legend(prop={'size':10},loc=4)
-
-                #print results['p_range']
+                # print results['p_range']
                 rho_at_mean = results['p_exact'][np.argmin(abs(results['p_range']-rateWnt[i]))]
                 rho_max1 = max(results['p_exact'])
 
-                #ax3.plot([rateWnt[i],rateWnt[i]],[0,rho_at_mean],'k--')
-                #ax3.plot(results['p_range'],results['p_exact'],'k',label='exact solution')
-                #ax3.plot(results['p_range'],results['p_approx'],'r--',linewidth=1,label='approx. solution')
-                #ax3.set_xlim([0,nu_border[i]])
+                # ax3.plot([rateWnt[i],rateWnt[i]],[0,rho_at_mean],'k--')
+                # ax3.plot(results['p_range'],results['p_exact'],'k',label='exact solution')
+                # ax3.plot(results['p_range'],results['p_approx'],'r--',linewidth=1,label='approx. solution')
+                # ax3.set_xlim([0,nu_border[i]])
                 ax3.plot([0,rho_at_mean],[rateWnt[i],rateWnt[i]],'k--')
                 ax3.plot(results['p_exact'],results['p_range'],'k',label='exact solution')
                 ax3.plot(results['p_approx'],results['p_range'],'r--',linewidth=1,label='approx. solution')
 
                 chi1 = np.copy(results['chi'])
-                #print chi1
+                # print chi1
                 if (i==0):
                     ax1.set_title(r'a)',position=(title_x,title_y))#,loc='left')
                     ax3.set_title(r'b)',position=(title_x,title_y))# homog.: $\alpha_0 = 0$',loc='left')
@@ -880,9 +855,9 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
                     y_border = 25
 
                 if (i==1):
-                    #if results['sigma_V'] > 0.05:
+                    # if results['sigma_V'] > 0.05:
                     ax1.text(-results['sigma_V']/2.-0.01,factor*nu_max*0.7,r'$\sigma_V$',fontsize=10)
-                    #if results['alpha'] > 0.05:
+                    # if results['alpha'] > 0.05:
                     ax2.text(results['I']-results['alpha']/2.-0.01,factor*I_max*0.7,r'$\alpha_I$',fontsize=10)
 
                 if (i==2):
@@ -894,24 +869,23 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
 
                 ax1.text(-0.45,0.9*y_border,r'$\bar{\nu}=%g\,$Hz'%rateWnt[i],fontsize=12)
 
-
-                    #ax3.text(rateWnt[i]+0.2,rho_at_mean,r'$\bar{\nu}$',fontsize=12)
-                #else:
-                #ax3.text(rho_at_mean,rateWnt[i]+0.05*nu_border[i],r'$\bar{\nu}$',fontsize=12)
+                # ax3.text(rateWnt[i]+0.2,rho_at_mean,r'$\bar{\nu}$',fontsize=12)
+                # else:
+                # ax3.text(rho_at_mean,rateWnt[i]+0.05*nu_border[i],r'$\bar{\nu}$',fontsize=12)
             if (j == 1):
-                #ax1.plot(results['I_range'],results['f_I'],'k')
+                # ax1.plot(results['I_range'],results['f_I'],'k')
                 I_max = max(results['I_distr'])
-                #ax2.plot(results['I_range'],results['I_distr']*I_tmp/I_max,'k:',linewidth=0.5)
+                # ax2.plot(results['I_range'],results['I_distr']*I_tmp/I_max,'k:',linewidth=0.5)
                 ax2.plot(results['I_range'],results['I_distr']*I_tmp/I_max,'r:',linewidth=0.5)
                 ax2.plot([results['I'],results['I']],[0,I_tmp],'r:',linewidth=0.5)
-                #factor = (1-1./np.exp(1))*0.9
-                #ax2.plot([results['I']-results['alpha'],results['I']],[factor*I_max,factor*I_max],'r--',linewidth=2)
+                # factor = (1-1./np.exp(1))*0.9
+                # ax2.plot([results['I']-results['alpha'],results['I']],[factor*I_max,factor*I_max],'r--',linewidth=2)
                 ax4 = plt.axes([0.8,border_y,0.15,v_plots])
 
                 ax4.set_xticks([])
                 ax4.set_yticks([])
-                #ax4.set_xlabel(r'$\nu\,$[Hz]')
-                #ax4.set_ylabel(r'$\rho(\nu)$')
+                # ax4.set_xlabel(r'$\nu\,$[Hz]')
+                # ax4.set_ylabel(r'$\rho(\nu)$')
                 ax4.spines['right'].set_color('none')
                 ax4.yaxis.set_ticks_position('left')
                 ax4.spines['top'].set_color('none')
@@ -919,14 +893,14 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
 
                 rho_at_mean = results['p_approx'][np.argmin(abs(results['p_range']-rateWnt[i]))]
                 rho_max2 = max(results['p_exact'])
-                #print results['p_exact']
+                # print results['p_exact']
                 if (rho_max2 == results['p_exact'][1]):
                     rho_max2 /= 3
                 rho_max = max(rho_max1,rho_max2)
-                #ax4.plot([rateWnt[i],rateWnt[i]],[0,rho_at_mean],'k--')
-                #ax4.plot(results['p_range'],results['p_exact'],'k')
-                #ax4.plot(results['p_range'],results['p_approx'],'r--')
-                #ax4.set_xlim([0,nu_border[i]])
+                # ax4.plot([rateWnt[i],rateWnt[i]],[0,rho_at_mean],'k--')
+                # ax4.plot(results['p_range'],results['p_exact'],'k')
+                # ax4.plot(results['p_range'],results['p_approx'],'r--')
+                # ax4.set_xlim([0,nu_border[i]])
                 ax4.plot([0,rho_at_mean],[rateWnt[i],rateWnt[i]],'k--')
                 ax4.plot(results['p_exact'],results['p_range'],'k')
                 ax4.plot(results['p_approx'],results['p_range'],'r--')
@@ -940,22 +914,18 @@ def plot_distr(ax,idx_rate,res,plt_para,plt_style="row",annotate=['highlight_var
                 ax3.text(0.6*rho_max,y_border*3/4.,r'$\chi \approx %4.2f$'%chi1,bbox={'facecolor':'white','alpha':0.9,'pad':5},fontsize=10)
                 ax4.text(0.6*rho_max,y_border*3/4.,r'$\chi \approx %4.2f$'%results['chi'],bbox={'facecolor':'white','alpha':0.9,'pad':5},fontsize=10)
 
-                #else:
-                    #ax3.text(12.5,0.7*rho_max,r'$\chi \approx %4.2g$'%chi1,bbox={'facecolor':'white','alpha':0.9,'pad':5})
-                    #ax4.text(12.5,0.7*rho_max,r'$\chi \approx %4.2g$'%results['chi'],bbox={'facecolor':'white','alpha':0.9,'pad':5})
+                # else:
+                # ax3.text(12.5,0.7*rho_max,r'$\chi \approx %4.2g$'%chi1,bbox={'facecolor':'white','alpha':0.9,'pad':5})
+                # ax4.text(12.5,0.7*rho_max,r'$\chi \approx %4.2g$'%results['chi'],bbox={'facecolor':'white','alpha':0.9,'pad':5})
                 ax3.set_xlim([0,rho_max])
                 ax4.set_xlim([0,rho_max])
 
-
             ax2.set_xlim([-0.5,0.1])
             ax1.set_xlim([-0.5,0.1])
-            #ax2.set_xlim([-0.5,0.2])
+            # ax2.set_xlim([-0.5,0.2])
             ax1.set_ylim([0,y_border])
 
-
     plt.show(block=False)
-
-
 
 
 def remove_frame(ax,positions=None):
@@ -982,9 +952,9 @@ def set_title(ax,order=1,title='',offset=(-0.1,1.1),pad=0,fontsize=10):
 
 
 def get_displayString(key):
-    
+
     if key == 'rateWnt':
-        return r'$\bar{\nu}\,$[Hz]'
+        return "$\\bar{\\nu}\,$[Hz]"
     elif key == 'alpha_0':
         return r'$\alpha_0$'
     elif key == 'tau_I':

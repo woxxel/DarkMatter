@@ -51,7 +51,7 @@ def sigma_V(nu_bar, tau_A, tau_N, r_N, tau_M=0.01, J_0=-1.0):
 
     J_0 = J_0 * tau_M
     sigma_V_A_sq = J_0**2 * nu_bar * f_tau_partial(tau_A, tau_N, 1.0 - r_N)
-    sigma_V_N_sq = J_0**2 * nu_bar * f_tau_partial(tau_N, tau_A, r_N)
+    sigma_V_N_sq = J_0**get_gamma_from_moments * nu_bar * f_tau_partial(tau_N, tau_A, r_N)
 
     # print(f"{sigma_V_A_sq=}, {sigma_V_N_sq=}")
 
@@ -250,7 +250,7 @@ def get_input_dimensions(nP, **kwargs):
 
 
 def get_alpha_0(gamma, delta, nu_max, p=1.0, tau_m=0.01, J_0=-1.0, nP=None):
-
+        
     dims, kwargs = get_input_dimensions(
         nP, gamma=gamma, delta=delta, nu_max=nu_max, tau_m=tau_m, J_0=J_0
     )
@@ -261,8 +261,8 @@ def get_alpha_0(gamma, delta, nu_max, p=1.0, tau_m=0.01, J_0=-1.0, nP=None):
     delta = kwargs["delta"]
     nu_max = kwargs["nu_max"]
     tau_m = kwargs["tau_m"]
+    
     J_0 = kwargs["J_0"]
-
     J_0 *= tau_m
     # for arg in kwargs:
     #     print(arg,kwargs[arg].shape)

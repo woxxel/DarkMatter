@@ -1,5 +1,7 @@
 #include <plog/Log.h>
 
+#include "structures.h"
+
 void Simulation_Variable::initialize(double *modVarP, double *varP, unsigned varSz, string varName)
 {
     /*
@@ -17,7 +19,7 @@ void Simulation_Variable::initialize(double *modVarP, double *varP, unsigned var
                 varSz, varName and array - or should it?
     */
 
-    PLOG_DEBUG <<" Initializing " << varName << " with " << varSz << " variables";
+    // PLOG_DEBUG <<" Initializing " << varName << " with " << varSz << " variables";
     // cout << "current value of variable: " << *modVarP << endl;
     name = varName;
 
@@ -58,7 +60,7 @@ bool Simulation_Variable::iterate() // return false if end is reached, true else
 
 void Simulation_Variable::print_status()
 {
-    PLOG_DEBUG << "status of variable " << name << ": \t" << "i=" << iter << "/" << steps << "\t val=" << *paraP[0];
+    // PLOG_DEBUG << "status of variable " << name << ": \t" << "i=" << iter << "/" << steps << "\t val=" << *paraP[0];
 };
 
 void Simulation::print_simStatus()
@@ -68,7 +70,7 @@ void Simulation::print_simStatus()
 }
 
 void Simulation::reset_iteration() {
-    PLOG_DEBUG << "resetting variables " << nVar;
+    // PLOG_DEBUG << "resetting variables " << nVar;
     for (unsigned i=0;i<nVar;i++)
     {
         iter_status[i] = true;
@@ -104,8 +106,10 @@ void Simulation::initialize(Model *modP)
     vars.resize(nVar);
 
     unsigned layer, population, psp;
-    // cout << nVar << " variables in input " << endl;
+    // PLOG_DEBUG << "Initializing... " << nVar << " variables in input " << endl;
     vector<int> l,p,s;
+
+    // PLOG_DEBUG << "order: " << order.size() << "; var1: " << order[0] << ", var2: " << order[1] << endl;
 
     for (unsigned i=0;i<nVar;i++)
     {
@@ -120,7 +124,7 @@ void Simulation::initialize(Model *modP)
         
             layer = l[ll];
 
-            // cout << "layer (" << ll << ")" << layer << endl;
+            // PLOG_DEBUG << "layer (" << ll << "): " << layer << endl;
             // getting populations to change variables in from sim_pointer-input
             p.clear();
             p.push_back(sim_pointer[i][1]);
@@ -130,7 +134,7 @@ void Simulation::initialize(Model *modP)
             }
             for (unsigned pp=0; pp<p.size(); pp++) {
                 population = p[pp];
-                // cout << "population (" << pp << ")" << population << endl;
+                // PLOG_DEBUG << "population (" << pp << "): " << population << endl;
 
                 // getting synapses to change variables in from sim_pointer-input
                 s.clear();
@@ -142,9 +146,8 @@ void Simulation::initialize(Model *modP)
                 // cout << " bla" << endl;
                 for (unsigned ss=0; ss<s.size(); ss++) {
                     psp = s[ss];
-                    // cout << "psp (" << ss << ") " << psp << endl;
-
-                    PLOG_DEBUG << "layer|population|synapse: " << layer << "|" << population << "|" << psp << endl;
+                    // PLOG_DEBUG << "psp (" << ss << "): " << psp << endl;
+                    // PLOG_DEBUG << "layer|population|synapse: " << layer << "|" << population << "|" << psp << endl;
 
                     set_vars(modP,i,layer,population,psp);
                 }
@@ -227,11 +230,12 @@ void Simulation::store_results(Model * modP, Model * modP_approx)
         at the end of each iteration, write mode-appropriate values to results-file 
     */
 
-//         unsigned a = resP->rate.size() - 1;
-//         cout << "size = " << a << endl;
-//         unsigned size = resP->rate[a].size()+1;
-//         cout << "rate=" << paras.rate << " ,\t q=" << paras.q[0] << " ,\t alpha=" << paras.alpha[0] << " ,\t gamma=" << paras.gamma[0] << " ,\t chi=" << paras.chi[0] << endl;
-        //! write: rate, q, alpha, alpha+alpha_0, sigma_V, gamma, chi, threshold transition, nu_no_peak, nu_inconsistent
+    //         unsigned a = resP->rate.size() - 1;
+    //         cout << "size = " << a << endl;
+    //         unsigned size = resP->rate[a].size()+1;
+    //         cout << "rate=" << paras.rate << " ,\t q=" << paras.q[0] << " ,\t alpha=" << paras.alpha[0] << " ,\t gamma=" << paras.gamma[0] << " ,\t chi=" << paras.chi[0] << endl;
+    //! write: rate, q, alpha, alpha+alpha_0, sigma_V, gamma, chi, threshold transition, nu_no_peak, nu_inconsistent
+    
     Population_Simulation *popSimP, *popSimP_approx;
     Population_Results *popResP, *popResP_approx;
 

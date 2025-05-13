@@ -70,8 +70,8 @@ def darkMatter(steps=100,mode=0,options={},path=None,logging=3,cleanup=True,reru
         os.system(run_str)
 
     # obtain data from simulation
-    results = readNetCDF(fileResults)
-    
+    results = read_from_netcdf(fileResults)
+
     if cleanup:
         for f in [fileModel,filePara,fileResults]:
             os.remove(f)
@@ -81,7 +81,7 @@ def darkMatter(steps=100,mode=0,options={},path=None,logging=3,cleanup=True,reru
     return results
 
 
-def readNetCDF(path):
+def read_from_netcdf(path):
 
     ncid = Dataset(path, "r")
 
@@ -93,20 +93,48 @@ def readNetCDF(path):
     return data
 
 
+def write_to_netcdf(class_obj, path):
+    # write simulation parameters to netcdf file
+    ncid = Dataset(path, "w")
+    try:
+        ncid.createDimension("one", 1)
+        # sim.paras.extend(['mode_calc','mode_stats','mode_selfcon','sim_prim','sim_sec'])#,'order'
+        for key in class_obj.paras:
+
+            val = getattr(class_obj, key)
+            varType, varDim = prepare_ncid_var(ncid, key, val)
+            if varType == "S":
+                nChar = len(max(val, key=len))
+                ncid.createDimension("charSz", nChar)
+                Var = ncid.createVariable(key, "S1", varDim + ("charSz",))
+                Var[:] = np.array([list(s.ljust(nChar)) for s in val], "S1")
+            else:
+                Var = ncid.createVariable(key, varType, varDim)
+                Var[:] = val
+        ncid.close()
+    except:
+        ncid.close()
+        assert f"Error in writing parameters to {path}"
+
+
 def set_model(fileModel,options):
 
     # defining model constants (all of them!)
     model = parameters('model')
 
     ## global parameters
-    model.set_para('L',1,options)
+    model.set_para("L", 1, options, np.int16, sz=1)
     L = np.sum(getattr(model,'L'))
 
-    model.set_para('P',2,options,sz=L)
+    # print(f"{model.L=}")
+    # print(f"{model.L.size=}")
+    # print(len(model.L))
+
+    model.set_para("P", 2, options, np.int16, sz=L)
     P = getattr(model,'P')       # populations per layer
     nP = np.sum(P)    # total number of populations
 
-    model.set_para('S',[1,2],options,sz=nP)
+    model.set_para("S", [1, 2], options, np.int16, sz=nP)
     S = getattr(model,'S')
     nS = np.sum(S)
 
@@ -116,7 +144,9 @@ def set_model(fileModel,options):
     model.set_para('J0_l',1.,options,sz=L)              # synaptic strength of inter-layer interactions
 
     ### parameters for each population
-    model.set_para('I_ext',1,options,sz=nP)           # external, constant drive
+    model.set_para(
+        "I_ext", -1.0, options, dtype=float, sz=nP
+    )  # external, constant drive
     model.set_para('rateWnt',1.,options,sz=nP)           # external, constant drive
     model.set_para('kappa',1.,options,sz=nP,register=False)            # connectivity ratio (should have dim=Npop)
     model.set_para('alpha_0',0.,options,sz=nP)           # external, constant drive
@@ -125,7 +155,9 @@ def set_model(fileModel,options):
     model.set_para('tau_n',0.,options,sz=nP)
     model.set_para('J0',-1.,options,sz=nP,register=False)             # base synaptic strength
 
-    model.set_para('drive',0,options,sz=L,register=False)            # external drive (1=on, 0=off)
+    model.set_para(
+        "drive", 0, options, np.int16, sz=L, register=False
+    )  # external drive (1=on, 0=off)
 
     ### parameters for each synapse set
     model.set_para('tau_I',[0.005,0.2,0.03],options,sz=nS)
@@ -134,7 +166,7 @@ def set_model(fileModel,options):
     for tau_para in ['tau_I','tau_norm']:
         assert len(getattr(model,tau_para)) == nS, 'Make sure to provide the same number of parameters for each variable of synaptic timeconstants'
         assert len(getattr(model,tau_para)) >= nP, 'Number of defined synaptic timeconstants needs to be at least as large as the number of populations'
-    
+
     ## write parameters for external spiking input (not currently implemented)
     # for p in range(Npop):
     #     if (model.drive[p] > 0):
@@ -146,35 +178,32 @@ def set_model(fileModel,options):
     #         model.set_para('J_0',0.,options,sz=Npop)           # external synaptic weight
     #         model.set_para('K_0',0,options,sz=Npop)            # external in-degree
 
-
     model.set_para('I_alpha',1.,options,register=False)
     model.set_para('I_beta',1.,options,register=False)
 
-    
-    ncid = Dataset(fileModel, "w");#, format="NETCDF4")
-    ncid.createDimension('one',1)
-    for key in model.paras:
-
-        val = getattr(model,key)
-        varType,varDim = prepare_ncid_var(ncid,key,val)
-        Var = ncid.createVariable(key,varType,varDim)
-        Var[:] = val
-    ncid.close()
+    write_to_netcdf(model, fileModel)
 
     sv_str = '_const'
     for i,key in enumerate(model.paras):
         if model.register[i]:
             val = getattr(model,key)
-            if np.isscalar(val) and isinstance(val,int):#or 
-                sv_str += f'_{key}={val:d}'
-            elif np.isscalar(val):
-                sv_str += f'_{key}={val:.3g}'
-            elif (len(val) == 1 or val[0]==val[-1]) and isinstance(val[0],float):
+            # print(key, val)
+            # if np.isscalar(val) and isinstance(val,int):#or
+            if val.size == 1 and isinstance(val, int):  # or
+                # print("scalar int")
+                sv_str += f"_{key}={val.flat[0]:d}"
+            # elif np.isscalar(val):
+            elif val.size == 1:
+                # print("scalar non-int")
+                sv_str += f"_{key}={val.flat[0]:.3g}"
+            elif (val.size == 1 or val[0] == val[-1]) and isinstance(val[0], float):
+                # print("same vals, float")
                 sv_str += f'_{key}={val[0]:.3g}'
-            elif (len(val) == 1 or val[0]==val[-1]):# and (isinstance(val[0],int) or val[0]%1==0):
+            elif (
+                val.size == 1 or val[0] == val[-1]
+            ):  # and (isinstance(val[0],int) or val[0]%1==0):
+                # print("same vals, else")
                 sv_str += f'_{key}={val[0]:d}'
-
-
 
     # model.print_parameter()
 
@@ -188,25 +217,37 @@ def set_simulation(fileSim,options,steps):
 
     for key in options['simulation']:
         if key in ['sim_prim','sim_sec']:
-            sim.set_para(key,[],options['simulation'],register=False)
+            sim.set_para(key, [], options["simulation"], np.int16, register=False)
         else:
-            sim.set_para(key,[],options['simulation'])
+            sim.set_para(key, [], options["simulation"], np.int16)
 
     # sim.set_para('order',sim.paras,{},register=False)
 
     # sim.set_para('I_alpha',[1],options)
     # sim.set_para('I_beta',[1],options)
 
-    sim.set_para('mode',0,options,register=False)             # 0=phase plots, 1=data simulation
-    sim.set_para('mode_calc',0,options,register=False)        # 0=exact, 1=approx
-    sim.set_para('mode_stats',0,options,register=False)       # 0=general stats, 1=...
-    sim.set_para('mode_selfcon',0,options,register=False)       # 0=obtain 2nd moments, 1=obtain 2nd moments and all but first rate
-
-    # order = ['rateWnt','alpha_0','tau_G','n','eps','eta','I_alpha','I_beta']
-    # sim.set_para('order',order,options)
     sim.prepare_sim_paras(steps)
 
-    sv_str = 'mode=%d_stats=%d_approx=%d_steps=%d' % (sim.mode,sim.mode_stats,sim.mode_calc,steps)
+    sim.set_para(
+        "mode", 0, options, np.int16, register=False
+    )  # 0=phase plots, 1=data simulation
+    sim.set_para("mode_calc", 0, options, np.int16, register=False)  # 0=exact, 1=approx
+    sim.set_para(
+        "mode_stats", 0, options, np.int16, register=False
+    )  # 0=general stats, 1=...
+    sim.set_para(
+        "mode_selfcon", 0, options, np.int16, register=False
+    )  # 0=obtain 2nd moments, 1=obtain 2nd moments and all but first rate
+
+    # order = ['rateWnt','alpha_0','tau_G','n','eps','eta','I_alpha','I_beta']
+    order = [o for o in list(options["simulation"]) if not o.startswith("sim")]
+    sim.set_para("order", order, options, register=False)
+
+    write_to_netcdf(sim, fileSim)
+
+    sv_str = (
+        f"mode={sim.mode}_stats={sim.mode_stats}_approx={sim.mode_calc}_steps={steps}"
+    )
     sv_str += '_iter'
     for i,key in enumerate(sim.paras):
         if sim.register[i]:
@@ -214,28 +255,6 @@ def set_simulation(fileSim,options,steps):
             if len(val) > 1:
                 # sv_str += '_%s=%g' %^(key,val[-1])
                 sv_str += f'_{key}'
-
-    #write simulation parameters to netcdf file
-    ncid = Dataset(fileSim, "w")
-    ncid.createDimension('one',1)
-
-    # sim.paras.extend(['mode_calc','mode_stats','mode_selfcon','sim_prim','sim_sec'])#,'order'
-    for key in sim.paras:
-
-        val = getattr(sim,key)
-
-        varType,varDim = prepare_ncid_var(ncid,key,val)
-        if varType=='S':        ## somewhat complicated passing over readable strings to netcdf
-            nChar = len(max(val,key=len))
-            ncid.createDimension('charSz',nChar)
-            Var = ncid.createVariable(key,'%s1'%(varType),varDim+('charSz',))
-            Var._Encoding = 'ascii'
-            Var[:] = stringtochar(val)
-        else:
-            Var = ncid.createVariable(key,varType,varDim)
-            Var[:] = val
-
-    ncid.close()
 
     # sim.print_parameter()
 
@@ -248,11 +267,13 @@ def set_computation(fileComputation,options):
     com = parameters('computation')
 
     ### parameters for layers
-    com.set_para('N',10,options)
+    com.set_para("N", 10, options, np.int16)
     com.set_para('T',100,options)
-    com.set_para('draw_from_theory',100,options,register=False)
-    com.set_para('draw_finite_time',100,options,register=False)
+    com.set_para("draw_from_theory", 100, options, np.int16, register=False)
+    com.set_para("draw_finite_time", 100, options, np.int16, register=False)
     # com.set_para('seed_theory',np.random.randint(0,10000,getattr(com,'draw_finite_time')),options)
+
+    write_to_netcdf(com, fileComputation)
 
     sv_str = 'computation'
     for i,key in enumerate(com.paras):
@@ -261,17 +282,7 @@ def set_computation(fileComputation,options):
             if (type(val)!=list and type(val)!=np.ndarray):
                 sv_str += f'_{key}={val:.0f}'
 
-    com.set_para('seed',np.random.randint(0,2**16),options)
-
-    ncid = Dataset(fileComputation, "w");#, format="NETCDF4")
-    ncid.createDimension('one',1)
-    for key in com.paras:
-
-        val = getattr(com,key)
-        varType,varDim = prepare_ncid_var(ncid,key,val)
-        Var = ncid.createVariable(key,varType,varDim)
-        Var[:] = val
-    ncid.close()
+    com.set_para("seed", np.random.randint(0, 2**16), options, np.int16)
 
     # com.print_parameter()
 
@@ -286,23 +297,33 @@ class parameters:
         self.paras = []
         self.register = []
 
-    def set_para(self,key,default,option=None,register=True,sz=None):
+    def set_para(
+        self, key, default, option=None, dtype=np.float32, register=True, sz=None
+    ):
 
         if option:
             val = option[key] if key in option.keys() else default
         else:
             val = default
+
+        # print(key, val)
+        # print(type(val), np.array(val).dtype)
+        # if not (type(val) == list and type(val[0]) == str):
+        #     val = np.array(val).astype(dtype)
+
         if sz:
             if not (type(val)==list or type(val)==np.ndarray):
                 val = np.full(sz,val)
                 # val *= np.ones(sz)
             else:
-                if len(val)==1:
-                    val = np.full(sz,val[0])
+                if np.array(val).size == 1:
+                    val = np.full(sz, val)
                 else:
                     f = sz//len(val)
                     val = np.array(list(val)*f)
-                assert len(val)==sz, f'Please provide values for {key} of dimension 1 or {sz}'
+                assert (
+                    np.array(val).size == sz
+                ), f"Please provide values for {key} of dimension 1 or {sz}"
 
         setattr(self,key,val)
         # if key in option.keys():
@@ -315,7 +336,10 @@ class parameters:
     def prepare_sim_paras(self,steps):   # only works in conjunction with "set_simulation"
         for key in self.paras:
             val = getattr(self,key)
-            assert type(val) == list, 'Please specify all iteration parameters as lists!'
+            print(key, val, type(val))
+            assert (
+                type(val) == list or type(val) == np.ndarray
+            ), f"{key} not provided as a list ({val}). Please specify all iteration parameters as lists!"
             if len(val) == 2:
                 val = np.linspace(val[0],val[-1],steps+1)[1:]#.astype('float')
             elif len(val) > 2:
@@ -325,6 +349,7 @@ class parameters:
             setattr(self,key,val)
 
         nChar = len(max(self.paras,key=len))
+        # print("order:", self.paras)
         self.order = np.array(self.paras,dtype='S'+str(nChar))
 
     def print_parameter(self):
@@ -336,7 +361,7 @@ class parameters:
 def get_type(val):
     if type(val)==np.int_ or type(val)==int:
         varType = np.dtype('int32').char #'i' #
-    elif type(val)==np.bytes_ or type(val)==bytes:
+    elif type(val) == np.bytes_ or type(val) == bytes or type(val) == str:
         varType='S'
     else:
         varType = np.dtype('float64').char

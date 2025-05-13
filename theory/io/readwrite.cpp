@@ -59,14 +59,15 @@ void write_to_ncid(int ncid, const char *varName, nc_type varType, int dimSz, co
 
 void read_model(string fileModel, Model *modP)
 {
-    // spdlog::info("reading model parameters from {} ... ",fileModel);
-    // cout << "reading model parameters from " << fileModel << "... ";
+    PLOG_INFO << "Reading 'model' parameters done from" << fileModel << "... ";
+
     int ncid;
     int status = true;
 
     nc_open(fileModel.c_str(), NC_NOWRITE, &ncid);
 
     status = status && get_from_ncid(ncid, "L", &modP->L);
+    PLOG_DEBUG << "L: " << modP->L << endl;
     modP->layer.resize(modP->L);
 
     vector<unsigned> S;
@@ -86,7 +87,7 @@ void read_model(string fileModel, Model *modP)
     status = status && get_from_ncid(ncid, "eta", &eta[0]);
     status = status && get_from_ncid(ncid, "J0_l", &J0_l[0]);
 
-    int I_ext[nP];
+    double I_ext[nP];
     double rateWnt[nP], kappa[nP], alpha_0[nP], Psi_0[nP], tau_M[nP], tau_n[nP], J0[nP];
     status = status && get_from_ncid(ncid, "I_ext", &I_ext[0]);
     status = status && get_from_ncid(ncid, "rateWnt", &rateWnt[0]);
@@ -123,6 +124,7 @@ void read_model(string fileModel, Model *modP)
             modP->layer[l].population[p].nPSP = S[p_idx];
 
             modP->layer[l].population[p].I_ext = I_ext[p_idx];
+            PLOG_DEBUG << "I_ext (" << l << "," << p << "): " << modP->layer[l].population[p].I_ext << " vs " << I_ext[p_idx] << endl;
             modP->layer[l].population[p].rateWnt = rateWnt[p_idx];
             modP->layer[l].population[p].kappa = kappa[p_idx];
             modP->layer[l].population[p].alpha_0 = alpha_0[p_idx];
@@ -143,6 +145,7 @@ void read_model(string fileModel, Model *modP)
         // modP->layer[l].print_layer();
     }
 
+
 // get the drive parameters
     // get_from_ncid(ncid, "drive", &modP->paras.drive);
     //
@@ -159,12 +162,13 @@ void read_model(string fileModel, Model *modP)
 
     nc_close(ncid);
     if (!status) throw;
-    // cout << "done!" << endl;
+
+    PLOG_INFO << "Reading 'model' done";
 }
 
 void read_simulation(string fileSim, Simulation *simP)
 {
-    // cout << "reading simulation parameters from " << fileSim << "... ";
+    PLOG_INFO << "Reading 'simulation' parameters done from" << fileSim << "... ";
     int ncid;
     int status = true;
 
@@ -183,9 +187,11 @@ void read_simulation(string fileSim, Simulation *simP)
     simP->sim_pointer.resize(2);
     get_dim_and_read(ncid, "sim_prim", &simP->sim_primSz, &simP->sim_pointer[0]);
     get_dim_and_read(ncid, "sim_sec", &simP->sim_secSz, &simP->sim_pointer[1]);
-
+    
     status = status && get_from_ncid(ncid, "orderSz", &simP->orderSz);
     status = status && get_from_ncid(ncid, "charSz", &simP->charSz);
+
+    PLOG_DEBUG << "orderSz: " << simP->orderSz << ", charSz: " << simP->charSz;
 
     simP->order.resize(simP->orderSz);
 
@@ -200,24 +206,26 @@ void read_simulation(string fileSim, Simulation *simP)
     status = status && nc_inq_varid(ncid, "order", &varid);
     size_t start[2] = {0,0}, count[2] = {1,simP->charSz};
 
+    PLOG_DEBUG << "Reading order variables... " << endl;
     for (unsigned rec=0;rec<simP->orderSz;rec++)//
     {
         start[0] = rec;
         nc_get_vara(ncid, varid, start, count, &order[rec][0]);
         simP->order[rec] = "";
-        for (unsigned i=0;i<simP->charSz;i++)
+        for (unsigned i=0;i<simP->charSz;i++) {
             simP->order[rec] += order[rec][i];
-        // cout << simP->order[rec] << endl;
+        }
+        PLOG_DEBUG << simP->order[rec] << endl;
     }
 
     nc_close(ncid);
-    // cout << "done!" << endl;
+    PLOG_INFO << "Reading 'simulation' done";
 }
 
 void read_computation(string fileComp, Computation *comP)
 {
-    // cout << "reading computation parameters from " << fileComp << "... " << endl;
-
+    PLOG_INFO << "Reading 'computation' parameters done from" << fileComp << "... ";
+    
     int ncid;
     nc_open(fileComp.c_str(), NC_NOWRITE, &ncid);
 
@@ -264,6 +272,7 @@ void read_computation(string fileComp, Computation *comP)
         // }
     // }
     nc_close(ncid);
+    PLOG_INFO << "Reading 'computation' done";
     // cout << "done!" << endl;
 }
 
@@ -312,8 +321,8 @@ void read_computation(string fileComp, Computation *comP)
 
 void write_measures(string fileOut, Computation *comP, Model *modP, Measures *mesP)
 {
-    // cout << "writing measures (results) to " << fileOut << "..." << endl;
-
+    PLOG_INFO << "Writing measures (results) to" << fileOut << "... ";
+    
     int ncid, N_dim, P_dim, rates_dim, rates_T_dim;
     nc_create(fileOut.c_str(), NC_CLOBBER, &ncid);
 
@@ -371,7 +380,7 @@ void write_measures(string fileOut, Computation *comP, Model *modP, Measures *me
     // // NcVar *p_k = writeResults.add_var("p_k", ncDouble, resolution_dim);
     // // p_k->put(&resP->p_k.front(),p_Sz);
     nc_close(ncid);
-    // cout << "done!" << endl;
+    PLOG_INFO << "done!" << endl;
 }
 
 
@@ -381,7 +390,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
 
     // could change this to separate functions, which individually open file in write access and add data?!
 
-	// cout << "writing result data to file " << fileOut << "...";
+	PLOG_INFO << "writing result data to file " << fileOut << "...";
 
     int ncid, steps_dim, steps_dim1, Npop_dim, trans_dim;//, info_dim;
     unsigned steps = simP->vars[0].steps;
@@ -608,7 +617,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
     }
 
     nc_close(ncid);
-    PLOG_DEBUG << "writing results done!";
+    PLOG_INFO << "writing results done!";
 }
 
 void write_prep_paras(int ncid, int *dimID, Simulation *simP)
