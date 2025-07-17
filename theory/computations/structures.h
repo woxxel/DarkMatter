@@ -1,3 +1,6 @@
+#ifndef STRUCTURES_H
+#define STRUCTURES_H
+
 #include <vector>
 // #include <random>
 #include "gsl/gsl_rng.h"
@@ -369,3 +372,5 @@ struct parameters_int
 
     double I_alpha, I_beta;
 };
+
+#endif

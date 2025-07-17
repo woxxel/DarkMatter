@@ -166,6 +166,7 @@ class BayesModel(HierarchicalModel):
                     k_AP[N_AP_empirical] = k_AP_empirical
 
                     ### calculate actual log-likelihood
+                    # print(params)
                     p_N_AP = get_p_N_AP(
                         (N_AP + offset) / self.T,
                         params,
@@ -183,14 +184,14 @@ class BayesModel(HierarchicalModel):
                         * np.log(1 - p_N_AP[N_AP])
                     )
 
-                    if plot:
-                        fig = plt.figure()
-                        ax1 = fig.add_subplot(211)
-                        ax1.plot(N_AP, k_AP, label="k_AP")
-                        ax2 = fig.add_subplot(212)
-                        ax2.axhline(0, color="black", linestyle="--")
-                        ax2.plot(N_AP, logp, label="p_N_AP")
-                        plt.show(block=False)
+                    # fig = plt.figure()
+                    # ax1 = fig.add_subplot(211)
+                    # ax1.plot(N_AP, k_AP, label="k_AP")
+                    # ax2 = fig.add_subplot(212)
+                    # ax2.axhline(0, color="black", linestyle="--")
+                    # ax2.plot(N_AP, logp, label="p_N_AP")
+
+                    # plt.show(block=False)
                     # * weight(
                     #     N_AP / max_spike_count_model, "sigmoid", offset=0.2, slope=50, threshold=0.1
                     # )
