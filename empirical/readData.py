@@ -1,4 +1,4 @@
-# import pandas as pd
+import pandas as pd
 import numpy as np
 import os,sys
 
@@ -164,17 +164,28 @@ class ModelParams:
             self.animal_mask[i*self.data_shape[1]:i*self.data_shape[1]+self.rates[c].shape[1]] = True
 
         self.T = 1200
+        self.params = None
+        self.two_pop = False
 
-    def artificial_data(self,parameter,population_keys=['rates','mouse ID'],T=600.,N=100,nAnimals=5,plot=False):
+    def artificial_data(
+        self,
+        parameter,
+        population_keys=["rates", "mouse ID"],
+        # N=100,
+        nAnimals=1,
+        plot=False,
+    ):
 
         self._num_layers = 1
         self._num_clusters = 2
 
+        print(parameter)
+
         self.params = parameter
         self.two_pop = 'p' in self.params
 
-        self.N = N
-        self.T = float(T)
+        self.N = parameter["N"]
+        self.T = float(parameter["T"])
 
         # arr_rateWnt = [1.]
         # arr_alpha_0 = [0.0,0.02,0.06]
@@ -227,12 +238,15 @@ class ModelParams:
         # print(options)
         # print('\n')
         string_input_params = "input parameters: "
-        for m in range(len(self.params["distr"])):
-            for key in ['gamma','delta','nu_max']:
-                string_input_params += f"{self.params['distr'][m][key]=}, "
+        for distribution in self.params["distr"]:
+            for key in distribution:
+                string_input_params += f"{key}={distribution[key]}, "
         print(string_input_params)
 
-        print(f"inferred parameters: {options['rateWnt']=}, {options['tau_I']=}, {options['alpha_0']=}")
+        string_inferred_params = "inferred parameters: "
+        for key in ["rateWnt", "tau_I", "alpha_0"]:
+            string_inferred_params += f"{key}={options[key]}, "
+        print(string_inferred_params)
 
         if np.isnan(options['rateWnt']).any() or np.isnan(options['tau_I']).any() or np.isnan(options['alpha_0']).any():
             print('inferred parameters contain NaNs - breaking!')
@@ -301,28 +315,44 @@ class ModelParams:
 
     def plot_rates(self,key=None,param_in=None):
 
-        fig,ax = plt.subplots(1,2,figsize=(10,5))
+        fig, ax = plt.subplots(1, 2, figsize=(6, 2.5))
 
         # gamma = gamma if gamma else self.params['gamma']
         # delta = delta if delta else self.params['delta']
         # nu_max = nu_max if nu_max else self.params['nu_max']
         # parameters = [self.params]
-        # if param_in:
+        # if param_in:None
         # parameters.append(param_in)
         param = param_in if param_in else self.params
 
-        # rates = self.rates[key] if key else self.rates
-        rates = self.rates
+        rates = self.rates[key] if key else self.rates
+        # rates = self.rates
 
         xlim = 25.
 
         print(f"{self.two_pop=}")
 
-        bins = np.linspace(0, param["distr"][0]["nu_max"], 101)
+        if param:
+            bins = np.linspace(0, param["distr"][0]["nu_max"], 101)
 
-        NU_log = np.logspace(-20, np.log(param["distr"][0]["nu_max"]), 10001)
-        p_NU = p_nu(NU_log,param)
-        p_NU_cum = np.nancumsum(p_nu(NU_log,param)[:-1]*np.diff(NU_log))
+            NU_log = np.logspace(-20, np.log(param["distr"][0]["nu_max"]), 10001)
+            p_NU = p_nu(NU_log, param)
+            p_NU_cum = np.nancumsum(p_nu(NU_log, param)[:-1] * np.diff(NU_log))
+
+            ax[0].plot(
+                NU_log, p_NU, color="k", linestyle="--", label="original distribution"
+            )
+
+            ax[1].plot(
+                NU_log[:-1],
+                p_NU_cum,
+                label="original distribution",
+                color="k",
+                linestyle="--",
+            )
+            ax[1].legend()
+        else:
+            bins = np.linspace(0, 20, 51)
 
         ## plot histogram of empirical or artificial rates
         ax[0].hist(rates,bins=bins,density=True)
@@ -335,7 +365,6 @@ class ModelParams:
         # NU = np.linspace(0,xlim,10**8+1)
         # for i,param in enumerate(parameters):
         # print(p_NU)
-        ax[0].plot(NU_log,p_NU,label='original distribution')
 
         # bins = 10**np.linspace(-4,2,101)
         # p_NU[-1] = 0
@@ -343,10 +372,11 @@ class ModelParams:
         # p_NU_cum /= np.nanmax(p_NU_cum)
         # print(p_NU,p_NU_cum)
 
-        ax[1].plot(NU_log[:-1],p_NU_cum,label='original distribution',color='k',linestyle='--')
-
         plt.setp(ax[0],xlim=[10**(-4),xlim],ylim=[0,2])
         plt.setp(ax[1],xlim=[10**(-4),xlim],ylim=[0,1.1])
+
+        ax[0].spines[["top", "right"]].set_visible(False)
+        ax[1].spines[["top", "right"]].set_visible(False)
         plt.show(block=False)
 
     def regularize_rates(self):

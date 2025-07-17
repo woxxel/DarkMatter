@@ -64,6 +64,7 @@ class BayesModel(HierarchicalModel):
             else:
                 self.spike_counts = np.array(modelParams.spike_counts)
             self.rates = self.spike_counts / self.T
+
         ## get the maximum number of spikes
         self.N_max = np.nanmax(self.spike_counts).astype('int64')
         self.nSamples = self.spike_counts.shape[1]      ## here: number of animals
@@ -241,6 +242,10 @@ class BayesModel(HierarchicalModel):
                             "function": norm_ppf,
                             "params": {"loc": "mean", "scale": "sigma"},
                         },
+                        # "mean": {
+                        #     "function": norm_ppf,
+                        #     "params": {"loc": 25.0, "scale": 0.5},
+                        # },
                         "mean": {
                             "function": halfnorm_ppf,
                             "params": {"loc": 1.0, "scale": 50.0},
@@ -262,7 +267,7 @@ class BayesModel(HierarchicalModel):
         correct_N=0,
         bias_to_expected_max=0,
         bias_to_mean=0,
-        correct_threshold=0.01,
+        correct_threshold=10 ** (-4),
         biological=False,
     ):
         """
@@ -388,7 +393,7 @@ class BayesModel(HierarchicalModel):
                         for var in self.priors_init.keys():
                             var_split = var.split("_")
                             var_root = "_".join(var_split[:-1])
-                            idx = int(var_split[-1])
+                            idx = int(var_split[-1]) if len(var_split) > 1 else np.nan
                             if len(params["distr"]) < idx + 1:
                                 params["distr"].append({})
 
@@ -406,10 +411,12 @@ class BayesModel(HierarchicalModel):
                                 ]
                     # print(f"{params_tmp=}")
                     # print(f"{p=}")
+                    # params["distr"][0]["nu_max"] = np.array(25.0)
 
                     if self.two_pop:
                         params["distr"][1]["nu_max"] = params["distr"][0]["nu_max"]
 
+                    # print(params)
                     # if p["distr"][0]["nu_max"] < 0:
                     #     logl[i, a] = -(10**6) * abs(p["distr"][0]["nu_max"])
                     #     continue
@@ -432,7 +439,8 @@ class BayesModel(HierarchicalModel):
                     k_AP[N_AP_empirical] = k_AP_empirical
 
                     ### calculate actual log-likelihood
-                    p_N_AP = get_p_nu(
+                    print(params)
+                    p_N_AP = get_p_N_AP(
                         (N_AP + offset) / self.T,
                         params,
                         self.T,
@@ -441,13 +449,27 @@ class BayesModel(HierarchicalModel):
                     )
 
                     binom = self.binom[animal]["binomial_coefficient"][k_AP]
+
                     logp = (
                         np.log(binom)
                         + k_AP * np.log(p_N_AP[N_AP])
                         + (self.data["nNeurons"][animal] - k_AP)
                         * np.log(1 - p_N_AP[N_AP])
                     )
+                    # print(logp)
 
+                    fig = plt.figure()
+                    ax1 = fig.add_subplot(211)
+                    ax1.plot(N_AP, k_AP, label="k_AP")
+                    ax2 = fig.add_subplot(212)
+                    ax2.axhline(0, color="black", linestyle="--")
+                    ax2.plot(N_AP, logp, label="p_N_AP")
+
+                    plt.show(block=False)
+                    # * weight(
+                    #     N_AP / N_max, "sigmoid", offset=0.2, slope=50, threshold=0.1
+                    # )
+                    # print(logp)
                     logl_measures = logp.sum()
                     logl[i, animal] += logl_measures
 
@@ -460,16 +482,29 @@ class BayesModel(HierarchicalModel):
                         )
 
                     if bias_to_expected_max > 0 and (max_spike_count < N_max):
-                        logl[i, animal] += self.penalty_expected_max_bias(
-                            params,
+                        # p_extreme = 1 - 1.0 / (params["distr"][0]["nu_max"] - N_AP / self.T + 1) ** 2
+
+                        p_max = expected_maximum_value(
                             p_N_AP,
-                            N_AP,
+                            self.data["nNeurons"][animal],
                             max_spike_count,
-                            bias_to_expected_max,
-                            animal,
                         )
+                        # p_max *= (
+                        #     1.0 - 1.0 / ((N_max - max_spike_count) / self.T + 1) ** 2
+                        # )
+
+                        logl[i, animal] += np.log(p_max) * bias_to_expected_max
+
+                        # logl[i, animal] -= self.penalty_expected_max_bias(
+                        #     params,
+                        #     p_N_AP,
+                        #     N_AP,
+                        #     max_spike_count,
+                        #     bias_to_expected_max,
+                        #     animal,
+                        # )
                     elif bias_to_expected_max > 0:
-                        logl[i, animal] += bias_to_expected_max * -(10**2)
+                        logl[i, animal] += bias_to_expected_max * -(10**6)
 
                     """
                         sum up the log likelihoods to obtain the overall estimate for this animal
@@ -478,7 +513,7 @@ class BayesModel(HierarchicalModel):
 
                     # logl[i,a] = logl_low + logl_intermediate + logl_tail
                     if not np.isfinite(logl[i, animal]):
-                        logl[i, animal] = -(10 ** (-6))
+                        logl[i, animal] = -(10**6)
 
             if vectorized:
                 return logl.sum(axis=1)
@@ -499,7 +534,7 @@ class BayesModel(HierarchicalModel):
             N_AP_too_high = self.binom[animal]["N_AP"][idx]
             k_AP_too_high = self.binom[animal]["k_AP"][idx]
             # print(f'{N_AP_too_high=}, {k_AP_too_high=}')
-            logp_penalty += -(10**2) * k_AP_too_high * (N_AP_too_high - N_max) ** 2
+            logp_penalty += -(10**6) * k_AP_too_high * (N_AP_too_high - N_max) ** 2
         return logp_penalty
 
     def penalty_mean_bias(self, params, bias_to_mean, animal):
@@ -548,6 +583,9 @@ class BayesModel(HierarchicalModel):
     def penalty_expected_max_bias(
         self, params, p_N_AP, N_AP, max_spike_count, bias_to_expected_max, animal
     ):
+        """
+        This is not a normalized distribution!!
+        """
 
         ### now, get extreme value distribution
         p_N_AP_cum = np.pad(
@@ -559,7 +597,11 @@ class BayesModel(HierarchicalModel):
         p_extreme = np.diff(p_N_AP_cum)
         p_extreme *= 1 - 1.0 / (params["distr"][0]["nu_max"] - N_AP / self.T + 1) ** 2
 
+        p_extreme /= p_extreme.sum()  # normalizing
+
         logl_extreme_empirical = np.log(p_extreme[max_spike_count])
+        # print(logl_extreme_empirical)
+        # print(logl_extreme_empirical)
         return bias_to_expected_max * logl_extreme_empirical
 
         # ## get all spike counts higher than allowed by model
@@ -572,20 +614,74 @@ class BayesModel(HierarchicalModel):
         # return logp_penalty
 
 
-def get_p_nu(nu, p, T, correct_N=5, correct_threshold=0.01, _print=False):
+def expected_maximum_value(p_N_AP, n, max_spike_count=None):
+    """
+    p_N_AP
+        - probability of observing N_AP spikes in a neuron (N_AP being the index of the array)
+    n
+        - the number of neurons in the population
+
+    output:
+        - expected maximum value probability distribution
+    """
+
+    ### now, get extreme value distribution
+    p_N_AP_cum = np.pad(
+        np.cumsum(p_N_AP) ** n,
+        (1, 0),
+        mode="constant",
+        constant_values=0,
+    )
+    p_extreme = np.diff(p_N_AP_cum)
+    # p_extreme *= 1 - 1.0 / (params["distr"][0]["nu_max"] - N_AP / self.T + 1) ** 2
+    p_extreme /= p_extreme.sum()  # normalizing
+
+    if max_spike_count is None:
+        return p_extreme
+    else:
+        return p_extreme[max_spike_count]
+
+    # logl_extreme_empirical = np.log(p_extreme[max_spike_count])
+    # print(logl_extreme_empirical)
+    # return logl_extreme_empirical
+    # return p_extreme
+
+
+def weight(x, mode="sigmoid", **kwargs):
+    # return a + (1-a)/np.log(np.exp(1)+1/(1-x))
+    if mode == "sigmoid":
+        return kwargs["offset"] + (1 - kwargs["offset"]) / (
+            1 + np.exp(kwargs["slope"] * (x - kwargs["threshold"]))
+        )
+    else:
+        return None
+
+
+# def weight(x, a=0.5, b=10):
+#     return a + (1 - a) * (1 - x) ** b
+
+
+def get_p_N_AP(nu, p, T, correct_N=5, correct_threshold=10 ** (-4), _print=False):
 
     p_N_AP = p_nu(nu, p) / T
     p_N_AP[~np.isfinite(p_N_AP)] = np.nan
-    # print(p_N_AP)
+
     ## correcting terms until normalization becomes decent
+    if correct_N == 0:
+        return p_N_AP
+
+    p_full = p_N_AP[:correct_N].copy()
     for N in range(correct_N):
-        if _print:
-            print(f"{N=} , {np.nansum(p_N_AP)=}")
-        if abs(np.nansum(p_N_AP) - 1.0) < correct_threshold:
-            if _print:
-                print("break")
-            break
+        ### correcting one at a time
         p_N_AP[N] = adaptive_integration(f, 0, 100.0 / T, args=(p, N, T), eps_pow=-2)
+
+        idx_start = max(0, N - 3)
+        dp = np.abs(p_full[idx_start : N + 1] - p_N_AP[idx_start : N + 1])
+
+        ## ensure that p_N_AP converges and is not just oscillating
+        if np.all(dp < correct_threshold):  # all recent corrections have been small
+            # print(f"approximation good enough @{N=}, {dp[-1]}")
+            break
 
     return p_N_AP
 
@@ -593,7 +689,9 @@ def get_p_nu(nu, p, T, correct_N=5, correct_threshold=0.01, _print=False):
 def run_sampling(
     mP,
     mode="ultranest",
+    key=None,
     biological=False,
+    hierarchical=[],
     correct_N=5,
     bias_to_mean=0,
     bias_to_expected_max=0,
@@ -609,8 +707,8 @@ def run_sampling(
     # BM.set_logLevel(logging.ERROR)
     BM.set_logLevel(logLevel)
     # BM.prepare_data(mP,mode='rates',key='WT')
-    BM.prepare_data(mP,mode='rates')
-    BM.set_priors(hierarchical=[], biological=biological, two_pop=two_pop)
+    BM.prepare_data(mP, mode="rates", key=key)
+    BM.set_priors(hierarchical=hierarchical, biological=biological, two_pop=two_pop)
     # BM.set_priors(hierarchical=['gamma','delta','nu_max'],two_pop=two_pop)
     # BM.set_priors(hierarchical=['gamma','delta'],two_pop=two_pop)
 
@@ -747,13 +845,21 @@ def compare_results(BM, sampler, mP, mode="ultranest", biological=False):
     else:
         if mP.two_pop:
             paraKeys.extend("p")
-        paraKeys.extend(["gamma_1", "delta_1", "nu_max_1"])
-        if mP.two_pop:
-            paraKeys.extend(["gamma_2", "delta_2"])
+
+        for i in range(2 if mP.two_pop else 1):
+            paraKeys.extend([f"gamma_{i}", f"delta_{i}", f"nu_max_{i}"])
+        # paraKeys.extend(["gamma", "delta_1", "nu_max_1"])
+        # if mP.two_pop:
+        #     paraKeys.extend(["gamma_2", "delta_2"])
 
         truth_values = []
-        for key in paraKeys:
-            truth_values.append(mP.params[key])
+        for distributions in mP.params["distr"]:
+            # for key in paraKeys:
+            for key in distributions:
+                # if key in distributions.keys():
+                truth_values.append(distributions[key])
+            # break
+            # truth_values.append(mP.params[key])
 
     mean = {}
     for i, key in enumerate(BM.paramNames):
@@ -776,7 +882,7 @@ def compare_results(BM, sampler, mP, mode="ultranest", biological=False):
 
         dyplot.traceplot(
             sampler.results,
-            truths=truth_values,
+            # truths=truth_values,
             truth_color="black",
             show_titles=True,
             trace_cmap="viridis",
@@ -784,7 +890,10 @@ def compare_results(BM, sampler, mP, mode="ultranest", biological=False):
         plt.show(block=False)
 
         dyplot.cornerplot(
-            sampler.results, color="dodgerblue", truths=truth_values, show_titles=True
+            sampler.results,
+            color="dodgerblue",
+            # truths=truth_values,
+            show_titles=True,
         )
         plt.show(block=False)
 
@@ -805,57 +914,75 @@ def compare_results(BM, sampler, mP, mode="ultranest", biological=False):
 
     mP.plot_rates(param_in=mP.params)
 
-    dictfilt = lambda x, y: dict([(i, x[i]) for i in x if i in set(y)])
+    if biological:
+        dictfilt = lambda x, y: dict([(i, x[i]) for i in x if i in set(y)])
 
-    distribution_mean = {}
-    distribution_mean["nu_max"] = get_nu_max(
-        mean["nu_bar"],
-        mean["tau_A"],
-        mean["tau_N"],
-        mean["r_N"],
-    )
-    distribution_mean["gamma"] = get_gamma(
-        mean["nu_bar"],
-        mean["alpha_0"],
-        mean["tau_A"],
-        mean["tau_N"],
-        mean["r_N"],
-    )
-    distribution_mean["delta"] = get_delta(
-        mean["nu_bar"],
-        mean["alpha_0"],
-        mean["tau_A"],
-        mean["tau_N"],
-        mean["r_N"],
-    )
-    nu_bar_in = get_nu_bar(
-        gamma=mP.params["distr"][0]["gamma"],
-        delta=mP.params["distr"][0]["delta"],
-        nu_max=mP.params["distr"][0]["nu_max"],
-    )
-    nu_bar_out = get_nu_bar(
-        gamma=distribution_mean["gamma"],
-        delta=distribution_mean["delta"],
-        nu_max=distribution_mean["nu_max"],
-    )
+        distribution_mean = {}
+        distribution_mean["nu_max"] = get_nu_max(
+            mean["nu_bar"],
+            mean["tau_A"],
+            mean["tau_N"],
+            mean["r_N"],
+        )
+        distribution_mean["gamma"] = get_gamma(
+            mean["nu_bar"],
+            mean["alpha_0"],
+            mean["tau_A"],
+            mean["tau_N"],
+            mean["r_N"],
+        )
+        distribution_mean["delta"] = get_delta(
+            mean["nu_bar"],
+            mean["alpha_0"],
+            mean["tau_A"],
+            mean["tau_N"],
+            mean["r_N"],
+        )
+        nu_bar_in = get_nu_bar(
+            gamma=mP.params["distr"][0]["gamma"],
+            delta=mP.params["distr"][0]["delta"],
+            nu_max=mP.params["distr"][0]["nu_max"],
+        )
+        nu_bar_out = get_nu_bar(
+            gamma=distribution_mean["gamma"],
+            delta=distribution_mean["delta"],
+            nu_max=distribution_mean["nu_max"],
+        )
 
-    tau_I_in = get_tau_I(nu_max=mP.params["distr"][0]["nu_max"])
-    tau_I_out = get_tau_I(nu_max=distribution_mean["nu_max"])
+        tau_I_in = get_tau_I(nu_max=mP.params["distr"][0]["nu_max"])
+        tau_I_out = get_tau_I(nu_max=distribution_mean["nu_max"])
 
-    alpha_0_in = get_alpha_0(
-        gamma=mP.params["distr"][0]["gamma"],
-        delta=mP.params["distr"][0]["delta"],
-        nu_max=mP.params["distr"][0]["nu_max"],
-    )
-    alpha_0_out = get_alpha_0(
-        gamma=distribution_mean["gamma"],
-        delta=distribution_mean["delta"],
-        nu_max=distribution_mean["nu_max"],
-    )
+        alpha_0_in = get_alpha_0(
+            gamma=mP.params["distr"][0]["gamma"],
+            delta=mP.params["distr"][0]["delta"],
+            nu_max=mP.params["distr"][0]["nu_max"],
+        )
+        alpha_0_out = get_alpha_0(
+            gamma=distribution_mean["gamma"],
+            delta=distribution_mean["delta"],
+            nu_max=distribution_mean["nu_max"],
+        )
 
-    print(f'{nu_bar_in=}, {nu_bar_out=}')
-    print(f'{tau_I_in=}, {tau_I_out=}')
-    print(f'{alpha_0_in=}, {alpha_0_out=}')
+        print(f"{nu_bar_in=}, {nu_bar_out=}")
+        print(f"{tau_I_in=}, {tau_I_out=}")
+        print(f"{alpha_0_in=}, {alpha_0_out=}")
 
+    results_inferred = {"distr": [{}] * (2 if mP.two_pop else 1)}
     for key in mean.keys():
         print(f"{key} = {mean[key]}")
+
+        if key == "p":
+            results_inferred[key] = mean[key]
+            continue
+
+        # if key.startswith("nu"):
+        #     var = key
+        # else:
+        key_split = key.split("_")
+        idx = int(key_split[-1]) if len(key_split) > 1 else np.nan
+        var = ("_").join(key_split[:-1]) if np.isfinite(idx) else key
+
+        print(var, idx)
+        results_inferred["distr"][idx][var] = mean[key]
+
+    return results_inferred
