@@ -1,9 +1,9 @@
 import os, logging
 import numpy as np
 
-from scipy.special import binom as sp_binom, erfinv
+from scipy.special import binom as sp_binom, erfinv, gammaln
 
-from .HierarchicalModelDefinition import HierarchicalModel
+from .HierarchicalModelDefinition import HierarchicalModel, prior_structure
 
 from collections import Counter
 
@@ -24,7 +24,7 @@ logging.basicConfig(level=logging.INFO)
 
 class BayesModel(HierarchicalModel):
 
-    def __init__(self,modelParams,mode='rates',logLevel=logging.ERROR):
+    def __init__(self, spike_counts, T, logLevel=logging.ERROR):
         '''
             initialize the model by setting the priors and preparing the data
         '''
@@ -36,13 +36,13 @@ class BayesModel(HierarchicalModel):
         os.environ['OPENBLAS_NUM_THREADS'] = '1'
         os.environ['OMP_NUM_THREADS'] = '1'
 
-        self.prepare_data(modelParams,mode=mode)
-        self.set_priors()
+        self.prepare_data(spike_counts, T)
+        # self.set_priors()
 
     def set_logLevel(self,logLevel):
         self.log.setLevel(logLevel)
 
-    def prepare_data(self,modelParams,mode='rates',key=None):
+    def prepare_data(self, spike_counts, T, key=None):
         '''
             preprocesses the data, provided as an nAnimal x max(nNeuron) array,
             containing the spike counts of each neuron
@@ -50,20 +50,20 @@ class BayesModel(HierarchicalModel):
             nNeuron might differ between animals, so the data is padded with NaNs
         '''
 
-        self.T = modelParams.T
+        self.T = T
 
-        if mode=='rates':
-            if key:
-                self.rates = np.array(modelParams.rates[key])
-            else:
-                self.rates = np.array(modelParams.rates)
-            self.spike_counts = np.floor(self.rates * self.T)
+        # if mode=='rates':
+        #     if key:
+        #         self.rates = np.array(modelParams.rates[key])
+        #     else:
+        #         self.rates = np.array(modelParams.rates)
+        #     self.spike_counts = np.floor(self.rates * self.T)
+        # else:
+        if key:
+            self.spike_counts = np.array(spike_counts[key])
         else:
-            if key:
-                self.spike_counts = np.array(modelParams.spike_counts[key])
-            else:
-                self.spike_counts = np.array(modelParams.spike_counts)
-            self.rates = self.spike_counts / self.T
+            self.spike_counts = np.array(spike_counts)
+        self.rates = self.spike_counts / self.T
 
         ## get the maximum number of spikes
         self.N_max = np.nanmax(self.spike_counts).astype('int64')
@@ -95,7 +95,12 @@ class BayesModel(HierarchicalModel):
             self.binom[a] = {}
             self.binom[a]['N_AP'] = np.where(self.data['k_AP'][a]>0)[0]
             self.binom[a]['k_AP'] = self.data['k_AP'][a][self.binom[a]['N_AP']].astype('int')
-            self.binom[a]['binomial_coefficient'] = sp_binom(self.data['nNeurons'][a],np.arange(self.data['nNeurons'][a]+1))
+            # self.binom[a]["log_binomial_coefficient"] = sp_binom(
+            #     self.data["nNeurons"][a], np.arange(self.data["nNeurons"][a] + 1)
+            # )
+            self.binom[a]["log_binomial_coefficient"] = log_binomial(
+                self.data["nNeurons"][a], np.arange(self.data["nNeurons"][a] + 1)
+            )
 
             # self.binom[a] = binom[self.data['k_AP'][a]]
 
@@ -103,7 +108,7 @@ class BayesModel(HierarchicalModel):
         # self.k_idxes = np.where(self.data['k_AP']>0)
         # self.k_raw = self.data['k_AP'][self.k_idxes]
 
-    def set_priors(self, hierarchical=[], two_pop=False, biological=False):
+    def set_default_priors(self, two_pop=False, biological=False):
 
         '''
             builds prior distributions for the model parameters
@@ -113,153 +118,76 @@ class BayesModel(HierarchicalModel):
         self.two_pop = two_pop
 
         ## define distributions inline, instead of using scipy ones for the sake of performance
-        halfnorm_ppf = lambda x, loc, scale: loc + scale * np.sqrt(2) * erfinv(x)
-        norm_ppf = lambda x, loc, scale: loc + scale * np.sqrt(2) * erfinv(2*x - 1)
+        # halfnorm_ppf = lambda x, loc, scale: loc + scale * np.sqrt(2) * erfinv(x)
+        # norm_ppf = lambda x, loc, scale: loc + scale * np.sqrt(2) * erfinv(2*x - 1)
 
         self.priors_init = {}
 
-        if biological:
-            self.priors_init[f"nu_bar"] = {
-                "hierarchical": {
-                    "function": norm_ppf,
-                    "params": {"loc": "mean", "scale": "sigma"},
-                },
-                "mean": {
-                    "function": halfnorm_ppf,
-                    "params": {"loc": 0.0, "scale": 1.0},
-                },
-                "sigma": {
-                    "function": halfnorm_ppf,
-                    "params": {"loc": 0, "scale": 0.1},
-                },
-            }
-            self.priors_init[f"alpha_0"] = {
-                "hierarchical": {
-                    "function": norm_ppf,
-                    "params": {"loc": "mean", "scale": "sigma"},
-                },
-                "mean": {
-                    "function": halfnorm_ppf,
-                    "params": {"loc": 0.0, "scale": 0.1},
-                },
-                "sigma": {
-                    "function": halfnorm_ppf,
-                    "params": {"loc": 0, "scale": 0.02},
-                },
-            }
-            self.priors_init[f"tau_A"] = {
-                "hierarchical": {
-                    "function": norm_ppf,
-                    "params": {"loc": "mean", "scale": "sigma"},
-                },
-                "mean": {
-                    "function": halfnorm_ppf,
-                    "params": {"loc": 0.0, "scale": 0.02},
-                },
-                "sigma": {
-                    "function": halfnorm_ppf,
-                    "params": {"loc": 0, "scale": 0.005},
-                },
-            }
-            self.priors_init[f"tau_N"] = {
-                "hierarchical": {
-                    "function": norm_ppf,
-                    "params": {"loc": "mean", "scale": "sigma"},
-                },
-                "mean": {
-                    "function": halfnorm_ppf,
-                    "params": {"loc": 0.0, "scale": 0.2},
-                },
-                "sigma": {
-                    "function": halfnorm_ppf,
-                    "params": {"loc": 0, "scale": 0.01},
-                },
-            }
-            self.priors_init[f"r_N"] = {
-                "hierarchical": {
-                    "function": norm_ppf,
-                    "params": {"loc": "mean", "scale": "sigma"},
-                },
-                "mean": {
-                    "function": lambda x: x,
-                    "params": {},
-                },
-                "sigma": {
-                    "function": halfnorm_ppf,
-                    "params": {"loc": 0, "scale": 0.1},
-                },
-            }
+        # if biological:
 
-        else:
-            if two_pop:
-                self.priors_init["p"] = {
-                    "hierarchical": {
-                        "function": norm_ppf,
-                        "params": {"loc": "mean", "scale": "sigma"},
-                    },
-                    "mean": {
-                        "params": {},
-                        "function": lambda x: x * 0.5,
-                    },
-                    "sigma": {
-                        "params": {"loc": 0.0, "scale": 0.1},
-                        "function": halfnorm_ppf,
-                    },
-                }
+        #     self.priors_init["nu_bar"] = self.prior_structure(
+        #         norm_ppf,
+        #         loc=self.prior_structure(halfnorm_ppf, loc=0.0, scale=1.0),
+        #         scale=self.prior_structure(halfnorm_ppf, loc=0.0, scale=0.1),
+        #     )
 
-            for m in range(2 if two_pop else 1):
-                self.priors_init[f"gamma_{m}"] = {
-                    "hierarchical": {
-                        "function": norm_ppf,
-                        "params": {"loc": "mean", "scale": "sigma"},
-                    },
-                    "mean": {
-                        "function": norm_ppf,
-                        "params": {"loc": 2.0, "scale": 0.5},
-                    },
-                    "sigma": {
-                        "function": halfnorm_ppf,
-                        "params": {"loc": 0, "scale": 0.1},
-                    },
-                }
-                self.priors_init[f"delta_{m}"] = {
-                    "hierarchical": {
-                        "function": norm_ppf,
-                        "params": {"loc": "mean", "scale": "sigma"},
-                    },
-                    "mean": {
-                        "function": norm_ppf,
-                        "params": {"loc": 6, "scale": 2},
-                    },
-                    "sigma": {
-                        "function": halfnorm_ppf,
-                        "params": {"loc": 0, "scale": 0.5},
-                    },
-                }
-                if m == 0:
-                    self.priors_init[f"nu_max_{m}"] = {
-                        "hierarchical": {
-                            "function": norm_ppf,
-                            "params": {"loc": "mean", "scale": "sigma"},
-                        },
-                        # "mean": {
-                        #     "function": norm_ppf,
-                        #     "params": {"loc": 25.0, "scale": 0.5},
-                        # },
-                        "mean": {
-                            "function": halfnorm_ppf,
-                            "params": {"loc": 1.0, "scale": 50.0},
-                        },
-                        "sigma": {
-                            "function": halfnorm_ppf,
-                            "params": {"loc": 0, "scale": 5},
-                        },
-                    }
+        #     self.priors_init["alpha_0"] = self.prior_structure(
+        #         norm_ppf,
+        #         loc=self.prior_structure(halfnorm_ppf, loc=0.0, scale=0.1),
+        #         scale=self.prior_structure(halfnorm_ppf, loc=0.0, scale=0.02),
+        #     )
 
-        '''
+        #     self.priors_init[f"tau_A"] = self.prior_structure(
+        #         norm_ppf,
+        #         loc=self.prior_structure(halfnorm_ppf, loc=0.0, scale=0.02),
+        #         scale=self.prior_structure(halfnorm_ppf, loc=0.0, scale=0.005),
+        #     )
+
+        #     self.priors_init[f"tau_N"] = self.prior_structure(
+        #         norm_ppf,
+        #         loc=self.prior_structure(halfnorm_ppf, loc=0.0, scale=0.2),
+        #         scale=self.prior_structure(halfnorm_ppf, loc=0.0, scale=0.01),
+        #     )
+
+        #     self.priors_init[f"r_N"] = self.prior_structure(
+        #         norm_ppf,
+        #         loc=self.prior_structure(lambda x: x),
+        #         scale=self.prior_structure(halfnorm_ppf, loc=0.0, scale=0.1),
+        #     )
+
+        # else:
+        #     if two_pop:
+        #         self.priors_init["p"] = self.prior_structure(
+        #             norm_ppf,
+        #             mean=self.prior_structure(lambda x: x * 0.5),
+        #             sigma=self.prior_structure(halfnorm_ppf, loc=0.0, scale=0.1),
+        #         )
+
+        #     for m in range(2 if two_pop else 1):
+
+        #         self.priors_init[f"gamma_{m}"] = self.prior_structure(
+        #             norm_ppf,
+        #             loc=self.prior_structure(norm_ppf, mean=2.0, sigma=0.5),
+        #             scale=self.prior_structure(halfnorm_ppf, loc=0.0, scale=0.1),
+        #         )
+
+        #         self.priors_init[f"delta_{m}"] = self.prior_structure(
+        #             norm_ppf,
+        #             loc=self.prior_structure(norm_ppf, mean=6.0, sigma=2.0),
+        #             scale=self.prior_structure(halfnorm_ppf, loc=0.0, scale=0.5),
+        #         )
+
+        #         if m == 0:
+        #             self.priors_init[f"nu_bar_{m}"] = self.prior_structure(
+        #                 norm_ppf,
+        #                 mean=self.prior_structure(halfnorm_ppf, loc=1.0, scale=50.0),
+        #                 sigma=self.prior_structure(halfnorm_ppf, loc=0.0, scale=5.0),
+        #             )
+
+        """
             translating the above specified priors into a format that can be used by the model
-        '''
-        super().set_priors(self.priors_init, hierarchical=hierarchical)
+        """
+        self.set_priors(self.priors_init)
 
     def set_logl(
         self,
@@ -336,82 +264,37 @@ class BayesModel(HierarchicalModel):
             nChain = p_in.shape[0]
 
             logl = np.zeros((nChain,self.nAnimals))
-
+            # print("bla")
             for animal in range(self.nAnimals):
 
                 rates = self.rates[np.isfinite(self.rates[:, animal]), animal]
                 max_spike_count = int(np.nanmax(self.spike_counts[:, animal]))
-
+                # print(f"{max_spike_count=}")
                 for i in range(nChain):
 
-                    params = {"distr": []}
+                    """
+                    get the parameters from the input p_in into dictionary
+                    """
+                    params = self.get_params_from_p(
+                        p_in, idx_chain=i, idx_sample=animal
+                    )
 
-                    if biological:
-                        """
-                        first, calculate distribution parameters from biological parameters
-                        QUESTION:
-                            * how to do this quickly (solving selfcon, ...)?
-                            * is approximation good enough?
-                        """
-                        params_tmp = {}
-                        for var in self.priors_init.keys():
-                            params_tmp[var] = p_in[
-                                i,
-                                self.priors[var]["idx"]
-                                + (animal if self.priors[var]["n"] > 1 else 0),
-                            ]
+                    if (
+                        np.isnan(params["distr"][0]["nu_max"])
+                        or np.isnan(params["distr"][0]["gamma"])
+                        or np.isnan(params["distr"][0]["delta"])
+                    ):
+                        logl[i, animal] = -(10**6)
+                        # print("bla")
+                        continue
 
-                        params["distr"][0]["nu_max"] = get_nu_max(
-                            params_tmp["nu_bar"],
-                            params_tmp["tau_A"],
-                            params_tmp["tau_N"],
-                            params_tmp["r_N"],
-                        )
-                        params["distr"][0]["gamma"] = get_gamma(
-                            params_tmp["nu_bar"],
-                            params_tmp["alpha_0"],
-                            params_tmp["tau_A"],
-                            params_tmp["tau_N"],
-                            params_tmp["r_N"],
-                        )
-                        params["distr"][0]["delta"] = get_delta(
-                            params_tmp["nu_bar"],
-                            params_tmp["alpha_0"],
-                            params_tmp["tau_A"],
-                            params_tmp["tau_N"],
-                            params_tmp["r_N"],
-                        )
-
-                        if (
-                            np.isnan(params["distr"][0]["nu_max"])
-                            or np.isnan(params["distr"][0]["gamma"])
-                            or np.isnan(params["distr"][0]["delta"])
-                        ):
-                            logl[i, animal] = -(10**6)
-                            continue
-                    else:
-                        for var in self.priors_init.keys():
-                            var_split = var.split("_")
-                            var_root = "_".join(var_split[:-1])
-                            idx = int(var_split[-1]) if len(var_split) > 1 else np.nan
-                            if len(params["distr"]) < idx + 1:
-                                params["distr"].append({})
-
-                            if np.isfinite(idx):
-                                params["distr"][int(idx)][var_root] = p_in[
-                                    i,
-                                    self.priors[var]["idx"]
-                                    + (animal if self.priors[var]["n"] > 1 else 0),
-                                ]
-                            else:
-                                params[var] = p_in[
-                                    i,
-                                    self.priors[var]["idx"]
-                                    + (animal if self.priors[var]["n"] > 1 else 0),
-                                ]
-                    # print(f"{params_tmp=}")
-                    # print(f"{p=}")
-                    # params["distr"][0]["nu_max"] = np.array(25.0)
+                    if (
+                        params["distr"][0]["nu_max"] < 0
+                        or params["distr"][0]["gamma"] < 0
+                        or params["distr"][0]["delta"] < 0
+                    ):
+                        logl[i, animal] = -(10**6)
+                        continue
 
                     if self.two_pop:
                         params["distr"][1]["nu_max"] = params["distr"][0]["nu_max"]
@@ -425,9 +308,16 @@ class BayesModel(HierarchicalModel):
                     #     logl[i,a] += -10**6 * (p['gamma2'] - p['gamma'])
 
                     ## calculate maximum number of spikes:
-                    N_max = (params["distr"][0]["nu_max"] * self.T).astype("int")
+                    # print(self.T, params["distr"][0]["nu_max"] * self.T)
+                    N_max = np.squeeze(params["distr"][0]["nu_max"] * self.T).astype(
+                        "int"
+                    )
 
-                    N_AP = np.arange(N_max).astype("int")
+                    """
+                        from here, animal dependent calculations necessary
+                        (due to differences in nu_max and thus N_max)
+                    """
+                    ## remove all spike counts that are higher than N_max
                     N_AP_empirical = self.binom[animal]["N_AP"][
                         self.binom[animal]["N_AP"] < N_max
                     ]
@@ -435,11 +325,11 @@ class BayesModel(HierarchicalModel):
                         self.binom[animal]["N_AP"] < N_max
                     ]
 
+                    N_AP = np.arange(N_max).astype("int")
                     k_AP = np.zeros(N_max, dtype="int")
                     k_AP[N_AP_empirical] = k_AP_empirical
 
                     ### calculate actual log-likelihood
-                    print(params)
                     p_N_AP = get_p_N_AP(
                         (N_AP + offset) / self.T,
                         params,
@@ -448,32 +338,32 @@ class BayesModel(HierarchicalModel):
                         correct_threshold=correct_threshold,
                     )
 
-                    binom = self.binom[animal]["binomial_coefficient"][k_AP]
+                    log_binom = self.binom[animal]["log_binomial_coefficient"][k_AP]
 
                     logp = (
-                        np.log(binom)
+                        log_binom
                         + k_AP * np.log(p_N_AP[N_AP])
                         + (self.data["nNeurons"][animal] - k_AP)
                         * np.log(1 - p_N_AP[N_AP])
                     )
-                    # print(logp)
 
-                    fig = plt.figure()
-                    ax1 = fig.add_subplot(211)
-                    ax1.plot(N_AP, k_AP, label="k_AP")
-                    ax2 = fig.add_subplot(212)
-                    ax2.axhline(0, color="black", linestyle="--")
-                    ax2.plot(N_AP, logp, label="p_N_AP")
-
-                    plt.show(block=False)
+                    if plot:
+                        fig = plt.figure()
+                        ax1 = fig.add_subplot(211)
+                        ax1.plot(N_AP, k_AP, label="k_AP")
+                        ax2 = fig.add_subplot(212)
+                        ax2.axhline(0, color="black", linestyle="--")
+                        ax2.plot(N_AP, logp, label="p_N_AP")
+                        plt.show(block=False)
                     # * weight(
                     #     N_AP / N_max, "sigmoid", offset=0.2, slope=50, threshold=0.1
                     # )
-                    # print(logp)
+
                     logl_measures = logp.sum()
                     logl[i, animal] += logl_measures
 
                     ### add penalties
+                    # print("penalties:", self.penalty_nu_max(N_max, animal))
                     logl[i, animal] += self.penalty_nu_max(N_max, animal)
 
                     if bias_to_mean > 0:
@@ -512,6 +402,7 @@ class BayesModel(HierarchicalModel):
                     # self.log.debug((f'logls: {logl_low=}, {logl_intermediate=}, {logl_tail=}'))
 
                     # logl[i,a] = logl_low + logl_intermediate + logl_tail
+                    # print(logl[i, animal])
                     if not np.isfinite(logl[i, animal]):
                         logl[i, animal] = -(10**6)
 
@@ -534,7 +425,10 @@ class BayesModel(HierarchicalModel):
             N_AP_too_high = self.binom[animal]["N_AP"][idx]
             k_AP_too_high = self.binom[animal]["k_AP"][idx]
             # print(f'{N_AP_too_high=}, {k_AP_too_high=}')
-            logp_penalty += -(10**6) * k_AP_too_high * (N_AP_too_high - N_max) ** 2
+            logp_penalty += (
+                -(10**6) * k_AP_too_high * ((N_AP_too_high - N_max) / N_max) ** 2
+            )
+            # logp_penalty += -(10**0) * k_AP_too_high * (N_AP_too_high - N_max) ** 2
         return logp_penalty
 
     def penalty_mean_bias(self, params, bias_to_mean, animal):
@@ -613,6 +507,81 @@ class BayesModel(HierarchicalModel):
         #     logp_penalty += -10**2 * k_AP_too_high*(N_AP_too_high - max_spike_count)**2
         # return logp_penalty
 
+    def get_params_from_p(
+        self, p_in, idx_chain=None, idx_sample=None, biological=False
+    ):
+
+        params = {"distr": []}
+
+        if biological:
+            """
+            first, calculate distribution parameters from biological parameters
+            QUESTION:
+                * how to do this quickly (solving selfcon, ...)?
+                * is approximation good enough?
+            """
+            params_tmp = super().get_params_from_p(
+                p_in, idx_chain=idx_chain, idx_sample=idx_sample
+            )
+            # params_tmp = {}
+            # for var in self.priors_init.keys():
+            #     params_tmp[var] = p_in[
+            #         i,
+            #         self.priors[var]["idx"]
+            #         + (animal if self.priors[var]["n"] > 1 else 0),
+            #     ]
+
+            params["distr"][0]["nu_max"] = get_nu_max(
+                params_tmp["nu_bar"],
+                params_tmp["tau_A"],
+                params_tmp["tau_N"],
+                params_tmp["r_N"],
+            )
+            params["distr"][0]["gamma"] = get_gamma(
+                params_tmp["nu_bar"],
+                params_tmp["alpha_0"],
+                params_tmp["tau_A"],
+                params_tmp["tau_N"],
+                params_tmp["r_N"],
+            )
+            params["distr"][0]["delta"] = get_delta(
+                params_tmp["nu_bar"],
+                params_tmp["alpha_0"],
+                params_tmp["tau_A"],
+                params_tmp["tau_N"],
+                params_tmp["r_N"],
+            )
+
+        else:
+            ## this does not include structure from distribution, etc
+            params_tmp = super().get_params_from_p(
+                p_in, idx_chain=idx_chain, idx_sample=idx_sample
+            )
+
+            params = build_distr_structure_from_params(params_tmp, self.paramIn)
+
+            # print("params_tmp: ", params_tmp)
+        # print("\n params:", params)
+
+        return params
+
+
+def build_distr_structure_from_params(params_tmp, paramNames):
+
+    params = {"distr": []}
+    for var in paramNames:
+        var_split = var.split("_")
+        var_root = "_".join(var_split[:-1])
+        idx = int(var_split[-1]) if len(var_split) > 1 else np.nan
+        if len(params["distr"]) < idx + 1:
+            params["distr"].append({})
+
+        if np.isnan(idx):
+            params[var] = params_tmp[var]
+        else:
+            params["distr"][int(idx)][var_root] = params_tmp[var]
+    return params
+
 
 def expected_maximum_value(p_N_AP, n, max_spike_count=None):
     """
@@ -666,10 +635,10 @@ def get_p_N_AP(nu, p, T, correct_N=5, correct_threshold=10 ** (-4), _print=False
     p_N_AP = p_nu(nu, p) / T
     p_N_AP[~np.isfinite(p_N_AP)] = np.nan
 
-    ## correcting terms until normalization becomes decent
     if correct_N == 0:
         return p_N_AP
 
+    ## correcting terms until normalization becomes decent
     p_full = p_N_AP[:correct_N].copy()
     for N in range(correct_N):
         ### correcting one at a time
@@ -686,12 +655,34 @@ def get_p_N_AP(nu, p, T, correct_N=5, correct_threshold=10 ** (-4), _print=False
     return p_N_AP
 
 
+def get_default_priors():
+
+    halfnorm_ppf = lambda x, loc, scale: loc + scale * np.sqrt(2) * erfinv(x)
+    norm_ppf = lambda x, mean, sigma: mean + sigma * np.sqrt(2) * erfinv(2 * x - 1)
+
+    prior = {}
+    # prior["gamma_0"] = BM.prior_structure(
+    #     norm_ppf,
+    #     mean=BM.prior_structure(halfnorm_ppf, loc=1.0, scale=1.0),
+    #     sigma=BM.prior_structure(halfnorm_ppf, loc=0.0, scale=1.0),
+    # )
+
+    prior["gamma_0"] = prior_structure(norm_ppf, mean=2.0, sigma=0.5)
+    prior["delta_0"] = prior_structure(norm_ppf, mean=6.0, sigma=2.0)
+    prior["nu_max_0"] = prior_structure(
+        None,
+        value=25.0,
+    )
+    return prior
+
+
 def run_sampling(
-    mP,
+    spike_counts,
+    T,
+    priors,
     mode="ultranest",
     key=None,
     biological=False,
-    hierarchical=[],
     correct_N=5,
     bias_to_mean=0,
     bias_to_expected_max=0,
@@ -701,16 +692,17 @@ def run_sampling(
 ):
 
     # withZeros = True
-    two_pop = mP.two_pop
+    # two_pop = mP.two_pop
+    two_pop = False
 
-    BM = BayesModel(mP,mode='rates')
-    # BM.set_logLevel(logging.ERROR)
+    BM = BayesModel(spike_counts, T)
     BM.set_logLevel(logLevel)
-    # BM.prepare_data(mP,mode='rates',key='WT')
-    BM.prepare_data(mP, mode="rates", key=key)
-    BM.set_priors(hierarchical=hierarchical, biological=biological, two_pop=two_pop)
-    # BM.set_priors(hierarchical=['gamma','delta','nu_max'],two_pop=two_pop)
-    # BM.set_priors(hierarchical=['gamma','delta'],two_pop=two_pop)
+    BM.prepare_data(spike_counts, T, key=key)
+
+    if priors is None:
+        priors = get_default_priors()
+    BM.set_priors(priors)
+    BM.two_pop = False
 
     vectorized = mode == "ultranest"
     my_prior_transform = BM.set_prior_transform(vectorized=vectorized)
@@ -861,17 +853,7 @@ def compare_results(BM, sampler, mP, mode="ultranest", biological=False):
             # break
             # truth_values.append(mP.params[key])
 
-    mean = {}
-    for i, key in enumerate(BM.paramNames):
-        if mode == "dynesty":
-            samp = sampler.results.samples[:, i]
-            weights = sampler.results.importance_weights()
-        else:
-            samp = sampler.results["weighted_samples"]["points"][:, i]
-            weights = sampler.results["weighted_samples"]["weights"]
-
-        mean[key] = (samp * weights).sum()
-        print(f"{key} mean: {mean[key]}")
+    mean = get_mean_from_sampler(sampler, paraKeys, mode=mode)
 
     if mode=='dynesty':
 
@@ -986,3 +968,22 @@ def compare_results(BM, sampler, mP, mode="ultranest", biological=False):
         results_inferred["distr"][idx][var] = mean[key]
 
     return results_inferred
+
+
+def get_mean_from_sampler(results, paramNames, mode="ultranest"):
+    mean = {}
+    for i, key in enumerate(paramNames):
+        if mode == "dynesty":
+            samp = results.samples[:, i]
+            weights = results.importance_weights()
+        else:
+            samp = results["weighted_samples"]["points"][:, i]
+            weights = results["weighted_samples"]["weights"]
+
+        mean[key] = (samp * weights).sum()
+        print(f"{key} mean: {mean[key]:.3f}")
+    return mean
+
+
+def log_binomial(n, k):
+    return gammaln(n + 1) - gammaln(n - k + 1) - gammaln(k + 1)
