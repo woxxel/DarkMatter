@@ -213,7 +213,7 @@ def get_input_dimensions(nP, **kwargs):
 
     dims = (1,)
     for arg in kwargs:
-        # print(val.shape)
+        # print(arg, kwargs[arg].shape)
 
         if isinstance(kwargs[arg], list):
             kwargs[arg] = np.array(kwargs[arg])
@@ -250,7 +250,7 @@ def get_input_dimensions(nP, **kwargs):
 
 
 def get_alpha_0(gamma, delta, nu_max, p=1.0, tau_m=0.01, J_0=-1.0, nP=None):
-        
+
     dims, kwargs = get_input_dimensions(
         nP, gamma=gamma, delta=delta, nu_max=nu_max, tau_m=tau_m, J_0=J_0
     )
@@ -261,7 +261,7 @@ def get_alpha_0(gamma, delta, nu_max, p=1.0, tau_m=0.01, J_0=-1.0, nP=None):
     delta = kwargs["delta"]
     nu_max = kwargs["nu_max"]
     tau_m = kwargs["tau_m"]
-    
+
     J_0 = kwargs["J_0"]
     J_0 *= tau_m
     # for arg in kwargs:
