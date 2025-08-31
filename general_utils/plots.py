@@ -5,7 +5,7 @@ from numpy.ma import masked_array
 import matplotlib.colors as mcolors
 import matplotlib.ticker as ticker
 
-from DM_theory.network import network, distribution
+from inference.network import network, distribution
 
 def set_plot_params():
     # plot parameters

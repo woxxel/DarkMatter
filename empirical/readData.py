@@ -1,4 +1,4 @@
-import pandas as pd
+import polars as pd
 import numpy as np
 import os,sys
 
@@ -9,10 +9,9 @@ if not root_dir in sys.path: sys.path.append(root_dir)
 
 # from .readData_mat import *
 # from darkMatter import darkMatter
-from DM_theory.functions import get_nu_bar,get_tau_I,get_alpha_0
 
-from general_utils.parameters import set_options
-from inference.utils.utils import *
+# from general_utils.parameters import set_options
+# from inference.utils.utils import *
 
 # from empirical.readData_xls import *
 
@@ -167,151 +166,6 @@ class ModelParams:
         self.params = None
         self.two_pop = False
 
-    def artificial_data(
-        self,
-        parameter,
-        population_keys=["rates", "mouse ID"],
-        # N=100,
-        nAnimals=1,
-        plot=False,
-    ):
-
-        self._num_layers = 1
-        self._num_clusters = 2
-
-        print(parameter)
-
-        self.params = parameter
-        self.two_pop = 'p' in self.params
-
-        self.N = parameter["N"]
-        self.T = float(parameter["T"])
-
-        # arr_rateWnt = [1.]
-        # arr_alpha_0 = [0.0,0.02,0.06]
-
-        # self.spike_counts = pd.DataFrame(columns=arr_rateWnt)
-        # print(self.rates)
-
-        # self.spike_counts = pd.DataFrame(
-        #     columns=pd.MultiIndex(levels=[[],[]],codes=[[],[]],names=population_keys)
-        # )
-
-        options = set_options(nI=2 if self.two_pop else 1,nE=0)
-        options['eps'] = 0.
-
-        # for r,rate in enumerate(arr_rateWnt):
-        options['computation'] = {
-                'N': self.N,
-                'T': self.T,
-                'draw_from_theory': nAnimals,
-                'draw_finite_time': 1,
-            }
-
-        options['rateWnt'] = []
-        options['tau_I'] = []
-        options['alpha_0'] = []
-
-        for m in range(len(self.params["distr"])):
-            options["rateWnt"].append(
-                get_nu_bar(
-                    gamma=self.params["distr"][m]["gamma"],
-                    delta=self.params["distr"][m]["delta"],
-                    nu_max=self.params["distr"][m]["nu_max"],
-                )
-            )
-            options["tau_I"].append(
-                get_tau_I(
-                    nu_max=self.params["distr"][m]["nu_max"], tau_m=options["tau_M"]
-                )
-            )
-            options["alpha_0"].append(
-                get_alpha_0(
-                    gamma=self.params["distr"][m]["gamma"],
-                    delta=self.params["distr"][m]["delta"],
-                    nu_max=self.params["distr"][m]["nu_max"],
-                    tau_m=options["tau_M"],
-                    J_0=options["J0"][0],
-                )
-            )
-        # options['mode_selfcon'] = 0
-        # print(options)
-        # print('\n')
-        string_input_params = "input parameters: "
-        for distribution in self.params["distr"]:
-            for key in distribution:
-                string_input_params += f"{key}={distribution[key]}, "
-        print(string_input_params)
-
-        string_inferred_params = "inferred parameters: "
-        for key in ["rateWnt", "tau_I", "alpha_0"]:
-            string_inferred_params += f"{key}={options[key]}, "
-        print(string_inferred_params)
-
-        if np.isnan(options['rateWnt']).any() or np.isnan(options['tau_I']).any() or np.isnan(options['alpha_0']).any():
-            print('inferred parameters contain NaNs - breaking!')
-            self.rates = False
-            return
-
-        self.spike_counts = np.full((int(self.N), nAnimals), np.nan)
-        for a in range(nAnimals):
-            samples, samples_T = draw_samples(f_target=p_nu,params=self.params,n_samples=self.N,T=self.T,tolerance=0.001,plot=False,save=False)
-
-            self.spike_counts[:,a] = samples_T
-            # self.spike_counts = add_column_to_dataframe(self.spike_counts,samples_T,a,population=f"{self.params['gamma_1']=}",population_keys=population_keys)
-
-        # res = darkMatter(steps=200,mode=1,options=options,path=self.path_results,cleanup=True,rerun=True,compile=True,logging=2,suffix=self.suffix)
-        # return res
-        # print(res)
-
-        # print(f'{two_pop=}')
-
-        # rate_lims = [-4,1.5]
-
-        # self.res = res
-        # print(res['rates_T'].shape)
-        # fig,ax = plt.subplots(2,5,figsize=(10,15))
-        # for d,_rate_draw in enumerate(np.transpose(res['rates_T'][...,0],(2,0,1))):
-        #     # print(_rate_draw.shape)
-        #     # should take rate_T[0 and 1], with fraction according to 'p'
-        #     if two_pop:
-        #         rate_draw = np.concatenate([
-        #             np.random.choice(_rate_draw[0,:],int(self.params['p']*_rate_draw.shape[1])),
-        #             np.random.choice(_rate_draw[1,:],int((1-self.params['p'])*_rate_draw.shape[1]))
-        #         ],axis=0)
-        #         # print(_rate_draw[0,:]/self.T)
-        #         # ax[0][d].hist(_rate_draw[0,:]/self.T,bins=np.logspace(rate_lims[0],rate_lims[1],51),density=True,color='tab:blue',alpha=0.6)
-        #         # ax[0][d].hist(_rate_draw[1,:]/self.T,bins=np.logspace(rate_lims[0],rate_lims[1],51),density=True,color='tab:red',alpha=0.6)
-        #         # ax[0][d].set_yscale('log')
-        #         # ax[0][d].set_xscale('log')
-        #         # plt.setp(ax[0][d],ylim=[10**-4,10**1],xlim=[10**rate_lims[0],10**rate_lims[1]])
-        #         # # print(NU)
-        #         # NU = np.linspace(0,self.params['nu_max'],10**6+1)
-        #         # p_nu_1 = p_nu(NU,self.params,two_pop=False)
-        #         # p_nu_2 = p_nu(NU,{'gamma':self.params['gamma2'],'delta':self.params['delta2'],'nu_max':self.params['nu_max2']},two_pop=False)
-        #         # ax[0][d].plot(NU,p_nu_1,color='tab:blue',linestyle='--')
-        #         # ax[0][d].plot(NU,p_nu_2,color='tab:red',linestyle='--')
-
-        #         # ax[1][d].hist(rate_draw/self.T,bins=np.logspace(rate_lims[0],rate_lims[1],51),density=True,color='tab:green',alpha=0.6)
-        #         # ax[1][d].plot(NU,p_nu_1*self.params['p']+p_nu_2*(1-self.params['p']),color='tab:green',linestyle='--')
-        #         # ax[1][d].set_yscale('log')
-        #         # ax[1][d].set_xscale('log')
-        #         # plt.setp(ax[1][d],ylim=[10**-4,10**1],xlim=[10**rate_lims[0],0.5*10**rate_lims[1]])
-
-        #     else:
-        #         rate_draw = _rate_draw[0,:]
-
-        #     # print(rate_draw,rate_draw.shape)
-        #     self.spike_counts = add_column_to_dataframe(self.spike_counts,rate_draw,d,population=f"{self.params['gamma']=}",population_keys=population_keys)
-
-        # plt.show(block=False)
-        self.rates = self.spike_counts/self.T
-        # print(self.rates)
-        if plot:
-            self.plot_rates(key=f"{self.params['distr'][0]['gamma']=}")
-
-        # return res
-        # res = create_measures(L=1,S=[1,2],N=100,rerun=True,rateWnt=1.,alpha_0=0.02)
 
     def plot_rates(self,key=None,param_in=None):
 
@@ -378,6 +232,7 @@ class ModelParams:
         ax[0].spines[["top", "right"]].set_visible(False)
         ax[1].spines[["top", "right"]].set_visible(False)
         plt.show(block=False)
+            
 
     def regularize_rates(self):
         """
@@ -507,70 +362,3 @@ def add_column_to_dataframe(df,new_data,name,population=None,population_keys=Non
             df = df.reindex(new_data_df.index)
         return pd.concat([df, new_data_df], axis=1)
 
-
-def draw_samples(f_target,params,n_samples=1000,T=1200,tolerance=0.001,plot=False,save=False):
-
-    ## define bounding function
-    # f_envelope = lambda nu,M : M* 1./nu
-
-    high = params["distr"][0]["nu_max"]
-    ## finding the lower bound for the bounding function by requiring the CDF(g(nu),0,b) < 0.001
-    i = -1
-    while True:
-        low = 10**i
-
-        res,err = quad(f_target,0,low,args=(params),points=np.logspace(-3,0,4))
-        if res < tolerance:
-            break
-
-        i -= 1
-    # print(f'lower bound: {low=}')
-
-    def normalized_envelope_density(x, low, high):
-        return 1 / (x * np.log(high / low))
-
-    def sample_from_normalized_envelope(low, high):
-        u = np.random.uniform(0, 1)
-        return low * (high / low)**u  # Sample from g(x) normalized over [b, a]
-
-    def rejection_sampling(n_samples, M, low, high):
-        samples = []
-        while len(samples) < n_samples:
-            nu = sample_from_normalized_envelope(low, high)
-            v = np.random.uniform(0, 1)
-            if v <= f_target(nu,params) / (M * normalized_envelope_density(nu, low, high)):
-                samples.append(nu)
-        return np.array(samples)
-
-    # define M such that M*g(nu) > f(nu) for all nu
-    nu = np.logspace(np.log10(low),np.log10(high),10**3+1)
-    M = np.ceil(np.nanmax(f_target(nu,params) / normalized_envelope_density(nu,low,high)))
-
-    samples = rejection_sampling(n_samples, M, low, high)
-    samples_T = np.random.poisson(samples*T,samples.shape)
-
-    if plot:
-        fig,ax = plt.subplots(1,2,figsize=(6,3))
-        ax[0].hist(samples,bins=np.logspace(np.log10(low),np.log10(high),101),density = True,label='samples')
-        ax[0].plot(nu, f_target(nu,params),'k-',label='target f')
-        ax[0].plot(nu, M*normalized_envelope_density(nu,low,high),'r-',label='envelope g')
-        ax[0].axvline(low,color='r',linewidth=0.5,linestyle='--',label='lower bound')
-        ax[0].set_xscale('log')
-        ax[0].set_yscale('log')
-        ax[0].legend(bbox_to_anchor=(1.05, 1.05), loc='upper right')
-
-        ax[1].hist(samples,bins=np.linspace(0,high,101),density = True)
-        ax[1].plot(nu, f_target(nu,params),'k-')
-        ax[1].plot(nu, M*normalized_envelope_density(nu,low,high),'r-')
-        plt.setp(ax[1],xlim=[0,5],ylim=[0,1])
-
-        for axx in ax:
-            plt.setp(axx,xlabel='rate [Hz]',ylabel='density')
-            axx.spines[['top','right']].set_visible(False)
-
-        plt.tight_layout()
-        if save:
-            plt.savefig(f'./figures/rejection_sampling_example.png')
-        plt.show(block=False)
-
-    return samples, samples_T

@@ -12,7 +12,7 @@ root_dir = Path(__file__).parent.parent
 if not root_dir in sys.path: sys.path.insert(0,str(root_dir))
 
 # import DM_theory
-from DM_theory.functions import *
+from inference.transform_meta_to_bio import *
 
 from dash import dcc
 from dash_extensions import EventListener

@@ -1,30 +1,49 @@
-import os, logging
+import logging
 import numpy as np
+import re
 
-import pprint
-import itertools
-from scipy.special import binom as sp_binom, erfinv, gammaln
-
-from .HierarchicalBayesModel import HierarchicalModel, prior_structure
-
-from collections import Counter
-
+# from typing import List, Tuple
+# import pprint
 from matplotlib import pyplot as plt
 
 
-from .utils.utils import p_nu, adaptive_integration, f
+from scipy.special import gammaln
 
-from DM_theory.functions import get_nu_bar, get_q, get_tau_I, get_alpha_0
-from DM_theory.functions import get_nu_max, get_gamma, get_delta
+from .HierarchicalBayesModel import HierarchicalModel, prior_structure, norm_ppf, halfnorm_ppf
+
+from collections import Counter
+
+
+from .utils.utils import adaptive_integration, spike_observation_probability
+
+# from inference.transform_meta_to_bio import get_nu_bar, get_q, get_tau_I, get_alpha_0
+# from inference.transform_bio_to_meta import get_nu_max, get_gamma, get_delta
+
+from inference.network import Network
+
+from .utils.structures import DistributionModelParams as distr_params
+from .utils.utils import rho_nu
 
 import warnings
 warnings.filterwarnings("ignore")
-
-
 logging.basicConfig(level=logging.INFO)
 
 
 class BayesModel(HierarchicalModel):
+    
+    def prepare_data(self, event_counts, T, **kwargs):
+
+        """
+            Prepares the data for the model by setting the relevant dimensions 
+            for shape and obtaining the number of populations from input shape
+        """
+        dims = event_counts.shape
+        iter_dims = np.ones_like(dims, dtype=bool)
+        iter_dims[-2:] = False
+
+
+        super().prepare_data(event_counts, T, iter_dims=iter_dims, **kwargs)
+        self.dimensions["n_pop"] = dims[-2]   ## obtain number of populations
 
     def set_logl(
         self,
@@ -45,8 +64,6 @@ class BayesModel(HierarchicalModel):
         input
             vectorized [bool]
                 whether the log likelihood function should be vectorized or not
-            withZeros [bool]
-                whether the likelihood should be calculated for spike counts of 0
             correct_N [int]
                 spike number up to which the likelihood should be corrected, if required
 
@@ -55,8 +72,24 @@ class BayesModel(HierarchicalModel):
         offset = 0.5
 
         self.calculate_binom()
+        
+        print("Different values of kappa currently not possible - check what needs to be done!")
 
-        def loglikelihood(p_in, plot=False):
+        if biological:
+        # initialize the network class with according populations & synapses
+            self.net = Network()
+            for key in self.parameter_names:
+
+                var,(p,s) = parse_name_and_indices(key, ["pop","s"])
+                if p is not None:
+                    self.net.register_population(p,J0=(-1.)**(p+1))
+
+                if p is not None and s is not None:
+                    self.net.populations[p].register_synapse(s)
+
+
+
+        def loglikelihood(p_in):
             """
             log likelihood function for the model
 
@@ -67,31 +100,11 @@ class BayesModel(HierarchicalModel):
                 p_in [nChain, nAnimals, nParams]
                     The input parameters for the model, which are the gamma, delta and nu_max
 
-                * N_AP [nAnimals, nk]
-                    The number of action potentials observed in each neuron
-
-                * k_AP [nAnimals, nk]
-                    The number of occurences of each spike count in the data per animal
-
-                * binom [nAnimals, nk]
-                    The binomial coefficient to draw 'k' neurons with some property of probability p, given 'nNeuron' neurons
-
             output
                 logp [nChain]
                     The log likelihood of the data, given the model parameters
                         sum_{nAnimals} sum_{N_max} log( p_k_AP )
 
-            dimensions:
-                nChain:
-                    number of chains
-                nAnimals:
-                    number of animals
-                nNeurons [nAnimals]:
-                    number of neurons (possibly different for each animal)
-                nParams:
-                    number of parameters
-                nk [nChain, nAnimals]:
-                    maximum possible number of spikes given nu_max
             """
             # define dimensions
             if len(p_in.shape) == 1:
@@ -101,155 +114,126 @@ class BayesModel(HierarchicalModel):
             # max_spike_count = np.nanmax(self.event_counts, axis=-1).astype("int")
 
             n_chain = p_in.shape[0]
-
-            logl = np.zeros((n_chain,) + self.dimensions["shape"][:-1])
-
-            # print(self.dimensions)
+            logl = np.zeros((n_chain,) + self.dimensions["shape_iter"])
 
             for idx in self.dimensions["iterator"]:
-                # print(idx)
-
-                # for animal in range(self.dims["n_samples"]):
-
-                # print(self.data["event_counts"].shape)
-                cts = self.data["event_counts"][idx]
-                # print(idx, cts.shape)
-                # rates = self.rates[np.isfinite(self.rates[:, animal]), animal]
+                
+                # cts = self.data["event_counts"][idx]
                 max_spike_count = int(np.nanmax(self.data["event_counts"][idx]))
-                # print(f"{max_spike_count=}")
-
+                
                 for chain in range(n_chain):
-
                     """
-                    get the parameters from the input p_in into dictionary
+                        get the parameters from the input p_in into dictionary
                     """
 
                     full_idx = (chain,) + idx
-                    params = self.get_params_from_p(p_in, idx_chain=chain, idx=idx)
 
-                    # print(f"params: {params}")
-
-                    if (
-                        np.isnan(params["distr"][0]["nu_max"])
-                        or np.isnan(params["distr"][0]["gamma"])
-                        or np.isnan(params["distr"][0]["delta"])
-                        or params["distr"][0]["nu_max"] < 0
-                        or params["distr"][0]["gamma"] < 0
-                        or params["distr"][0]["delta"] < 0
-                    ):
+                    params = self.get_params_from_p(p_in, idx_chain=chain, idx=idx, biological=biological)
+                    if not params:
+                    # happens if parameters are weird
                         logl[full_idx] = -(10**6)
                         continue
 
-                    if self.two_pop:
-                        params["distr"][1]["nu_max"] = params["distr"][0]["nu_max"]
-
                     ## calculate maximum number of spikes:
-                    # print(self.T, params["distr"][0]["nu_max"] * self.T)
                     max_spike_count_model = np.squeeze(
-                        params["distr"][0]["nu_max"] * self.T
+                        params["distr"][0].nu_max * self.T
                     ).astype("int")
+                    # print(f"{max_spike_count_model=} vs {max_spike_count=}")
+
+                    logl[full_idx], abort = self.parameter_penalties(params, max_spike_count_model, idx)
+                    if abort: 
+                        continue
 
                     """
                         from here, animal dependent calculations necessary
                         (due to differences in nu_max and thus max_spike_count_model)
                     """
-                    ## remove all spike counts that are higher than max_spike_count_model
-                    N_AP_empirical = self.binom[idx]["N_AP"][
-                        self.binom[idx]["N_AP"] < max_spike_count_model
-                    ]
-                    k_AP_empirical = self.binom[idx]["k_AP"][
-                        self.binom[idx]["N_AP"] < max_spike_count_model
-                    ]
+                    for p in range(self.dimensions["n_pop"]):
+                        idx_population = idx + (p,)
+                        ## remove all spike counts that are higher than max_spike_count_model
+                        N_AP_empirical = self.binom[idx_population]["N_AP"][
+                            self.binom[idx_population]["N_AP"] < max_spike_count_model
+                        ]
+                        k_AP_empirical = self.binom[idx_population]["k_AP"][
+                            self.binom[idx_population]["N_AP"] < max_spike_count_model
+                        ]
 
-                    N_AP = np.arange(max_spike_count_model).astype("int")
-                    k_AP = np.zeros(max_spike_count_model, dtype="int")
-                    k_AP[N_AP_empirical] = k_AP_empirical
+                        N_AP = np.arange(max_spike_count_model).astype("int")
+                        k_AP = np.zeros(max_spike_count_model, dtype="int")
+                        k_AP[N_AP_empirical] = k_AP_empirical
 
-                    ### calculate actual log-likelihood
+                        ### calculate actual log-likelihood
                     # print(params)
-                    p_N_AP = get_p_N_AP(
-                        (N_AP + offset) / self.T,
-                        params,
-                        self.T,
-                        correct_N=correct_N,
-                        correct_threshold=correct_threshold,
-                    )
-
-                    log_binom = self.binom[idx]["log_binomial_coefficient"][k_AP]
-
-                    logp = (
-                        log_binom
-                        + k_AP * np.log(p_N_AP[N_AP])
-                        + (self.data["n_neurons"][idx] - k_AP)
-                        * np.log(1 - p_N_AP[N_AP])
-                    )
-
-                    # fig = plt.figure()
-                    # ax1 = fig.add_subplot(211)
-                    # ax1.plot(N_AP, k_AP, label="k_AP")
-                    # ax2 = fig.add_subplot(212)
-                    # ax2.axhline(0, color="black", linestyle="--")
-                    # ax2.plot(N_AP, logp, label="p_N_AP")
-
-                    # plt.show(block=False)
-                    # * weight(
-                    #     N_AP / max_spike_count_model, "sigmoid", offset=0.2, slope=50, threshold=0.1
-                    # )
-
-                    logl_measures = logp.sum()
-                    logl[full_idx] += logl_measures
-
-                    ### add penalties
-                    # print("penalties:", self.penalty_nu_max(max_spike_count_model, animal))
-                    logl[full_idx] += self.penalty_nu_max(max_spike_count_model, idx)
-
-                    if bias_to_mean > 0:
-                        logl[full_idx] += self.penalty_mean_bias(
-                            params, bias_to_mean, idx
+                        p_N_AP = get_p_N_AP(
+                            (N_AP + offset) / self.T,
+                            (params["distr"][p],),
+                            self.T,
+                            correct_N=correct_N,
+                            correct_threshold=correct_threshold,
                         )
+                        # print("p_N_AP", p_N_AP[:5])
 
-                    if bias_to_expected_max > 0 and (
-                        max_spike_count < max_spike_count_model
-                    ):
-                        # p_extreme = 1 - 1.0 / (params["distr"][0]["nu_max"] - N_AP / self.T + 1) ** 2
+                        # plt.figure()
+                        # plt.plot(N_AP, p_N_AP, label=f"Population {p}")
 
-                        p_max = expected_maximum_value(
-                            p_N_AP,
-                            self.data["n_neurons"][idx],
-                            max_spike_count,
-                        )
-                        # p_max *= (
-                        #     1.0 - 1.0 / ((max_spike_count_model - max_spike_count) / self.T + 1) ** 2
+                        log_binom = self.binom[idx_population]["log_binomial_coefficient"][k_AP]
+
+                        # logl_binom = (
+                        #     log_binom
+                        #     + k_AP * np.log(p_N_AP[N_AP])
+                        #     + (self.data["n_neurons"][idx_population] - k_AP)
+                        #     * np.log(1 - p_N_AP[N_AP])
                         # )
+                        # plt.plot(N_AP, logl_binom, label=f"Binom Pop {p}")
+                        # plt.xlabel("Number of Action Potentials")
+                        # plt.ylabel("Probability")
+                        # plt.title("Probability Distribution of Action Potentials")
+                        # plt.legend()
+                        # plt.show()
 
-                        logl[full_idx] += np.log(p_max) * bias_to_expected_max
 
-                        # logl[i, animal] -= self.penalty_expected_max_bias(
-                        #     params,
-                        #     p_N_AP,
-                        #     N_AP,
-                        #     max_spike_count,
-                        #     bias_to_expected_max,
-                        #     animal,
-                        # )
-                    elif bias_to_expected_max > 0:
-                        logl[full_idx] += bias_to_expected_max * -(10**6)
+                        # print("logl (pre binom)",logl[full_idx])
 
-                    """
-                        sum up the log likelihoods to obtain the overall estimate for this animal
-                    """
+                        logl[full_idx] += (
+                            log_binom
+                            + k_AP * np.log(p_N_AP[N_AP])
+                            + (self.data["n_neurons"][idx_population] - k_AP)
+                            * np.log(1 - p_N_AP[N_AP])
+                        ).sum()
+
+                        # print("logl (post binom)",logl[full_idx])
+
+
+                        ### add penalties
+                        # print("penalties:", self.penalty_nu_max(max_spike_count_model, animal))
+
+                        # if bias_to_mean > 0:
+                        #     logl[full_idx] += self.penalty_mean_bias(
+                        #         params, bias_to_mean, idx
+                        #     )
+
+
+                        if bias_to_expected_max > 0 and (
+                            max_spike_count < max_spike_count_model
+                        ):
+
+                            p_max = expected_maximum_value(
+                                p_N_AP,
+                                self.data["n_neurons"][idx],
+                                max_spike_count,
+                            )
+
+                            logl[full_idx] += np.log(p_max) * bias_to_expected_max
+
+                        elif bias_to_expected_max > 0:
+                            logl[full_idx] += bias_to_expected_max * -(10**6)
+
                     # self.log.debug((f'logls: {logl_low=}, {logl_intermediate=}, {logl_tail=}'))
-
-                    # logl[i,a] = logl_low + logl_intermediate + logl_tail
-                    # print(logl[full_idx])
                     if not np.isfinite(logl[full_idx]):
                         logl[full_idx] = -(10**6)
 
             if vectorized:
-                # print(logl.shape, logl)
-                # print(tuple(range(1, self.dimensions["n"])))
                 return logl.sum(axis=tuple(range(1, self.dimensions["n"])))
-            # return logl.sum(axis=1)
             else:
                 self.log.debug(("logl:", logl[0, :].sum()))
                 return logl[0, :].sum()
@@ -265,281 +249,207 @@ class BayesModel(HierarchicalModel):
         ## as well as the binomial coefficient of occurence 'k_AP', given n neurons
         self.binom = {}
 
-        # print(self.dimensions)
-        # Iterate through all but the last dimension of event_counts
         for idx in self.dimensions["iterator"]:
 
-            event_counts = self.data["event_counts"][idx]
-            N = event_counts[np.isfinite(event_counts)].astype("int64")
-            N_ct = Counter(N)
+            for p in range(self.dimensions["n_pop"]):
+                idx_p = idx + (p,)
+                event_counts = self.data["event_counts"][idx_p]
+                # print("count shape:",event_counts.shape)
+                N = event_counts[np.isfinite(event_counts)].astype("int64")
+                N_ct = Counter(N)
 
-            k_AP_all = np.zeros(max_spike_count + 1)
-            k_AP_all[list(N_ct.keys())] = list(N_ct.values())
+                k_AP_all = np.zeros(max_spike_count + 1)
+                k_AP_all[list(N_ct.keys())] = list(N_ct.values())
 
-            # Store results in binom dict using idx as key
+                # Store results in binom dict
+                self.binom[idx_p] = {}
+                self.binom[idx_p]["N_AP"] = np.where(k_AP_all > 0)[0]
+                self.binom[idx_p]["k_AP"] = k_AP_all[self.binom[idx_p]["N_AP"]].astype("int")
 
-            self.binom[idx] = {}
-            # d = self.binom
-            # for i in idx[:-1]:
-            #     d = d.setdefault(i, {})
-            # print(f"idx: {idx}, d: {self.binom}")
+                self.binom[idx_p]["log_binomial_coefficient"] = log_binomial(
+                    self.data["n_neurons"][idx_p],
+                    np.arange(self.data["n_neurons"][idx_p] + 1),
+                )
 
-            self.binom[idx] = {}
-            self.binom[idx]["N_AP"] = np.where(k_AP_all > 0)[0]
-            self.binom[idx]["k_AP"] = k_AP_all[self.binom[idx]["N_AP"]].astype("int")
 
-            self.binom[idx]["log_binomial_coefficient"] = log_binomial(
-                self.data["n_neurons"][idx],
-                np.arange(self.data["n_neurons"][idx] + 1),
-            )
-        # print(self.binom)
+    def parameter_penalties(self,params, max_spike_count_model, idx):
+                        
+        # for pop in params["distr"]:
+        #     if not pop.are_values_ok():
+        #         return -(10**6), True
 
-        # for a, event_counts_animal in enumerate(self.data["event_counts"]):
-        #     # print(f"{a=}")
-        #     # print(N.shape, N)
-        #     self.binom[a] = {}
-        #     for c, event_counts_condition in enumerate(event_counts_animal):
-        #         N = event_counts_condition[np.isfinite(event_counts_condition)].astype(
-        #             "int64"
-        #         )
-        #         N_ct = Counter(N)
+        ## calculate penalty for model max spike count less than observed data
+        logl_penalty = 0
 
-        #         k_AP_all = np.zeros(max_spike_count + 1)
-        #         k_AP_all[list(N_ct.keys())] = list(N_ct.values())
+        for p in range(self.dimensions["n_pop"]):
+            idx_population = idx + (p,)
+            idx_too_high = np.where(self.binom[idx_population]["N_AP"] > max_spike_count_model)[0]
+            for i in idx_too_high:
+                ## get all spike counts higher than allowed by model
+                N_AP_too_high = self.binom[idx_population]["N_AP"][i]
+                k_AP_too_high = self.binom[idx_population]["k_AP"][i]
+                logl_penalty += (
+                    -(10**6)
+                    * k_AP_too_high
+                    * ((N_AP_too_high - max_spike_count_model) / max_spike_count_model) ** 2
+                )
+        # print(f"logl_penalty: {logl_penalty}")
 
-        #         self.binom[a][c] = {}
 
-        #         self.binom[a][c]["N_AP"] = np.where(k_AP_all > 0)[0]
-        #         self.binom[a][c]["k_AP"] = k_AP_all[self.binom[a][c]["N_AP"]].astype(
-        #             "int"
-        #         )
-        #         self.binom[a][c]["log_binomial_coefficient"] = log_binomial(
-        #             self.dims["n_neurons"][a, c],
-        #             np.arange(self.dims["n_neurons"][a, c] + 1),
-        #         )
-        # print(self.binom)
+        return logl_penalty, False
 
-    def penalty_nu_max(self, max_spike_count_model, idx):
 
-        ## get all spike counts higher than allowed by model
-        idx_too_high = np.where(self.binom[idx]["N_AP"] > max_spike_count_model)[0]
-        logp_penalty = 0
-        for idx in idx_too_high:
-            # print(idx)
-            N_AP_too_high = self.binom[idx]["N_AP"][idx]
-            k_AP_too_high = self.binom[idx]["k_AP"][idx]
-            # print(f'{N_AP_too_high=}, {k_AP_too_high=}')
-            logp_penalty += (
-                -(10**6)
-                * k_AP_too_high
-                * ((N_AP_too_high - max_spike_count_model) / max_spike_count_model) ** 2
-            )
-            # logp_penalty += -(10**0) * k_AP_too_high * (N_AP_too_high - max_spike_count_model) ** 2
-        return logp_penalty
+    # def penalty_mean_bias(self, params, bias_to_mean, idx):
 
-    def penalty_mean_bias(self, params, bias_to_mean, idx):
+    #     if self.two_pop:
+    #         nu_mean = params["p"] * get_nu_bar(**params["distr"][0])
+    #         nu_mean += (1 - params["p"]) * get_nu_bar(**params["distr"][1])
+            
+    #         nu_SD = params["p"] * get_q(**params["distr"][0])
+    #         nu_SD += (1 - params["p"]) * get_q(**params["distr"][1])
+    #     else:
+    #         nu_mean = get_nu_bar(**params["distr"][0])
+    #         nu_SD = get_q(**params["distr"][0])
 
-        if self.two_pop:
-            nu_mean = params["p"] * get_nu_bar(
-                params["distr"][0]["gamma"],
-                params["distr"][0]["delta"],
-                params["distr"][0]["nu_max"],
-            )
-            nu_mean += (1 - params["p"]) * get_nu_bar(
-                params["distr"][1]["gamma"],
-                params["distr"][1]["delta"],
-                params["distr"][1]["nu_max"],
-            )
-            nu_SD = params["p"] * get_q(
-                params["distr"][0]["gamma"],
-                params["distr"][0]["delta"],
-                params["distr"][0]["nu_max"],
-            )
-            nu_SD += (1 - params["p"]) * get_q(
-                params["distr"][1]["gamma"],
-                params["distr"][1]["delta"],
-                params["distr"][1]["nu_max"],
-            )
-        else:
-            nu_mean = get_nu_bar(
-                params["distr"][0]["gamma"],
-                params["distr"][0]["delta"],
-                params["distr"][0]["nu_max"],
-            )
-            nu_SD = get_q(
-                params["distr"][0]["gamma"],
-                params["distr"][0]["delta"],
-                params["distr"][0]["nu_max"],
-            )
+    #     nu_sigma = np.sqrt(nu_SD - nu_mean**2) / np.sqrt(self.data["n_neurons"][idx])
 
-        nu_sigma = np.sqrt(nu_SD - nu_mean**2) / np.sqrt(self.data["n_neurons"][idx])
+    #     rates = (
+    #         self.data["event_counts"][
+    #             idx, np.isfinite(self.data["event_counts"][idx, :])
+    #         ]
+    #         / self.T
+    #     )
+    #     logl_bias_to_mean = -((rates.mean() - nu_mean) ** 2) / (2 * nu_sigma**2)
 
-        rates = (
-            self.data["event_counts"][
-                idx, np.isfinite(self.data["event_counts"][idx, :])
-            ]
-            / self.T
-        )
-        logl_bias_to_mean = -((rates.mean() - nu_mean) ** 2) / (2 * nu_sigma**2)
+    #     return logl_bias_to_mean * bias_to_mean
+    #     # logl[i, a] += bias_to_mean * logl_bias_to_mean
 
-        return logl_bias_to_mean * bias_to_mean
-        # logl[i, a] += bias_to_mean * logl_bias_to_mean
-
-    def penalty_expected_max_bias(
-        self, params, p_N_AP, N_AP, max_spike_count, bias_to_expected_max, idx
-    ):
-        """
-        This is not a normalized distribution!!
-        """
-
-        ### now, get extreme value distribution
-        p_N_AP_cum = np.pad(
-            np.cumsum(p_N_AP) ** self.data["n_neurons"][idx],
-            (1, 0),
-            mode="constant",
-            constant_values=0,
-        )
-        p_extreme = np.diff(p_N_AP_cum)
-        p_extreme *= 1 - 1.0 / (params["distr"][0]["nu_max"] - N_AP / self.T + 1) ** 2
-
-        p_extreme /= p_extreme.sum()  # normalizing
-
-        logl_extreme_empirical = np.log(p_extreme[max_spike_count])
-        # print(logl_extreme_empirical)
-        # print(logl_extreme_empirical)
-        return bias_to_expected_max * logl_extreme_empirical
-
-        # ## get all spike counts higher than allowed by model
-        # idx_too_high = np.where(self.binom[animal]['N_AP'] > max_spike_count)[0]
-        # logp_penalty = 0
-        # for idx in idx_too_high:
-        #     N_AP_too_high = self.binom[animal]['N_AP'][idx]
-        #     k_AP_too_high = self.binom[animal]['k_AP'][idx]
-        #     logp_penalty += -10**2 * k_AP_too_high*(N_AP_too_high - max_spike_count)**2
-        # return logp_penalty
 
     def get_params_from_p(self, p_in, idx_chain=None, idx=None, biological=False):
+        
+        """
+            build structure of distribution parameters from p_in to dictionary shape as required by logl
+        """
 
-        params = {"distr": []}
-
-        ## this does not include structure from distribution, etc
         params_tmp = super().get_params_from_p(p_in, idx_chain=idx_chain, idx=idx)
 
         if biological:
-            # QUESTION:
-            #     * how to do this quickly (solving selfcon, ...)?
-            #     * is approximation good enough?
 
-            params["distr"][0]["nu_max"] = get_nu_max(
-                params_tmp["nu_bar"],
-                params_tmp["tau_A"],
-                params_tmp["tau_N"],
-                params_tmp["r_N"],
-            )
-            params["distr"][0]["gamma"] = get_gamma(
-                params_tmp["nu_bar"],
-                params_tmp["alpha_0"],
-                params_tmp["tau_A"],
-                params_tmp["tau_N"],
-                params_tmp["r_N"],
-            )
-            params["distr"][0]["delta"] = get_delta(
-                params_tmp["nu_bar"],
-                params_tmp["alpha_0"],
-                params_tmp["tau_A"],
-                params_tmp["tau_N"],
-                params_tmp["r_N"],
-            )
-            params = build_distr_structure_from_params(params, self.paramIn)
+            for key,val in params_tmp.items():
+
+                var,(p,s) = parse_name_and_indices(key,["pop","s"])
+
+                print("set params:")
+                print(key,val)
+                print(var,p,s)
+
+                if p is None and s is None:
+                    setattr(self.net,var,val)
+                elif p is not None and s is None:
+                    setattr(self.net.populations[p],var,val)
+                elif p is not None and s is not None:
+                    setattr(self.net.populations[p].synapses[s],var,val)
+                else:
+                    print(f"Unexpected parameter structure for {key}: {val}")
+            
+            is_ok = self.net.are_values_ok()
+            if not is_ok:
+                return False
+
+            self.net.set_weights()
+            self.net.calculate_sigma_V()
+            self.net.solve_selfcon()
+
+            params = {}
+            for p,pop in enumerate(self.net.populations):
+                for key in ["gamma","delta","nu_max"]:
+                    params[f"{key}_pop{p}"] = getattr(pop, key)
+
+            # print("flat:",params)
+            params = build_distr_structure_from_params(params, self.parameter_names)
+            # print("full:",params)
 
         else:
 
-            params = build_distr_structure_from_params(params_tmp, self.paramIn)
+            params = build_distr_structure_from_params(params_tmp, self.parameter_names)
 
-            # print("params_tmp: ", params_tmp)
-        # print("\n params:", params)
+        # if len(params["distr"])==2: #self.two_pop:
+        #     params["distr"][1]["nu_max"] = params["distr"][0]["nu_max"]
+
+        self.log.debug("\n params:", params)
 
         return params
 
 
 def build_distr_structure_from_params(params_tmp, paramNames):
 
+    # print(params_tmp)
+    paramNames = params_tmp.keys()#["gamma", "delta", "nu_max"]
     params = {"distr": []}
     for var in paramNames:
         var_split = var.split("_")
         var_root = "_".join(var_split[:-1])
-        idx = int(var_split[-1][-1]) if var_split[-1].startswith("pop") else np.nan
-        if len(params["distr"]) < idx + 1:
-            params["distr"].append({})
+        idx_population = int(var_split[-1][-1]) if var_split[-1].startswith("pop") else np.nan
+        if len(params["distr"]) < idx_population + 1:
+            params["distr"].append(distr_params(0,0,0))
 
-        if np.isnan(idx):
+        # print(var,var_root,idx_population)
+        if np.isnan(idx_population):
+            # print("when does this show up?")
+            # print(f"{var=}, {var_root=}, {idx_population=}")
             params[var] = params_tmp[var]
         else:
-            params["distr"][int(idx)][var_root] = params_tmp[var]
+            setattr(params["distr"][idx_population],var_root,params_tmp[var])
 
     return params
 
 
-def expected_maximum_value(p_N_AP, n, max_spike_count=None):
+def expected_maximum_value(p, n, max_value=None):
     """
-    p_N_AP
-        - probability of observing N_AP spikes in a neuron (N_AP being the index of the array)
-    n
-        - the number of neurons in the population
+        obtain distribution of extreme values, given an input distribution p and a sample size n.
+        If max_value is provided, return the probability of observing that value
+
+    p   array(float)
+        - input distribution (probability mass function)
+    n   int
+        - sample size
 
     output:
         - expected maximum value probability distribution
     """
 
     ### now, get extreme value distribution
-    p_N_AP_cum = np.pad(
-        np.cumsum(p_N_AP) ** n,
+    p_cum = np.pad(
+        np.cumsum(p) ** n,
         (1, 0),
         mode="constant",
         constant_values=0,
     )
-    p_extreme = np.diff(p_N_AP_cum)
-    # p_extreme *= 1 - 1.0 / (params["distr"][0]["nu_max"] - N_AP / self.T + 1) ** 2
+    p_extreme = np.diff(p_cum)
     p_extreme /= p_extreme.sum()  # normalizing
 
-    if max_spike_count is None:
+    if max_value is None:
         return p_extreme
     else:
-        return p_extreme[max_spike_count]
-
-    # logl_extreme_empirical = np.log(p_extreme[max_spike_count])
-    # print(logl_extreme_empirical)
-    # return logl_extreme_empirical
-    # return p_extreme
+        return p_extreme[max_value]
 
 
-def weight(x, mode="sigmoid", **kwargs):
-    # return a + (1-a)/np.log(np.exp(1)+1/(1-x))
-    if mode == "sigmoid":
-        return kwargs["offset"] + (1 - kwargs["offset"]) / (
-            1 + np.exp(kwargs["slope"] * (x - kwargs["threshold"]))
-        )
-    else:
-        return None
 
+def get_p_N_AP(nu, args_rho, T, correct_N=5, correct_threshold=10 ** (-4)):
 
-# def weight(x, a=0.5, b=10):
-#     return a + (1 - a) * (1 - x) ** b
-
-
-def get_p_N_AP(nu, p, T, correct_N=5, correct_threshold=10 ** (-4), _print=False):
-
-    p_N_AP = p_nu(nu, p) / T
+    # print(f"{args_rho=}")
+    p_N_AP = rho_nu(nu, *args_rho) / T
     p_N_AP[~np.isfinite(p_N_AP)] = np.nan
 
     if correct_N == 0:
         return p_N_AP
-
+    
     ## correcting terms until normalization becomes decent
     p_full = p_N_AP[:correct_N].copy()
+
     for N in range(correct_N):
         ### correcting one at a time
-        p_N_AP[N] = adaptive_integration(f, 0, 100.0 / T, args=(p, N, T), eps_pow=-2)
+        p_N_AP[N] = adaptive_integration(spike_observation_probability, 0, 100.0 / T, args=(args_rho,(N, T)), eps_pow=-2)
 
         idx_start = max(0, N - 3)
         dp = np.abs(p_full[idx_start : N + 1] - p_N_AP[idx_start : N + 1])
@@ -554,16 +464,7 @@ def get_p_N_AP(nu, p, T, correct_N=5, correct_threshold=10 ** (-4), _print=False
 
 def get_default_priors():
 
-    halfnorm_ppf = lambda x, loc, scale: loc + scale * np.sqrt(2) * erfinv(x)
-    norm_ppf = lambda x, mean, sigma: mean + sigma * np.sqrt(2) * erfinv(2 * x - 1)
-
     prior = {}
-    # prior["gamma_0"] = BM.prior_structure(
-    #     norm_ppf,
-    #     mean=BM.prior_structure(halfnorm_ppf, loc=1.0, scale=1.0),
-    #     sigma=BM.prior_structure(halfnorm_ppf, loc=0.0, scale=1.0),
-    # )
-
     prior["gamma_0"] = prior_structure(norm_ppf, mean=2.0, sigma=0.5)
     prior["delta_0"] = prior_structure(norm_ppf, mean=6.0, sigma=2.0)
     prior["nu_max_0"] = prior_structure(
@@ -572,320 +473,62 @@ def get_default_priors():
     )
     return prior
 
+"""
+    could be moved to other file?!
+"""
 
-def run_sampling(
-    event_counts,
-    T,
-    priors,
-    mode="ultranest",
-    key=None,
-    biological=False,
-    correct_N=5,
-    bias_to_mean=0,
-    bias_to_expected_max=0,
-    n_live=100,
-    nP=1,
-    logLevel=logging.ERROR,
-):
+import re
+from typing import Iterable, List, Optional, Tuple
 
-    # withZeros = True
-    # two_pop = mP.two_pop
-    two_pop = False
+def parse_name_and_indices(s: str, literals: Iterable[str]) -> Tuple[str, List[Optional[int]]]:
+    """
+    Returns (variable_name, [idx_or_None per literal in the same order]).
+    Variable name = prefix before the first <literal><digits> token.
+    """
+    lits = list(literals)
+    alts = "|".join(map(re.escape, lits))
+    # Don't match inside letter-words; allow underscores and punctuation as separators.
+    rx = re.compile(rf"(?<![A-Za-z])({alts})(\d+)(?![A-Za-z])")
 
-    BM = BayesModel(logLevel=logLevel)
-    BM.prepare_data(event_counts, T)
-    BM.two_pop = two_pop
+    found = {}
+    first_pos = None
 
-    if priors is None:
-        priors = get_default_priors()
-    BM.set_priors(priors)
+    for m in rx.finditer(s):
+        lit, num = m.group(1), int(m.group(2))
+        if lit not in found:  # keep only first per literal
+            found[lit] = (m.start(), num)
+            if first_pos is None or m.start() < first_pos:
+                first_pos = m.start()
 
-    pprint.pprint(BM.priors)
-    vectorized = mode == "ultranest"
-    my_prior_transform = BM.set_prior_transform(vectorized=vectorized)
-    my_likelihood = BM.set_logl(
-        vectorized=vectorized,
-        correct_N=correct_N,
-        bias_to_expected_max=bias_to_expected_max,
-        bias_to_mean=bias_to_mean,
-        biological=biological,
-    )
-
-    if mode=='dynesty':
-
-        from dynesty import NestedSampler, pool as dypool
-
-        print('running nested sampling')
-        # print(np.where(hbm.pTC['wrap'])[0])
-        if nP>1:
-            with dypool.Pool(nP,my_likelihood,my_prior_transform) as pool:
-                # sampler = DynamicNestedSampler(pool.loglike,pool.prior_transform,BM.nParams,
-                #         pool=pool,
-                #         # periodic=np.where(BM.wrap)[0],
-                #         sample='slice'
-                #     )
-                # print('idx of p: ',BM.priors['p']['idx'])
-                sampler = NestedSampler(
-                    pool.loglike,
-                    pool.prior_transform,
-                    BM.n_params,
-                    pool=pool,
-                    nlive=n_live,
-                    bound="single",
-                    reflective=[BM.priors["p"]["idx"]] if two_pop else False,
-                    # periodic=np.where(BM.wrap)[0],
-                    sample="rslice",
-                )
-                sampler.run_nested(dlogz=1.)
-        else:
-
-            # import ultranest.plot as ultraplot
-            # from ultranest.popstepsampler import PopulationSliceSampler, generate_region_oriented_direction
-
-            sampler = NestedSampler(
-                my_likelihood,
-                my_prior_transform,
-                BM.nParams,
-                nlive=n_live,
-                bound="single",
-                reflective=[BM.priors["p"]["idx"]] if two_pop else False,
-                # periodic=np.where(BM.wrap)[0],
-                sample="rslice",
-            )
-            sampler.run_nested(dlogz=1.)
-        sampling_result = sampler.results
-
-        return BM, sampling_result, sampler
-    else:
-        import ultranest
-        import ultranest.stepsampler
-
-        from ultranest.popstepsampler import (
-            PopulationSliceSampler,
-            generate_region_oriented_direction,
-        )
-        from ultranest.mlfriends import RobustEllipsoidRegion
-
-        NS_parameters = {
-            "min_num_live_points": n_live,
-            "max_num_improvement_loops": 3,
-            "max_iters": 50000,
-            "cluster_num_live_points": 20,
-        }
-
-        sampler = ultranest.ReactiveNestedSampler(
-            BM.paramNames, 
-            my_likelihood, my_prior_transform,
-            wrapped_params=BM.wrap,
-            vectorized=True,num_bootstraps=20,
-            ndraw_min=512
-        )
-
-        logger = logging.getLogger("ultranest")
-        logger.setLevel(logging.ERROR)
-
-        show_status = True
-        n_steps = 10
-        sampler.stepsampler = PopulationSliceSampler(
-            popsize=2**4,
-            nsteps=n_steps,
-            generate_direction=generate_region_oriented_direction,
-        )
-
-        sampling_result = sampler.run(
-            **NS_parameters,
-            region_class=RobustEllipsoidRegion,
-            update_interval_volume_fraction=0.01,
-            show_status=show_status,
-            viz_callback="auto",
-        )
-
-        # num_samples = BM.nParams*100
-        # num_samples = np.maximum(400,BM.nParams*100)
-        # num_samples = nLive
-
-        # sampling_result = sampler.run(
-        #     min_num_live_points=num_samples,
-        #     max_iters=20000,cluster_num_live_points=20,max_num_improvement_loops=3,
-        #     show_status=True,viz_callback='auto')
-
-        # plt.figure()
-        # cornerplot(sampling_result)
-        # plt.show(block=False)
-
-        # plt.figure()
-        # sampler.plot_trace()
-        # plt.show(block=False)
-
-        return BM, sampling_result, sampler
+    name = s[:first_pos-1] if first_pos is not None else s
+    indices: List[Optional[int]] = [found[lit][1] if lit in found else None for lit in lits]
+    return name, indices
 
 
-def compare_results(BM, sampler, mP, mode="ultranest", biological=False):
 
-    print('data in:')
-    for key in mP.params.keys():
-        print(f'{key} = {mP.params[key]}')
-
-    paraKeys = []
-
-    if biological:
-        paraKeys.extend(["nu_bar", "alpha_0", "tau_A", "tau_N", "r_N"])
-        truth_values = None
-    else:
-        if mP.two_pop:
-            paraKeys.extend("p")
-
-        for i in range(2 if mP.two_pop else 1):
-            paraKeys.extend([f"gamma_{i}", f"delta_{i}", f"nu_max_{i}"])
-        # paraKeys.extend(["gamma", "delta_1", "nu_max_1"])
-        # if mP.two_pop:
-        #     paraKeys.extend(["gamma_2", "delta_2"])
-
-        truth_values = []
-        for distributions in mP.params["distr"]:
-            # for key in paraKeys:
-            for key in distributions:
-                # if key in distributions.keys():
-                truth_values.append(distributions[key])
-            # break
-            # truth_values.append(mP.params[key])
-
-    mean = get_mean_from_sampler(sampler, paraKeys, mode=mode)
-
-    if mode=='dynesty':
-
-        from dynesty import utils as dyfunc, plotting as dyplot
-        #
-
-        # samples,weights = sampler.results.samples, sampler.results.importance_weights()
-        # mean,cov = dyfunc.mean_and_cov(samples,weights)
-
-        dyplot.traceplot(
-            sampler.results,
-            # truths=truth_values,
-            truth_color="black",
-            show_titles=True,
-            trace_cmap="viridis",
-        )
-        plt.show(block=False)
-
-        dyplot.cornerplot(
-            sampler.results,
-            color="dodgerblue",
-            # truths=truth_values,
-            show_titles=True,
-        )
-        plt.show(block=False)
-
-        print("\nresults", mean)
-    else:
-        # mean = sampler.results['posterior']['mean']
-
-        # from ultranest.plot import traceplot,cornerplot
-        sampler.plot_trace()
-        sampler.plot_corner()
-
-        print('\nresults')
-        for i,key in enumerate(sampler.results['paramnames']):
-            print(
-                f"{key} = {sampler.results['posterior']['mean'][i]} \pm {sampler.results['posterior']['stdev'][i]}"
-            )
-        plt.show(block=False)
-
-    mP.plot_rates(param_in=mP.params)
-
-    if biological:
-        dictfilt = lambda x, y: dict([(i, x[i]) for i in x if i in set(y)])
-
-        distribution_mean = {}
-        distribution_mean["nu_max"] = get_nu_max(
-            mean["nu_bar"],
-            mean["tau_A"],
-            mean["tau_N"],
-            mean["r_N"],
-        )
-        distribution_mean["gamma"] = get_gamma(
-            mean["nu_bar"],
-            mean["alpha_0"],
-            mean["tau_A"],
-            mean["tau_N"],
-            mean["r_N"],
-        )
-        distribution_mean["delta"] = get_delta(
-            mean["nu_bar"],
-            mean["alpha_0"],
-            mean["tau_A"],
-            mean["tau_N"],
-            mean["r_N"],
-        )
-        nu_bar_in = get_nu_bar(
-            gamma=mP.params["distr"][0]["gamma"],
-            delta=mP.params["distr"][0]["delta"],
-            nu_max=mP.params["distr"][0]["nu_max"],
-        )
-        nu_bar_out = get_nu_bar(
-            gamma=distribution_mean["gamma"],
-            delta=distribution_mean["delta"],
-            nu_max=distribution_mean["nu_max"],
-        )
-
-        tau_I_in = get_tau_I(nu_max=mP.params["distr"][0]["nu_max"])
-        tau_I_out = get_tau_I(nu_max=distribution_mean["nu_max"])
-
-        alpha_0_in = get_alpha_0(
-            gamma=mP.params["distr"][0]["gamma"],
-            delta=mP.params["distr"][0]["delta"],
-            nu_max=mP.params["distr"][0]["nu_max"],
-        )
-        alpha_0_out = get_alpha_0(
-            gamma=distribution_mean["gamma"],
-            delta=distribution_mean["delta"],
-            nu_max=distribution_mean["nu_max"],
-        )
-
-        print(f"{nu_bar_in=}, {nu_bar_out=}")
-        print(f"{tau_I_in=}, {tau_I_out=}")
-        print(f"{alpha_0_in=}, {alpha_0_out=}")
-
-    results_inferred = {"distr": [{}] * (2 if mP.two_pop else 1)}
-    for key in mean.keys():
-        print(f"{key} = {mean[key]}")
-
-        if key == "p":
-            results_inferred[key] = mean[key]
-            continue
-
-        # if key.startswith("nu"):
-        #     var = key
-        # else:
-        key_split = key.split("_")
-        idx = int(key_split[-1]) if len(key_split) > 1 else np.nan
-        var = ("_").join(key_split[:-1]) if np.isfinite(idx) else key
-
-        print(var, idx)
-        results_inferred["distr"][idx][var] = mean[key]
-
-    return results_inferred
+# def get_idx_from_key(key, prefixes):
+#     # Search for patterns "prefixX" in key and return X
+#     for prefix in prefixes:
+#         match = re.search(rf'{prefix}(\d+)', key)
+#     return int(match.group(1)) if match else None
 
 
-def get_mean_from_sampler(results, paramNames, mode="ultranest", output="dict"):
-
-    mean = {} if output == "dict" else []
-    for i, key in enumerate(paramNames):
-        if mode == "dynesty":
-            samp = results.samples[:, i]
-            weights = results.importance_weights()
-        else:
-            samp = results["weighted_samples"]["points"][:, i]
-            weights = results["weighted_samples"]["weights"]
-
-        if output == "dict":
-            mean[key] = (samp * weights).sum()
-        elif output == "list":
-            mean.append((samp * weights).sum())
-        # print(f"{key} mean: {mean[key]:.3f}")
-    return mean
-
-
+"""
+    could be moved to helper file
+"""
 def log_binomial(n, k):
     return gammaln(n + 1) - gammaln(n - k + 1) - gammaln(k + 1)
+
+
+# def weight(x, mode="sigmoid", **kwargs):
+#     # return a + (1-a)/np.log(np.exp(1)+1/(1-x))
+#     if mode == "sigmoid":
+#         return kwargs["offset"] + (1 - kwargs["offset"]) / (
+#             1 + np.exp(kwargs["slope"] * (x - kwargs["threshold"]))
+#         )
+#     else:
+#         return None
+
+
+# # def weight(x, a=0.5, b=10):
+# #     return a + (1 - a) * (1 - x) ** b

@@ -1,5 +1,5 @@
 import numpy as np
-from .functions import *
+from ..inference.transform_meta_to_bio import *
 
 def create_phaseSpace(steps=201,gamma_range=[0,2],delta_range=[0,6],nu_max=20.):
     ## delta / gamma phase space
