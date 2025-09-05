@@ -100,17 +100,17 @@ void Model::set_weights()
             layer[l].J_l[ll] = layer[l].J0_l[ll] * layer[l].population[1].tau_M;
 
         // set synaptic weights for within-layer coupling (depending on excitatory / inhibitory J0, only)
-        for (unsigned p=0; p<layer[l].nPop; p++) {
-            for (unsigned pp=0; pp<layer[l].nPop; pp++) {
-                if (layer[l].population[p].J0<0 && layer[l].population[pp].J0<0 ) // J_II
-                    layer[l].population[p].J[pp] = layer[l].population[p].J0 * sqrt(1 - gsl_pow_2(layer[l].eps)) * layer[l].population[p].tau_M;
-                else if (layer[l].population[p].J0<0 && layer[l].population[pp].J0>0 )    // J_EI
-                    layer[l].population[p].J[pp] = layer[l].population[p].J0 * sqrt(1 - gsl_pow_2(layer[l].eta * layer[l].eps)) * layer[l].population[p].tau_M;
-                else if (layer[l].population[p].J0>0 && layer[l].population[pp].J0<0 )    // J_IE
-                    layer[l].population[p].J[pp] = layer[l].population[p].J0 * layer[l].eps * layer[l].population[p].tau_M;
-                else if (layer[l].population[p].J0>0 && layer[l].population[pp].J0>0 )    // J_EE
-                    layer[l].population[p].J[pp] = layer[l].population[p].J0 * layer[l].eta * layer[l].eps * layer[l].population[p].tau_M;
-                // cout << "J(p=" << p << "," << pp << ")=" << layer[l].population[p].J[pp] << endl;
+        for (unsigned p_post=0; p_post<layer[l].nPop; p_post++) {
+            for (unsigned p_pre=0; p_pre<layer[l].nPop; p_pre++) {
+                if (layer[l].population[p_post].J0<0 && layer[l].population[p_pre].J0<0 ) // J_II
+                    layer[l].population[p_pre].J[p_post] = layer[l].population[p_pre].J0 * sqrt(1 - gsl_pow_2(layer[l].eps)) * layer[l].population[p_post].tau_M;
+                else if (layer[l].population[p_post].J0>0 && layer[l].population[p_pre].J0<0 )    // J_EI
+                    layer[l].population[p_pre].J[p_post] = layer[l].population[p_pre].J0 * sqrt(1 - gsl_pow_2(layer[l].eta * layer[l].eps)) * layer[l].population[p_post].tau_M;
+                else if (layer[l].population[p_post].J0<0 && layer[l].population[p_pre].J0>0 )    // J_IE
+                    layer[l].population[p_pre].J[p_post] = layer[l].population[p_pre].J0 * layer[l].eps * layer[l].population[p_post].tau_M;
+                else if (layer[l].population[p_post].J0>0 && layer[l].population[p_pre].J0>0 )    // J_EE
+                    layer[l].population[p_pre].J[p_post] = layer[l].population[p_pre].J0 * layer[l].eta * layer[l].eps * layer[l].population[p_post].tau_M;
+                // cout << "J(p=" << p_pre << "," << p_post << ")=" << layer[l].population[p_pre].J[p_post] << endl;
             }
         }
     }
@@ -138,39 +138,43 @@ void Model::get_sigma_V()
     double prefactor, J;
     double var_V, var_V_dot, tmp_var_V;
     for (unsigned l=0; l<L; l++) {          // receiving layer
-    	for (unsigned p = 0; p < layer[l].nPop; p++) {          // receiving population
+    	for (unsigned p_post = 0; p_post < layer[l].nPop; p_post++) {          // receiving population
+            // cout << "in post population " << p_post << endl;
             var_V = var_V_dot = 0;  // reset values
             for (unsigned ll=0; ll<L; ll++) {   // projecting layer
-            	for (unsigned pp = 0; pp < layer[ll].nPop; pp++) {   // projecting population
-                    if (ll!=l && (layer[l].population[p].J0<0 || layer[ll].population[pp].J0<0)) continue;     // inter-layer impact only between excitatory populations
+            	for (unsigned p_pre = 0; p_pre < layer[ll].nPop; p_pre++) {   // projecting population
+                    // cout << "in post/pre " << p_post << "," << p_pre << endl;
+                    if (ll!=l && (layer[l].population[p_post].J0<0 || layer[ll].population[p_pre].J0<0)) continue;     // inter-layer impact only between excitatory populations
 
-                    if (layer[ll].population[pp].nPSP>2) {
+                    if (layer[ll].population[p_pre].nPSP>2) {
                         cout << "Please specify 1 or 2 types of synapses per population. More are not yet implemented" << endl;
                         throw;
                     }
 
                     // switch between definitions for inter-layer and intra-layer coupling strengths
-                    if (l==ll)  J = layer[ll].population[pp].J[p];
+                    if (l==ll)  J = layer[ll].population[p_pre].J[p_post];
                     else        J = layer[ll].J_l[l];
 
-                    for (unsigned ss=0; ss<layer[ll].population[pp].nPSP; ss++) {
+                    for (unsigned ss=0; ss<layer[ll].population[p_pre].nPSP; ss++) {
 
                         // define common prefactor for temporal variance
                         // cout << "simulation rate: " << layer[ll].population[pp].simulation.rate << endl;
-                        // cout << "J: " << J << ", kappa: " << layer[ll].population[pp].kappa << ", tau_I: " << layer[ll].population[pp].psp[ss].tau_I << ", tau_m: " << layer[l].population[p].tau_M << endl;
+                        // cout << "J: " << J << ", kappa: " << layer[ll].population[p_pre].kappa << ", tau_I: " << layer[ll].population[p_pre].psp[ss].tau_I << ", tau_m: " << layer[l].population[p_post].tau_M << endl;
 
-                        prefactor = gsl_pow_2(J) * layer[ll].population[pp].kappa * layer[ll].population[pp].simulation.rate / (layer[ll].population[pp].psp[ss].tau_I + layer[l].population[p].tau_M);
+                        prefactor = gsl_pow_2(J) * layer[ll].population[p_pre].kappa * layer[ll].population[p_pre].simulation.rate / (layer[ll].population[p_pre].psp[ss].tau_I + layer[l].population[p_post].tau_M);
                         // cout << "prefactor: " << prefactor << endl;
                         // if (pp==0) prefactor *= layer[ll].kappa;
 
                         // multiply by factor, specified by populations synaptic transmissions
-                        if (layer[ll].population[pp].nPSP==1) tmp_var_V = prefactor / 2.;
-                        else if (layer[ll].population[pp].nPSP==2) {
+                        if (layer[ll].population[p_pre].nPSP==1) 
+                            tmp_var_V = prefactor / 2.;
+                        else if (layer[ll].population[p_pre].nPSP==2) {
 
-                            tmp_var_V = prefactor * ( gsl_pow_2(layer[ll].population[pp].psp[ss].tau_n)/2 + (1-layer[ll].population[pp].psp[ss].tau_n)*layer[ll].population[pp].psp[ss].tau_n*layer[ll].population[pp].psp[ss].tau_I / (layer[ll].population[pp].psp[0].tau_I + layer[ll].population[pp].psp[1].tau_I) );
+                            tmp_var_V = prefactor * ( gsl_pow_2(layer[ll].population[p_pre].psp[ss].tau_n)/2 + (1-layer[ll].population[p_pre].psp[ss].tau_n)*layer[ll].population[p_pre].psp[ss].tau_n*layer[ll].population[p_pre].psp[ss].tau_I / (layer[ll].population[p_pre].psp[0].tau_I + layer[ll].population[p_pre].psp[1].tau_I) );
                         }
+                        // cout << "tmp_var_V: " << tmp_var_V << endl;
                         var_V += tmp_var_V;
-                        var_V_dot += tmp_var_V/(layer[ll].population[pp].psp[ss].tau_I * layer[l].population[p].tau_M);
+                        var_V_dot += tmp_var_V/(layer[ll].population[p_pre].psp[ss].tau_I * layer[l].population[p_post].tau_M);
                     }
                 }
             }
@@ -180,10 +184,10 @@ void Model::get_sigma_V()
             //     var_V += var_V_0;
             //     var_V_dot += var_V_0 / (paras.tau_0 * paras.tau_M);
             // }
-            layer[l].population[p].simulation.sigma_V = sqrt(var_V);
+            layer[l].population[p_post].simulation.sigma_V = sqrt(var_V);
 
             // and the maximum firing rate response
-            layer[l].population[p].simulation.rate_max = sqrt(var_V_dot / var_V) / (2 * M_PI);
+            layer[l].population[p_post].simulation.rate_max = sqrt(var_V_dot / var_V) / (2 * M_PI);
             // cout << "sigma(" << l << "," << p << ") = " << layer[l].population[p].simulation.sigma_V << ", \t";
             // cout << "eps: " << layer[l].eps << ", mixture: " << layer[l].population[p].psp[0].tau_n << ", var total: " << sqrt(var_V) << ", rate max: " << layer[l].population[p].simulation.rate_max << endl; //", from external sources: " << var_V_0 << endl;
             //                 cout << "sigma population " << p << ": " << paras.sigma_V[p] << endl;
@@ -202,19 +206,22 @@ vector< vector<double> > Model::calc_alpha(vector<vector<double> > q)
     alpha.resize(L);
     for (unsigned l = 0; l < L; l++) {        // receiving layer
         alpha[l].resize(layer[l].nPop);
-        for (unsigned p = 0; p < layer[l].nPop; p++) {   // receiving population
+        for (unsigned p_post = 0; p_post < layer[l].nPop; p_post++) {   // receiving population
             alpha_sq = 0;
-            for (unsigned ll = 0; ll < L; ll++) {     // projecting [p]layer
-            	for (unsigned pp = 0; pp < layer[ll].nPop; pp++) {   // projecting population
-                    if (ll!=l && (layer[l].population[p].J0<0 || layer[ll].population[pp].J0<0)) continue;
-
-                    if (l==ll)  J = layer[ll].population[pp].J[p];
+            for (unsigned ll = 0; ll < L; ll++) {     // projecting layer
+            	for (unsigned p_pre = 0; p_pre < layer[ll].nPop; p_pre++) {   // projecting population
+                    // cout << "in post/pre " << p_post << "," << p_pre << endl;
+                    if (ll!=l && (layer[l].population[p_pre].J0<0 || layer[ll].population[p_post].J0<0)) continue;
+                    
+                    if (l==ll)  J = layer[ll].population[p_pre].J[p_post];
                     else        J = layer[ll].J_l[l];
+                    // cout << "J: " << J << ", kappa: " << layer[ll].population[p_pre].kappa << ", q: " << q[ll][p_pre] << ", alpha_0: " << layer[ll].population[p_post].alpha_0 << endl;
                     // get alpha
-                    tmp_alpha_sq = gsl_pow_2(J) * layer[ll].population[pp].kappa * q[ll][pp];
-                    // if (layer[ll].population[pp].J0<0) tmp_alpha_sq *= layer[ll].kappa;
+                    tmp_alpha_sq = gsl_pow_2(J) * layer[ll].population[p_pre].kappa * q[ll][p_pre];
+                    // if (layer[ll].population[p_pre].J0<0) tmp_alpha_sq *= layer[ll].kappa;
 
                     alpha_sq += tmp_alpha_sq;
+                    // cout << "var_alpha_I: " << alpha_sq << endl;
                 }
             }
 
@@ -226,7 +233,7 @@ vector< vector<double> > Model::calc_alpha(vector<vector<double> > q)
 
             // cout << "alpha (p=" << p << "): "<< sqrt(alpha_sq) << ",\t";//", " << alpha_sq_0 << ", " << gsl_pow_2(layer[l].population[p].alpha_0) << endl;
 
-            alpha[l][p] = sqrt( alpha_sq + alpha_sq_external + gsl_pow_2(layer[l].population[p].alpha_0) );
+            alpha[l][p_post] = sqrt( alpha_sq + alpha_sq_external + gsl_pow_2(layer[l].population[p_post].alpha_0) );
             // cout << "alpha (p=" << p << "): " << alpha[l][p] << endl;
         }
         // cout << endl;
@@ -689,11 +696,11 @@ bool Model::is_implausible(Model_Simulation *mSimP)
         for (unsigned p = 0; p < layer[l].nPop; p++) {
 
             struct parameters_int Pparas;
-
+            
             Pparas.rate_max = layer[l].population[p].simulation.rate_max;
             Pparas.gamma = layer[l].population[p].simulation.gamma;
             Pparas.delta = layer[l].population[p].simulation.delta;
-
+            
             gsl_function p_integrate;
             p_integrate.function = &int_distribution_exact; //this should be changed to general function (can't be, as this function here needs to have special variables -> integration)
             p_integrate.params = &Pparas;

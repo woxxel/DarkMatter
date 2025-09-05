@@ -399,7 +399,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
 
     nc_create(fileOut.c_str(), NC_CLOBBER, &ncid);
 
-    // cout << "Npop: " << modP->nPop << endl;
+    PLOG_DEBUG << "Npop: " << modP->nPop << endl;
     nc_def_dim(ncid, "Npop", modP->nPop, &Npop_dim);
     nc_def_dim(ncid, "steps_dim", steps, &steps_dim);
     nc_def_dim(ncid, "steps_dim1", steps_1, &steps_dim1);
@@ -408,7 +408,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
     int dimids[3] = {Npop_dim, steps_dim1, steps_dim};
     const int trans_dimids[3] = {Npop_dim, steps_dim1, trans_dim};
 
-    // cout << "trans_dimids: " << modP->nPop << "," << steps_1 << "," << (int) modP->simulation.nTrans << endl;
+    PLOG_DEBUG << "trans_dimids: " << modP->nPop << "," << steps_1 << "," << (int) modP->simulation.nTrans << endl;
 
     int para_dimID[7];
     write_prep_paras(ncid,&para_dimID[0],simP);
@@ -484,7 +484,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
     //     nc_def_var(ncid, "p_approx", NC_DOUBLE, 4, &dimids[0], &p_approx_id);
     //     nc_def_var(ncid, "cdf_theory", NC_DOUBLE, 4, &dimids[0], &cdf_theory_id);
     // }
-    // cout << "def done " << endl;
+    PLOG_DEBUG << "def done " << endl;
     nc_enddef(ncid);
 
     write_paras(ncid, para_dimID, simP);
@@ -493,7 +493,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
     Population_Results *popResP, *popResP_approx;
 
     size_t start[] = {0,0,0}, count[] = {steps_1, steps_1, steps};
-    // cout << "counts: " << count[0] << ", " << count[1] << ", " << count[2] << endl;
+    PLOG_DEBUG << "counts: " << count[0] << ", " << count[1] << ", " << count[2] << endl;
     count[0] = 1;
     for (unsigned s=0;s<steps_1;s++) {
         start[0] = s;
@@ -520,6 +520,8 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
         }
     }
 
+    PLOG_DEBUG << "storing ..." << endl;
+
     count[1] = 1;
     unsigned p_idx = 0;
     for (unsigned l = 0; l < modP->L; l++) {
@@ -530,13 +532,21 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
 
             start[0] = p_idx;
 
+            // // cout << "before" << endl;
+            // // cout << "steps_1: " << steps_1 << endl;
+            // // cout << "popResP->trans_DM.size(): " << popResP->trans_DM.size() << endl;
+            // // cout << "popResP->trans_np.size(): " << popResP->trans_np.size() << endl;
             for (unsigned s=0;s<steps_1;s++) {
                 start[1] = s;
+                // cout << "popResP->trans_DM[s].size(): " << popResP->trans_DM[s].size() << endl;
+                // cout << "popResP->trans_np[s].size(): " << popResP->trans_np[s].size() << endl;
                 count[2] = popResP->trans_DM[s].size();
                 nc_put_vara(ncid, DM_id, start, count, &popResP->trans_DM[s][0]);
                 count[2] = popResP->trans_np[s].size();
                 nc_put_vara(ncid, np_id, start, count, &popResP->trans_np[s][0]);
             }
+
+            // cout << "here" << endl;
 
             if ((simP->mode_stats == 2) || (simP->mode_stats == 3))
             {
@@ -551,6 +561,7 @@ void write_results(string fileOut, Simulation *simP, Model *modP, Model *modP_ap
 
             count[2] = steps;
             for (unsigned rec=0; rec<steps_1; rec++) {
+
                 start[1] = rec;
                 start[2] = 0;
                 // count[2] = steps;

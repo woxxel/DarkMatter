@@ -233,7 +233,7 @@ def set_simulation(fileSim,options,steps):
     )  # 0=phase plots, 1=data simulation
     sim.set_para("mode_calc", 0, options, np.int16, register=False)  # 0=exact, 1=approx
     sim.set_para(
-        "mode_stats", 0, options, np.int16, register=False
+        "mode_stats", 1, options, np.int16, register=False
     )  # 0=general stats, 1=...
     sim.set_para(
         "mode_selfcon", 0, options, np.int16, register=False
@@ -256,7 +256,7 @@ def set_simulation(fileSim,options,steps):
                 # sv_str += '_%s=%g' %^(key,val[-1])
                 sv_str += f'_{key}'
 
-    # sim.print_parameter()
+    sim.print_parameter()
 
     return sim, sv_str
 

@@ -127,29 +127,37 @@ class BayesModel(HierarchicalModel):
                     """
 
                     full_idx = (chain,) + idx
-
+    
                     params = self.get_params_from_p(p_in, idx_chain=chain, idx=idx, biological=biological)
                     if not params:
                     # happens if parameters are weird
                         logl[full_idx] = -(10**6)
+                        # print("weird parameters")
                         continue
 
-                    ## calculate maximum number of spikes:
-                    max_spike_count_model = np.squeeze(
-                        params["distr"][0].nu_max * self.T
-                    ).astype("int")
-                    # print(f"{max_spike_count_model=} vs {max_spike_count=}")
-
-                    logl[full_idx], abort = self.parameter_penalties(params, max_spike_count_model, idx)
-                    if abort: 
-                        continue
+                    
 
                     """
                         from here, animal dependent calculations necessary
                         (due to differences in nu_max and thus max_spike_count_model)
                     """
                     for p in range(self.dimensions["n_pop"]):
+
                         idx_population = idx + (p,)
+
+                        ## calculate maximum number of spikes:
+                        max_spike_count_model = np.squeeze(
+                            params["distr"][p].nu_max * self.T
+                        ).astype("int")
+                        # print(f"{max_spike_count_model=} vs {max_spike_count=}")
+
+                        logl_tmp, abort = self.parameter_penalties(max_spike_count_model, idx_population)
+                        logl[full_idx] += logl_tmp
+                        if abort:
+                            print("parameter penalties failed")
+                            continue
+                        
+                        
                         ## remove all spike counts that are higher than max_spike_count_model
                         N_AP_empirical = self.binom[idx_population]["N_AP"][
                             self.binom[idx_population]["N_AP"] < max_spike_count_model
@@ -192,7 +200,10 @@ class BayesModel(HierarchicalModel):
                         # plt.show()
 
 
-                        # print("logl (pre binom)",logl[full_idx])
+                        # print(" ---- logl (pre binom)",logl[full_idx])
+                        # print(log_binom)
+                        # print(np.log(p_N_AP[N_AP]))
+                        # print(np.log(1 - p_N_AP[N_AP]))
 
                         logl[full_idx] += (
                             log_binom
@@ -230,10 +241,12 @@ class BayesModel(HierarchicalModel):
 
                     # self.log.debug((f'logls: {logl_low=}, {logl_intermediate=}, {logl_tail=}'))
                     if not np.isfinite(logl[full_idx]):
+                        # print("is not finite??",logl[full_idx])
                         logl[full_idx] = -(10**6)
 
             if vectorized:
-                return logl.sum(axis=tuple(range(1, self.dimensions["n"])))
+                # print(logl.shape)
+                return logl.sum(axis=tuple(range(1, self.dimensions["n_iter"]+1)))
             else:
                 self.log.debug(("logl:", logl[0, :].sum()))
                 return logl[0, :].sum()
@@ -272,7 +285,7 @@ class BayesModel(HierarchicalModel):
                 )
 
 
-    def parameter_penalties(self,params, max_spike_count_model, idx):
+    def parameter_penalties(self, max_spike_count_model, idx):
                         
         # for pop in params["distr"]:
         #     if not pop.are_values_ok():
@@ -281,18 +294,18 @@ class BayesModel(HierarchicalModel):
         ## calculate penalty for model max spike count less than observed data
         logl_penalty = 0
 
-        for p in range(self.dimensions["n_pop"]):
-            idx_population = idx + (p,)
-            idx_too_high = np.where(self.binom[idx_population]["N_AP"] > max_spike_count_model)[0]
-            for i in idx_too_high:
-                ## get all spike counts higher than allowed by model
-                N_AP_too_high = self.binom[idx_population]["N_AP"][i]
-                k_AP_too_high = self.binom[idx_population]["k_AP"][i]
-                logl_penalty += (
-                    -(10**6)
-                    * k_AP_too_high
-                    * ((N_AP_too_high - max_spike_count_model) / max_spike_count_model) ** 2
-                )
+        # for p in range(self.dimensions["n_pop"]):
+            # idx_population = idx + (p,)
+        idx_too_high = np.where(self.binom[idx]["N_AP"] > max_spike_count_model)[0]
+        for i in idx_too_high:
+            ## get all spike counts higher than allowed by model
+            N_AP_too_high = self.binom[idx]["N_AP"][i]
+            k_AP_too_high = self.binom[idx]["k_AP"][i]
+            logl_penalty += (
+                -(10**6)
+                * k_AP_too_high
+                * ((N_AP_too_high - max_spike_count_model) / max_spike_count_model) ** 2
+            )
         # print(f"logl_penalty: {logl_penalty}")
 
 
@@ -339,10 +352,6 @@ class BayesModel(HierarchicalModel):
 
                 var,(p,s) = parse_name_and_indices(key,["pop","s"])
 
-                print("set params:")
-                print(key,val)
-                print(var,p,s)
-
                 if p is None and s is None:
                     setattr(self.net,var,val)
                 elif p is not None and s is None:
@@ -356,14 +365,13 @@ class BayesModel(HierarchicalModel):
             if not is_ok:
                 return False
 
-            self.net.set_weights()
-            self.net.calculate_sigma_V()
             self.net.solve_selfcon()
 
             params = {}
             for p,pop in enumerate(self.net.populations):
                 for key in ["gamma","delta","nu_max"]:
                     params[f"{key}_pop{p}"] = getattr(pop, key)
+                    # print(f"{key}_pop{p} = {getattr(pop, key)}")
 
             # print("flat:",params)
             params = build_distr_structure_from_params(params, self.parameter_names)

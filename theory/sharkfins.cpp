@@ -127,9 +127,9 @@ int main(int argc, char** argv)
 		if (sim.mode_stats == 4 && !modP->simulation.in_inc)
 			mod.integrate_information();
 
-		// PLOG_DEBUG << "storing ...";
+		PLOG_DEBUG << "storing ...";
 		sim.store_results(modP,modP_approx);
-		// PLOG_DEBUG << "done";
+		PLOG_DEBUG << "done";
 	} while (sim.run_iteration(modP,modP_approx));
 
 	PLOG_DEBUG << "computation done!";

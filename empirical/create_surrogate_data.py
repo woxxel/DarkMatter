@@ -74,9 +74,9 @@ class SurrogateData:
         i = -1
         while True:
             low = 10**i
-
+            # print(i)
             res,err = quad(f_target,0,low,args=args,points=np.logspace(-3,0,4))
-            if res < tolerance:
+            if res < tolerance or i<-12:
                 break
 
             i -= 1
@@ -86,7 +86,7 @@ class SurrogateData:
         nu = np.logspace(np.log10(low),np.log10(high),10**3+1)
 
         M = np.ceil(np.nanmax(f_target(nu,*args) / normalized_envelope_density(nu,low,high)))
-
+        M = min(M,100)
         samples = rejection_sampling(f_target,args,self.N, M, low, high)
         # print("samples:",samples.shape,samples.max(),samples)
         samples_T = np.random.poisson(samples*self.T,samples.shape)
@@ -94,7 +94,7 @@ class SurrogateData:
 
         if plot:
             nbins = max(101,self.N//20)
-            fig,ax = plt.subplots(1,2,figsize=(6,3))
+            fig,ax = plt.subplots(1,2,figsize=(4,2))
             ax[0].hist(samples,bins=np.logspace(np.log10(low),np.log10(high),nbins),density = True,label='samples',color="tab:blue",alpha=0.5)
             ax[0].hist(samples_T/self.T,bins=np.logspace(np.log10(low),np.log10(high),nbins),density = True,label='samples(T)',color="tab:red",alpha=0.5)
             ax[0].plot(nu, f_target(nu,*args),'k-',label='target f')
@@ -150,7 +150,7 @@ class SurrogateData:
         nbins = 101
         n_steps = 10001
 
-        print(f"{self.n_pop=}")
+        # print(f"{self.n_pop=}")
         colors = ['k','tab:red']
         if param:
             # bins = np.linspace(0, param["distr"][0]["nu_max"], 101)
@@ -215,7 +215,9 @@ def sample_from_normalized_envelope(low, high):
 
 def rejection_sampling(f_target,args,N, M, low, high):
     samples = []
+    # print(f"{M=}, {low=}, {high=}")
     while len(samples) < N:
+        # print("samples:",len(samples))
         nu = sample_from_normalized_envelope(low, high)
         v = np.random.uniform(0, 1)
         if v <= f_target(nu,*args) / (M * normalized_envelope_density(nu, low, high)):
