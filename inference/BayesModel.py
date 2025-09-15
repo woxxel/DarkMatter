@@ -442,7 +442,6 @@ def expected_maximum_value(p, n, max_value=None):
         return p_extreme[max_value]
 
 
-
 def get_p_N_AP(nu, args_rho, T, correct_N=5, correct_threshold=10 ** (-4)):
 
     # print(f"{args_rho=}")
@@ -480,39 +479,6 @@ def get_default_priors():
         value=25.0,
     )
     return prior
-
-"""
-    could be moved to other file?!
-"""
-
-import re
-from typing import Iterable, List, Optional, Tuple
-
-def parse_name_and_indices(s: str, literals: Iterable[str]) -> Tuple[str, List[Optional[int]]]:
-    """
-    Returns (variable_name, [idx_or_None per literal in the same order]).
-    Variable name = prefix before the first <literal><digits> token.
-    """
-    lits = list(literals)
-    alts = "|".join(map(re.escape, lits))
-    # Don't match inside letter-words; allow underscores and punctuation as separators.
-    rx = re.compile(rf"(?<![A-Za-z])({alts})(\d+)(?![A-Za-z])")
-
-    found = {}
-    first_pos = None
-
-    for m in rx.finditer(s):
-        lit, num = m.group(1), int(m.group(2))
-        if lit not in found:  # keep only first per literal
-            found[lit] = (m.start(), num)
-            if first_pos is None or m.start() < first_pos:
-                first_pos = m.start()
-
-    name = s[:first_pos-1] if first_pos is not None else s
-    indices: List[Optional[int]] = [found[lit][1] if lit in found else None for lit in lits]
-    return name, indices
-
-
 
 # def get_idx_from_key(key, prefixes):
 #     # Search for patterns "prefixX" in key and return X
