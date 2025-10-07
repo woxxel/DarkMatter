@@ -9,7 +9,13 @@ from matplotlib import pyplot as plt
 
 from scipy.special import gammaln
 
-from .HierarchicalBayesModel import HierarchicalModel, prior_structure, norm_ppf, halfnorm_ppf
+from .HierarchicalBayesModel import (
+    HierarchicalModel,
+    prior_structure,
+    norm_ppf,
+    halfnorm_ppf,
+    parse_name_and_indices,
+)
 
 from collections import Counter
 
@@ -30,7 +36,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 class BayesModel(HierarchicalModel):
-    
+
     def prepare_data(self, event_counts, T, **kwargs):
 
         """
@@ -43,7 +49,6 @@ class BayesModel(HierarchicalModel):
         # iter_dims[-2:] = False
 
         print(dims, iter_dims)
-
 
         super().prepare_data(event_counts, T, iter_dims=iter_dims, **kwargs)
         self.dimensions["n_pop"] = dims[-2]   ## obtain number of populations
@@ -75,11 +80,11 @@ class BayesModel(HierarchicalModel):
         offset = 0.5
 
         self.calculate_binom()
-        
+
         print("Different values of kappa currently not possible - check what needs to be done!")
 
         if biological:
-        # initialize the network class with according populations & synapses
+            # initialize the network class with according populations & synapses
             self.net = Network()
             for key in self.parameter_names:
 
@@ -89,8 +94,6 @@ class BayesModel(HierarchicalModel):
 
                 if p is not None and s is not None:
                     self.net.populations[p].register_synapse(s)
-
-
 
         def loglikelihood(p_in):
             """
@@ -120,25 +123,23 @@ class BayesModel(HierarchicalModel):
             logl = np.zeros((n_chain,) + self.dimensions["shape_iter"])
 
             for idx in self.dimensions["iterator"]:
-                
+
                 # cts = self.data["event_counts"][idx]
                 max_spike_count = int(np.nanmax(self.data["event_counts"][idx]))
-                
+
                 for chain in range(n_chain):
                     """
                         get the parameters from the input p_in into dictionary
                     """
 
                     full_idx = (chain,) + idx
-    
+
                     params = self.get_params_from_p(p_in, idx_chain=chain, idx=idx, biological=biological)
                     if not params:
-                    # happens if parameters are weird
+                        # happens if parameters are weird
                         logl[full_idx] = -(10**6)
                         # print("weird parameters")
                         continue
-
-                    
 
                     """
                         from here, animal dependent calculations necessary
@@ -159,8 +160,7 @@ class BayesModel(HierarchicalModel):
                         if abort:
                             print("parameter penalties failed")
                             continue
-                        
-                        
+
                         ## remove all spike counts that are higher than max_spike_count_model
                         N_AP_empirical = self.binom[idx_population]["N_AP"][
                             self.binom[idx_population]["N_AP"] < max_spike_count_model
@@ -174,7 +174,7 @@ class BayesModel(HierarchicalModel):
                         k_AP[N_AP_empirical] = k_AP_empirical
 
                         ### calculate actual log-likelihood
-                    # print(params)
+                        # print(params)
                         p_N_AP = get_p_N_AP(
                             (N_AP + offset) / self.T,
                             (params["distr"][p],),
@@ -202,7 +202,6 @@ class BayesModel(HierarchicalModel):
                         # plt.legend()
                         # plt.show()
 
-
                         # print(" ---- logl (pre binom)",logl[full_idx])
                         # print(log_binom)
                         # print(np.log(p_N_AP[N_AP]))
@@ -217,7 +216,6 @@ class BayesModel(HierarchicalModel):
 
                         # print("logl (post binom)",logl[full_idx])
 
-
                         ### add penalties
                         # print("penalties:", self.penalty_nu_max(max_spike_count_model, animal))
 
@@ -225,7 +223,6 @@ class BayesModel(HierarchicalModel):
                         #     logl[full_idx] += self.penalty_mean_bias(
                         #         params, bias_to_mean, idx
                         #     )
-
 
                         if bias_to_expected_max > 0 and (
                             max_spike_count < max_spike_count_model
@@ -287,9 +284,8 @@ class BayesModel(HierarchicalModel):
                     np.arange(self.data["n_neurons"][idx_p] + 1),
                 )
 
-
     def parameter_penalties(self, max_spike_count_model, idx):
-                        
+
         # for pop in params["distr"]:
         #     if not pop.are_values_ok():
         #         return -(10**6), True
@@ -298,7 +294,7 @@ class BayesModel(HierarchicalModel):
         logl_penalty = 0
 
         # for p in range(self.dimensions["n_pop"]):
-            # idx_population = idx + (p,)
+        # idx_population = idx + (p,)
         idx_too_high = np.where(self.binom[idx]["N_AP"] > max_spike_count_model)[0]
         for i in idx_too_high:
             ## get all spike counts higher than allowed by model
@@ -311,16 +307,14 @@ class BayesModel(HierarchicalModel):
             )
         # print(f"logl_penalty: {logl_penalty}")
 
-
         return logl_penalty, False
-
 
     # def penalty_mean_bias(self, params, bias_to_mean, idx):
 
     #     if self.two_pop:
     #         nu_mean = params["p"] * get_nu_bar(**params["distr"][0])
     #         nu_mean += (1 - params["p"]) * get_nu_bar(**params["distr"][1])
-            
+
     #         nu_SD = params["p"] * get_q(**params["distr"][0])
     #         nu_SD += (1 - params["p"]) * get_q(**params["distr"][1])
     #     else:
@@ -340,9 +334,7 @@ class BayesModel(HierarchicalModel):
     #     return logl_bias_to_mean * bias_to_mean
     #     # logl[i, a] += bias_to_mean * logl_bias_to_mean
 
-
     def get_params_from_p(self, p_in, idx_chain=None, idx=None, biological=False):
-        
         """
             build structure of distribution parameters from p_in to dictionary shape as required by logl
         """
@@ -363,7 +355,7 @@ class BayesModel(HierarchicalModel):
                     setattr(self.net.populations[p].synapses[s],var,val)
                 else:
                     print(f"Unexpected parameter structure for {key}: {val}")
-            
+
             is_ok = self.net.are_values_ok()
             if not is_ok:
                 return False
