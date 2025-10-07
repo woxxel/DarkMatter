@@ -39,7 +39,10 @@ class BayesModel(HierarchicalModel):
         """
         dims = event_counts.shape
         iter_dims = np.ones_like(dims, dtype=bool)
-        iter_dims[-2:] = False
+        iter_dims[-2:] = False ## should be changed in the case of 2-population model
+        # iter_dims[-2:] = False
+
+        print(dims, iter_dims)
 
 
         super().prepare_data(event_counts, T, iter_dims=iter_dims, **kwargs)
@@ -143,7 +146,7 @@ class BayesModel(HierarchicalModel):
                     """
                     for p in range(self.dimensions["n_pop"]):
 
-                        idx_population = idx + (p,)
+                        idx_population = idx + ((p,) if self.dimensions["n_pop"] > 1 else ())
 
                         ## calculate maximum number of spikes:
                         max_spike_count_model = np.squeeze(
@@ -265,7 +268,7 @@ class BayesModel(HierarchicalModel):
         for idx in self.dimensions["iterator"]:
 
             for p in range(self.dimensions["n_pop"]):
-                idx_p = idx + (p,)
+                idx_p = idx + ((p,) if self.dimensions["n_pop"] > 1 else ())
                 event_counts = self.data["event_counts"][idx_p]
                 # print("count shape:",event_counts.shape)
                 N = event_counts[np.isfinite(event_counts)].astype("int64")
