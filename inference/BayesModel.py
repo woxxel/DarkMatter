@@ -2,11 +2,6 @@ import logging
 import numpy as np
 import re
 
-# from typing import List, Tuple
-# import pprint
-from matplotlib import pyplot as plt
-
-
 from scipy.special import gammaln
 
 from .HierarchicalBayesModel import (
@@ -21,10 +16,6 @@ from collections import Counter
 
 
 from .utils.utils import adaptive_integration, spike_observation_probability
-
-# from inference.transform_meta_to_bio import get_nu_bar, get_q, get_tau_I, get_alpha_0
-# from inference.transform_bio_to_meta import get_nu_max, get_gamma, get_delta
-
 from inference.network import Network
 
 from .utils.structures import DistributionModelParams as distr_params
@@ -141,6 +132,8 @@ class BayesModel(HierarchicalModel):
                         # print("weird parameters")
                         continue
 
+                    
+
                     """
                         from here, animal dependent calculations necessary
                         (due to differences in nu_max and thus max_spike_count_model)
@@ -174,7 +167,6 @@ class BayesModel(HierarchicalModel):
                         k_AP[N_AP_empirical] = k_AP_empirical
 
                         ### calculate actual log-likelihood
-                        # print(params)
                         p_N_AP = get_p_N_AP(
                             (N_AP + offset) / self.T,
                             (params["distr"][p],),
@@ -182,30 +174,9 @@ class BayesModel(HierarchicalModel):
                             correct_N=correct_N,
                             correct_threshold=correct_threshold,
                         )
-                        # print("p_N_AP", p_N_AP[:5])
-
-                        # plt.figure()
-                        # plt.plot(N_AP, p_N_AP, label=f"Population {p}")
 
                         log_binom = self.binom[idx_population]["log_binomial_coefficient"][k_AP]
 
-                        # logl_binom = (
-                        #     log_binom
-                        #     + k_AP * np.log(p_N_AP[N_AP])
-                        #     + (self.data["n_neurons"][idx_population] - k_AP)
-                        #     * np.log(1 - p_N_AP[N_AP])
-                        # )
-                        # plt.plot(N_AP, logl_binom, label=f"Binom Pop {p}")
-                        # plt.xlabel("Number of Action Potentials")
-                        # plt.ylabel("Probability")
-                        # plt.title("Probability Distribution of Action Potentials")
-                        # plt.legend()
-                        # plt.show()
-
-                        # print(" ---- logl (pre binom)",logl[full_idx])
-                        # print(log_binom)
-                        # print(np.log(p_N_AP[N_AP]))
-                        # print(np.log(1 - p_N_AP[N_AP]))
 
                         logl[full_idx] += (
                             log_binom
@@ -224,20 +195,21 @@ class BayesModel(HierarchicalModel):
                         #         params, bias_to_mean, idx
                         #     )
 
-                        if bias_to_expected_max > 0 and (
-                            max_spike_count < max_spike_count_model
-                        ):
 
-                            p_max = expected_maximum_value(
-                                p_N_AP,
-                                self.data["n_neurons"][idx],
-                                max_spike_count,
-                            )
+                        # if bias_to_expected_max > 0 and (
+                        #     max_spike_count < max_spike_count_model
+                        # ):
 
-                            logl[full_idx] += np.log(p_max) * bias_to_expected_max
+                        #     p_max = expected_maximum_value(
+                        #         p_N_AP,
+                        #         self.data["n_neurons"][idx],
+                        #         max_spike_count,
+                        #     )
 
-                        elif bias_to_expected_max > 0:
-                            logl[full_idx] += bias_to_expected_max * -(10**6)
+                        #     logl[full_idx] += np.log(p_max) * bias_to_expected_max
+
+                        # elif bias_to_expected_max > 0:
+                        #     logl[full_idx] += bias_to_expected_max * -(10**6)
 
                     # self.log.debug((f'logls: {logl_low=}, {logl_intermediate=}, {logl_tail=}'))
                     if not np.isfinite(logl[full_idx]):
@@ -248,7 +220,7 @@ class BayesModel(HierarchicalModel):
                 # print(logl.shape)
                 return logl.sum(axis=tuple(range(1, self.dimensions["n_iter"]+1)))
             else:
-                self.log.debug(("logl:", logl[0, :].sum()))
+                # self.log.debug(("logl:", logl[0, :].sum()))
                 return logl[0, :].sum()
 
         return loglikelihood
@@ -379,7 +351,7 @@ class BayesModel(HierarchicalModel):
         # if len(params["distr"])==2: #self.two_pop:
         #     params["distr"][1]["nu_max"] = params["distr"][0]["nu_max"]
 
-        self.log.debug("\n params:", params)
+        # self.log.debug("\n params:", params)
 
         return params
 
