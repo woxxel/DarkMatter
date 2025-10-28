@@ -116,7 +116,7 @@ class BayesModel(HierarchicalModel):
             for idx in self.dimensions["iterator"]:
 
                 # cts = self.data["event_counts"][idx]
-                max_spike_count = int(np.nanmax(self.data["event_counts"][idx]))
+                # max_spike_count = int(np.nanmax(self.data["event_counts"][idx]))
 
                 for chain in range(n_chain):
                     """
@@ -131,8 +131,6 @@ class BayesModel(HierarchicalModel):
                         logl[full_idx] = -(10**6)
                         # print("weird parameters")
                         continue
-
-                    
 
                     """
                         from here, animal dependent calculations necessary
@@ -177,7 +175,6 @@ class BayesModel(HierarchicalModel):
 
                         log_binom = self.binom[idx_population]["log_binomial_coefficient"][k_AP]
 
-
                         logl[full_idx] += (
                             log_binom
                             + k_AP * np.log(p_N_AP[N_AP])
@@ -194,7 +191,6 @@ class BayesModel(HierarchicalModel):
                         #     logl[full_idx] += self.penalty_mean_bias(
                         #         params, bias_to_mean, idx
                         #     )
-
 
                         # if bias_to_expected_max > 0 and (
                         #     max_spike_count < max_spike_count_model
@@ -328,6 +324,7 @@ class BayesModel(HierarchicalModel):
                 else:
                     print(f"Unexpected parameter structure for {key}: {val}")
 
+            # print(self.net.print_current_state())
             is_ok = self.net.are_values_ok()
             if not is_ok:
                 return False

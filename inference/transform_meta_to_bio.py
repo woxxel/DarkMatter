@@ -33,10 +33,12 @@ def get_alpha_0(param: distr_params, p=1.0, tau_m=0.01, J_0=-1.0, nP=None):
     )
 
     # print(f"{gamma=}, {delta=}, {nu_max=}, {p=}, {dims=}")
-
-    gamma = kwargs["gamma"]
-    delta = kwargs["delta"]
-    nu_max = kwargs["nu_max"]
+    params = distr_params(
+        gamma=kwargs["gamma"], delta=kwargs["delta"], nu_max=kwargs["nu_max"]
+    )
+    # gamma = kwargs["gamma"]
+    # delta = kwargs["delta"]
+    # nu_max = kwargs["nu_max"]
     tau_m = kwargs["tau_m"]
 
     J_0 = kwargs["J_0"]
@@ -44,17 +46,17 @@ def get_alpha_0(param: distr_params, p=1.0, tau_m=0.01, J_0=-1.0, nP=None):
     # for arg in kwargs:
     #     print(arg,kwargs[arg].shape)
 
-    nu_mean_eff = get_effective_variable(get_nu_bar, gamma, delta, nu_max, p, dims)
-    q_eff = get_effective_variable(get_q, gamma, delta, nu_max, p, dims)
+    nu_mean_eff = get_effective_variable(get_nu_bar, params, p, dims)
+    q_eff = get_effective_variable(get_q, params, p, dims)
 
-    tau_I = get_tau_I(nu_max,tau_m)
+    tau_I = get_tau_I(params, tau_m)
     # print(f'{nu_mean_eff.shape=}, {q_eff.shape=}, {tau_I.shape=}, {gamma.shape=}')
     # print(q_eff)
     # return np.sqrt(J_0**2 * ( nu_mean_eff[...,np.newaxis]/ (2 * gamma**2 * (tau_I[...,np.newaxis] + tau_m)) - q_eff[...,np.newaxis]))
     return np.sqrt(
         J_0**2
         * (
-            nu_mean_eff[..., np.newaxis] / (2 * gamma**2 * (tau_I + tau_m))
+            nu_mean_eff[..., np.newaxis] / (2 * params.gamma**2 * (tau_I + tau_m))
             - q_eff[..., np.newaxis]
         )
     )
@@ -89,9 +91,6 @@ def get_dPsi(gamma, delta, nu_max, p, tau_m=0.01, J_0=-1.0, nP=2):
     return Psi[..., 1] - Psi[..., 0]
 
 
-
-
-
 ### the firing rate distribution function
 def p_nu(NU,gamma,delta,nu_max):
 
@@ -118,8 +117,6 @@ def border2(gamma,delta,nu_max):
 
     q = get_q(gamma,delta,nu_max)
     return (q / nu_max**2)**2 * (2/gamma**2 + 1)
-
-
 
 
 # def get_alpha_0(gamma,delta,nu_max,tau_m=0.01,J_0=-1):
@@ -170,17 +167,20 @@ def check_var(var, n, dims=None):
     return var
 
 
-def get_effective_variable(calc_fun, gamma, delta, nu_max, p, dims):
+def get_effective_variable(calc_fun, params, p, dims):
 
     n = dims[0]
     nP = dims[-1]
     if nP == 2:
         var = np.zeros((nP, n))
-        for k, (g, d, n) in enumerate(zip(gamma.T, delta.T, nu_max.T)):
+        for k, (g, d, n) in enumerate(
+            zip(params.gamma.T, params.delta.T, params.nu_max.T)
+        ):
             var[k, :] = calc_fun(g, d, n)
         return p * var[0, ...] + (1 - p) * var[1, ...]
     else:
-        return calc_fun(gamma[..., 0], delta[..., 0], nu_max)
+        # return calc_fun(params.gamma[..., 0], params.delta[..., 0], params.nu_max)
+        return calc_fun(params)
 
 
 def check_arrays(gamma, delta, nu_max, dims=None):
@@ -242,6 +242,3 @@ def get_input_dimensions(nP, **kwargs):
             # print(arg,kwargs[arg].shape)
 
     return dims, kwargs
-
-
-

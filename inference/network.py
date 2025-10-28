@@ -13,7 +13,7 @@ class Network:
         ensure, q, sigma_V, alpha, nu_max are only calculated, not set (protected vars, attributes, ...)
     """
     n_pop = 0
-    
+
     _recalculate_sigma_V = True
     _recalculate_alpha = True
 
@@ -25,7 +25,6 @@ class Network:
 
         self._eps = kwargs.get('eps', 1/np.sqrt(2))
         self._eta = kwargs.get('eta', 0.9)
-
 
     @property
     def eps(self):
@@ -44,7 +43,6 @@ class Network:
     def eta(self, value):
         self._eta = value
         self._set_weights()
-        
 
     def register_population(self, idx=None,**kwargs):
 
@@ -69,7 +67,7 @@ class Network:
             pop.print_current_state()
 
     def _set_weights(self):
-        
+
         self.J = np.zeros((self.n_pop,self.n_pop))
         for post in self.populations:
             for pre in self.populations:
@@ -110,12 +108,13 @@ class Network:
                     # print(f"tmp_var_V: {tmp_var_V}")
                     var_V += tmp_var_V
                     var_V_dot += tmp_var_V / (syn.tau_I * post.tau_M)
-            
+
             post._sigma_V = np.sqrt(var_V)
-            post._nu_max = np.sqrt(var_V_dot/var_V)/(2*math.pi)
+            post._nu_max = (
+                np.sqrt(var_V_dot / var_V) / (2 * math.pi) if var_V > 0 else np.nan
+            )
         self._counter_sigma_V += 1
         self._recalculate_sigma_V = False
-
 
     def calculate_alpha(self):
 
@@ -139,16 +138,15 @@ class Network:
         self._recalculate_alpha = False
 
     def solve_selfcon(self):
-        
+
         q0 = np.array([pop.nu_bar**2 for pop in self.populations])
         q = fsolve(self.selfcon, q0, xtol=1e-12)
         for pop in self.populations:
             pop.q = q[pop.idx]
 
         self.calculate_alpha()
-        
-        return np.allclose(self.selfcon(q),0)#, "selfconsistency not achieved!"
 
+        return np.allclose(self.selfcon(q),0)#, "selfconsistency not achieved!"
 
     def selfcon(self,q):
 
@@ -160,11 +158,11 @@ class Network:
         dI = np.zeros(self.n_pop)
         for pop in self.populations:
             dI[pop.idx] = pop.selfcon()
-        
+
         return dI
 
     def are_values_ok(self):
-        
+
         attrs = ["eps", "eta"]
         is_ok = all(getattr(self, attr) is not None and getattr(self, attr) >= 0 for attr in attrs)
         if not is_ok:
@@ -174,7 +172,7 @@ class Network:
             if not pop.are_values_ok():
                 return False
         return True
-    
+
     def export_distr(self):
 
         distr = []
