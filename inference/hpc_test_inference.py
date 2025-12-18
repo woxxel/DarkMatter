@@ -8,8 +8,6 @@ from matplotlib import pyplot as plt
 import pickle
 from .utils.connections import *
 
-# import seaborn as sns
-
 '''
     store posterior distribution along with results
 '''
@@ -109,7 +107,6 @@ EOF
         print(stdout.read(),stderr.read())
 
 
-
 def load_results(base_path,parameters,n_repeat):
 
     fileName = base_path
@@ -125,7 +122,6 @@ def load_results(base_path,parameters,n_repeat):
             return pickle.load(f_open)
         # except:
             # print('error while loading')
-    
 
 
 def plot_results(iter_key,iter_vals,n_repeat,ref_values=None,
@@ -397,7 +393,6 @@ def plot_results(iter_key,iter_vals,n_repeat,ref_values=None,
     
     # plt.show(block=False)
     plt.show()
-    
 
 
 def plot_paper():
@@ -479,9 +474,6 @@ def custom_violin(ax, data, pos, fc='b', ec='k', alpha=0.7, percentiles=[25, 50,
     #     ax.scatter(points_x, p, color=ec, zorder=3, **scatter_kwargs)
 
 
-
-
-
 def get_peak_position_and_height(params):
 
     # calculate the position of the distribution peak
@@ -489,8 +481,6 @@ def get_peak_position_and_height(params):
 
     # get the maximum value of the distribution
     p_nu(nu_peak(**params),params)
-
-
 
 
 #     if compile_it:

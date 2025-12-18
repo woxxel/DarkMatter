@@ -1,6 +1,5 @@
 import logging
 import numpy as np
-import re
 
 from scipy.special import gammaln
 
@@ -36,10 +35,9 @@ class BayesModel(HierarchicalModel):
         """
         dims = event_counts.shape
         iter_dims = np.ones_like(dims, dtype=bool)
-        iter_dims[-2:] = False ## should be changed in the case of 2-population model
-        # iter_dims[-2:] = False
+        iter_dims[-2:] = False  ## should be changed in the case of 2-population model
 
-        print(dims, iter_dims)
+        # print(dims, iter_dims)
 
         super().prepare_data(event_counts, T, iter_dims=iter_dims, **kwargs)
         self.dimensions["n_pop"] = dims[-2]   ## obtain number of populations
@@ -48,10 +46,10 @@ class BayesModel(HierarchicalModel):
         self,
         vectorized=False,
         correct_N=0,
-        bias_to_expected_max=0,
-        bias_to_mean=0,
         correct_threshold=10 ** (-4),
         biological=False,
+        # bias_to_expected_max=0,
+        # bias_to_mean=0,
     ):
         """
         sets the log likelihood function for the model,
@@ -376,34 +374,34 @@ def build_distr_structure_from_params(params_tmp, paramNames):
     return params
 
 
-def expected_maximum_value(p, n, max_value=None):
-    """
-        obtain distribution of extreme values, given an input distribution p and a sample size n.
-        If max_value is provided, return the probability of observing that value
+# def expected_maximum_value(p, n, max_value=None):
+#     """
+#         obtain distribution of extreme values, given an input distribution p and a sample size n.
+#         If max_value is provided, return the probability of observing that value
 
-    p   array(float)
-        - input distribution (probability mass function)
-    n   int
-        - sample size
+#     p   array(float)
+#         - input distribution (probability mass function)
+#     n   int
+#         - sample size
 
-    output:
-        - expected maximum value probability distribution
-    """
+#     output:
+#         - expected maximum value probability distribution
+#     """
 
-    ### now, get extreme value distribution
-    p_cum = np.pad(
-        np.cumsum(p) ** n,
-        (1, 0),
-        mode="constant",
-        constant_values=0,
-    )
-    p_extreme = np.diff(p_cum)
-    p_extreme /= p_extreme.sum()  # normalizing
+#     ### now, get extreme value distribution
+#     p_cum = np.pad(
+#         np.cumsum(p) ** n,
+#         (1, 0),
+#         mode="constant",
+#         constant_values=0,
+#     )
+#     p_extreme = np.diff(p_cum)
+#     p_extreme /= p_extreme.sum()  # normalizing
 
-    if max_value is None:
-        return p_extreme
-    else:
-        return p_extreme[max_value]
+#     if max_value is None:
+#         return p_extreme
+#     else:
+#         return p_extreme[max_value]
 
 
 def get_p_N_AP(nu, args_rho, T, correct_N=5, correct_threshold=10 ** (-4)):
