@@ -3,7 +3,7 @@ import numpy as np
 from scipy.integrate import quad
 from scipy.special import gammaln
 
-from .structures import DistributionModelParams as distr_params
+from ...general.utils.structures import DistributionModelParams as distr_params
 
 
 # def p_nu_single(NU,gamma,delta,nu_max,log=False):
@@ -24,7 +24,7 @@ from .structures import DistributionModelParams as distr_params
 #             np.exp( - delta**2/2.) * ( NU_scaled )**(gamma**2 - 1) * \
 #             np.cosh( gamma * delta * np.sqrt( -2 * np.log( NU_scaled ) ) )
 #         p[~NU_mask] = 0 if gamma > 1 else np.inf
-        
+
 #         return p
 
 # def p_nu(NU,p,log=False):

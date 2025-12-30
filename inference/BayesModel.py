@@ -15,9 +15,9 @@ from collections import Counter
 
 
 from .utils.utils import adaptive_integration, spike_observation_probability
-from inference.network import Network
+from general.network import Network
 
-from .utils.structures import DistributionModelParams as distr_params
+from ..general.utils.structures import DistributionModelParams as distr_params
 from .utils.utils import rho_nu
 
 import warnings

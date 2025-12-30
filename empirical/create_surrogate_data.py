@@ -1,4 +1,3 @@
-
 import numpy as np
 from typing import List, Dict, Tuple
 
@@ -11,7 +10,7 @@ from matplotlib import pyplot as plt
 # from inference.utils.utils import p_nu
 # from DM_theory.network import Network
 # from inference.transform_meta_to_bio import get_nu_bar,get_tau_I,get_alpha_0
-from inference.utils.structures import DistributionModelParams as distr_params
+from general.utils.structures import DistributionModelParams as distr_params
 from inference.BayesModel import rho_nu
 
 
@@ -232,7 +231,7 @@ def rejection_sampling(f_target,args,N, M, low, high):
 
 #     if not isinstance(params,list):
 #         params = [params]
-    
+
 #     bio_params = {
 #         "tau_M": 0.01,
 #         "J0": [-1.],

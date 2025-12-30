@@ -1,5 +1,5 @@
 import numpy as np
-from .utils.structures import DistributionModelParams as distr_params
+from ..general.utils.structures import DistributionModelParams as distr_params
 
 """
     Transformation from distribution parameters to biological parameters
@@ -104,7 +104,10 @@ def get_nu_peak(gamma,delta,nu_max):
     return nu_max * np.exp( - (gamma**2 * delta**2 - 2*(gamma**2 - 1) + gamma * delta *np.sqrt(gamma**2 * delta**2 - 4*(gamma**2 - 1))) / (4 * (gamma**2 - 1)**2))
 
 def get_chi(gamma,delta,nu_max):
-    return -np.log10(get_nu_peak(gamma,delta,nu_max)/get_nu_bar(gamma,delta,nu_max))
+    return -np.log10(
+        get_nu_peak(gamma, delta, nu_max)
+        / get_nu_bar(distr_params(gamma, delta, nu_max))
+    )
 
 
 ### helper functions for calculating solutions of DM theory
